@@ -1,0 +1,32 @@
+[package]
+name = "we-trust-sqlite"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "SQLite compatibility layer for we-trust protocol, providing native SQLite file access and SQL execution"
+categories = ["database-implementations"]
+keywords = ["sqlite", "we-trust", "database"]
+
+[dependencies]
+yykv-types = { workspace = true }
+yykv-operators = { workspace = true }
+yykv-executor = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util", "net"] }
+tokio-util = { workspace = true }
+serde = { workspace = true }
+# serde_json = { workspace = true } # replaced by oak-json
+oak-json = { workspace = true }
+oak-sql = { workspace = true }
+
+
+bytes = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+crc32fast = { workspace = true }
+tracing = { workspace = true }
+parking_lot = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }

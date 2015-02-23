@@ -1,0 +1,20 @@
+[package]
+name = "yykv-event"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Event-driven WAL and message bus for YYKV"
+
+[dependencies]
+yykv-types.workspace = true
+tokio = { workspace = true, features = ["full"] }
+bytes.workspace = true
+serde.workspace = true
+
+uuid.workspace = true
+chrono.workspace = true
+crc32fast.workspace = true
+tracing.workspace = true

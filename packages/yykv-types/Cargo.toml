@@ -1,0 +1,20 @@
+[package]
+name = "yykv-types"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Core type definitions for yykv storage engine"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+uuid = { version = "1.0", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+bytes = { workspace = true }
+rust_decimal = "1.0"
+bincode = { workspace = true }
+hex = "0.4"
+crc32fast = { workspace = true }
+async-trait.workspace = true

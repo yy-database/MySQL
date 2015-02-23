@@ -1,0 +1,33 @@
+[package]
+name = "yykv"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "High-performance heterogeneous storage engine for the yykv ecosystem"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv-types.workspace = true
+yykv-hal.workspace = true
+yykv-allocator.workspace = true
+yykv-layout.workspace = true
+yykv-scheduler.workspace = true
+yykv-tiering.workspace = true
+yykv-wal.workspace = true
+    yykv-compute.workspace = true
+    bytes.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+
+
+# serde_json.workspace = true # replaced by oak-json
+oak-json.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }

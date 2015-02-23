@@ -1,0 +1,29 @@
+[package]
+name = "we-trust-s3"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Amazon S3 compatibility layer for We-Trust storage, enabling S3 clients to interact with YYKV"
+categories = ["database-implementations", "network-programming"]
+keywords = ["s3", "we-trust", "storage", "protocol"]
+
+[dependencies]
+yykv-types = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+oak-xml = { workspace = true }
+serde = { workspace = true }
+http = { workspace = true }
+
+tracing = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+chrono = { workspace = true }
+

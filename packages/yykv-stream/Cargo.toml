@@ -1,0 +1,18 @@
+[package]
+name = "yykv-stream"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Streaming data processing and iteration for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv-types.workspace = true
+yykv-scheduler.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+bytes.workspace = true

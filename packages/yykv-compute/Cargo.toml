@@ -1,0 +1,20 @@
+[package]
+name = "yykv-compute"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Near-storage computation and filtering for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv-types.workspace = true
+yykv-layout.workspace = true
+bytes.workspace = true
+serde.workspace = true
+
+tokio.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+simd-json = { version = "0.13", optional = true }
