@@ -57,7 +57,10 @@ impl UdfRuntime {
 
         let linker = Linker::new(&engine);
 
-        Ok(Self { _engine: engine, _linker: linker })
+        Ok(Self {
+            _engine: engine,
+            _linker: linker,
+        })
     }
 
     // Additional methods to load and call UDFs would go here

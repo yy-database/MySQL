@@ -274,11 +274,7 @@ impl SqliteExecutor {
                 OperatorNode::Filter(op) => {
                     let mut filtered_results = Vec::new();
                     for val in results {
-                        match op
-                            .expression
-                            .evaluate(&val)
-                            .map_err(DsError::query)?
-                        {
+                        match op.expression.evaluate(&val).map_err(DsError::query)? {
                             DsValue::Bool(b) if b => filtered_results.push(val),
                             _ => {}
                         }

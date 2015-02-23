@@ -4,9 +4,7 @@ use crate::transaction::SqliteTransaction;
 use crate::writer::NativeWriter;
 use async_trait::async_trait;
 use std::sync::Arc;
-use yykv_types::{
-    ColumnInfo, DsError, DsResult, DsValue, EnumInfo, SchemaInspector, TableInfo,
-};
+use yykv_types::{ColumnInfo, DsError, DsResult, DsValue, EnumInfo, SchemaInspector, TableInfo};
 
 #[async_trait]
 impl SchemaInspector for SqliteConnection {
