@@ -27,3 +27,4 @@ Thumbs.db
 *.db
 *.db-wal
 *.db-shm
+*.log

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub mod btree;
 pub mod btree_page;
 pub mod codec;

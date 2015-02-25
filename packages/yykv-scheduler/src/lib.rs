@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, trace};

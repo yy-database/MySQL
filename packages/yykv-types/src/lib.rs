@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bytes::{Bytes, BytesMut};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 pub use rust_decimal::Decimal;

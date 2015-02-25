@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bytes::{BufMut, Bytes, BytesMut};
 use crc32fast::Hasher;
 use yykv_types::DsValue;

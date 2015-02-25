@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use async_trait::async_trait;
 use yykv_event::WalManager;
 use yykv_operators::{OperatorNode, OpsGraph};

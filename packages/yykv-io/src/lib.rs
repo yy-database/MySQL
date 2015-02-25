@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use async_trait::async_trait;
 use std::path::Path;
 use tracing::{debug, trace};

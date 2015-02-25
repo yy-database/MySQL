@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub struct StoragePolicy {
     // 负责介质识别与页面策略定义
 }
