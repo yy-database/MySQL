@@ -10,9 +10,9 @@ homepage.workspace = true
 
 [dependencies]
 yykv-types.workspace = true
-wasmtime = { version = "18.0", default-features = false, features = ["component-model", "async", "cranelift", "runtime"] }
-wasmtime-wasi = { version = "18.0" }
-wit-bindgen = "0.17"
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+wit-bindgen.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
 tokio.workspace = true

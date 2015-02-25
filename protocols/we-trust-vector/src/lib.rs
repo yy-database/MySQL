@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub mod codec;
 pub use codec::{VectorCodec, VectorSearchRequest, VectorSearchResponse};
 

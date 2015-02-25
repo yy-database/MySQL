@@ -128,5 +128,11 @@ resp = "1.0.3"
 rust_decimal = "1.0"
 windows = { version = "0.52", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_IO", "Win32_System_Ioctl", "Win32_Security"] }
 libc = "0.2"
+criterion = "0.5"
+simd-json = "0.13"
+wasmtime = { version = "18.0", default-features = false, features = ["component-model", "async", "cranelift", "runtime"] }
+wasmtime-wasi = "18.0"
+wit-bindgen = "0.17"
+md5 = "0.7"
 
 # Benchmark Dependencies

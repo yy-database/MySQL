@@ -13,4 +13,4 @@ yykv.workspace = true
 yykv-types.workspace = true
 tokio.workspace = true
 serde.workspace = true
-criterion = "0.5"
+criterion.workspace = true

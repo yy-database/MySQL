@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::sync::Arc;
 use tokio_util::codec::{Decoder, Encoder};
