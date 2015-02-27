@@ -112,7 +112,6 @@ indicatif = "0.17"
 console = "0.15"
 rand = "0.8"
 async-trait = "0.1"
-thiserror = "2.0"
 uuid = { version = "1.0", features = ["v4", "v7", "serde"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 sha2 = "0.10"
