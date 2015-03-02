@@ -100,7 +100,6 @@ oak-xml = "0.0.3"
 # External Dependencies
 bytes = { version = "1.0.0", features = ["serde"] }
 serde = { version = "1.0.0", features = ["derive"] }
-bincode = "1.3.3"
 crc32fast = "1.3.0"
 futures = "0.3.0"
 tracing = "0.1.0"
