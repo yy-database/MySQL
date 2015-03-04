@@ -16,3 +16,4 @@ oak-core.workspace = true
 
 bytes.workspace = true
 uuid.workspace = true
+serde_json = "1.0.149"

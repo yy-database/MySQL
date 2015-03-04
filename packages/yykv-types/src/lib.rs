@@ -377,6 +377,10 @@ pub trait ToValue {
     fn to_value(&self) -> DsValue;
 }
 
+pub trait FromValue: Sized {
+    fn from_value(v: DsValue) -> DsResult<Self>;
+}
+
 impl ToValue for DsValue {
     fn to_value(&self) -> DsValue {
         self.clone()
