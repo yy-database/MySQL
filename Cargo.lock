@@ -1485,8 +1485,6 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 [[package]]
 name = "oak-core"
 version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67e0fc954ea232107ff4b84601780bcc452b636234042910f9bf6d5c1ddb496b"
 dependencies = [
  "serde",
  "smallvec",
@@ -1497,8 +1495,6 @@ dependencies = [
 [[package]]
 name = "oak-json"
 version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a33caa15e4aa2e902ea534561d1b293ae21000647dde5a8c916cec1415711325"
 dependencies = [
  "oak-core",
  "oak-macros",
@@ -1509,8 +1505,6 @@ dependencies = [
 [[package]]
 name = "oak-macros"
 version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24ce93dcb742606e2652b899875c8467e6aad05aff0be1f4b3afc7da9aecb625"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1520,8 +1514,6 @@ dependencies = [
 [[package]]
 name = "oak-sql"
 version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bc117e693e424ff9abaeecb07e6335d06f479950ed64d80d8d107adde6102f9"
 dependencies = [
  "oak-core",
  "serde",
@@ -1531,8 +1523,6 @@ dependencies = [
 [[package]]
 name = "oak-xml"
 version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8890be63983a4c64c7d9b49b9a0a37c8c39fabf82107e09ba1ba1e30f7d40357"
 dependencies = [
  "oak-core",
  "serde",
@@ -3758,8 +3748,6 @@ name = "yykv-operators"
 version = "0.0.0"
 dependencies = [
  "bytes",
- "oak-core",
- "oak-sql",
  "serde",
  "serde_json",
  "uuid",
