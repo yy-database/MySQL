@@ -1,41 +1,61 @@
-# we-trust-postgres (PostgreSQL Wire Protocol Adapter)
+# PostgreSQL Compatibility Protocol
 
-`we-trust-postgres` is the PostgreSQL protocol compatibility layer for the YYKV storage engine. It implements the PostgreSQL wire protocol, allowing developers to directly access YYKV's high-performance integrated storage-compute capabilities using existing Postgres drivers, ORM frameworks, and management tools.
+**we-trust-postgres** implements the PostgreSQL Frontend/Backend Wire Protocol, allowing YYKV to seamlessly integrate with the PostgreSQL ecosystem.
 
-## Core Features
+## 1. Protocol Flow
 
-### 🔌 Native Protocol Support (Wire Protocol)
-- **Binary Transmission**: Fully implements the message formats for front-end/back-end interaction (e.g., `StartupMessage`, `Query`, `DataRow`, `CommandComplete`).
-- **Authentication Integration**: Supports common Postgres authentication mechanisms.
-- **SSL Support**: Supports encrypted connections to ensure data transmission security.
+1. **Startup Phase**: The client sends a `StartupMessage` containing the protocol version and parameters (e.g., tenant identification `user=tenant_id`).
+2. **Authentication Phase**: Supports `CleartextPassword` and `MD5Password` (Trust's native signature authentication is recommended for production).
+3. **Command Loop (Simple/Extended Query)**:
+   - **Simple Query**: Client sends a text query message.
+   - **Extended Query**: Consists of four phases: `Parse`, `Bind`, `Describe`, and `Execute`, supporting parameter binding and high-performance repeated execution.
 
-### 📊 Type & Operator Mapping
-- **Bidirectional Conversion**: Establishes high-performance mapping between Postgres data types and YYKV's `DsValue`.
-- **SQL Translation**: Translates received SQL statements into YYKV logical execution plans (OpsGraph).
+## 2. Message Format
 
-### ⚡ Transaction Transparency
-- Maps Postgres transaction commands (`BEGIN`, `COMMIT`, `ROLLBACK`) to YYKV's underlying transaction controller, ensuring ACID properties.
+Each message consists of a **1-byte Identifier**, **4-byte Length**, and a **Payload**:
 
-## Core Components
+| Identifier | Meaning |
+| :--- | :--- |
+| `'Q'` | Simple Query |
+| `'P'` | Parse (Prepared Statement) |
+| `'B'` | Bind Parameters |
+| `'E'` | Execute |
+| `'C'` | Command Complete |
 
-- `PgCodec`: A non-blocking Postgres message codec implemented based on `tokio-util`.
-- `PostgresAdapter`: Manages client connection lifecycle and request routing.
-- `PostgresTransaction`: Maintains transaction context corresponding to the underlying engine.
+## 3. Core Mapping Technology
 
-## Usage Example
+### 3.1 Extended Query Mapping
+PostgreSQL's extended query protocol is mapped to YYKV's `MessageType::Query`:
+- **`Parse`**: Generates an execution plan cache within YYKV.
+- **`Bind`**: Maps binary parameters transmitted over the network into a `YYValue` sequence.
+- **`Execute`**: Triggers the asynchronous execution flow of the operator graph (OpsGraph).
 
-```bash
-# Connect to YYKV using the standard psql client
-psql -h 127.0.0.1 -p 5432 -U yykv_user -d my_database
-```
+### 3.2 Error Code Compatibility
+YYKV translates internal storage errors into PostgreSQL standard `SQLSTATE` error codes (e.g., `23505` for unique constraint violation), ensuring that upper-layer ORMs (like Hibernate or Diesel) can correctly handle exceptions.
 
-## Technical Architecture
+## 4. Execution Flow
 
 ```mermaid
 sequenceDiagram
-    Client->>we-trust-postgres: Frontend Message (Query)
-    we-trust-postgres->>yykv-operators: SQL Parse & Planning
-    yykv-operators->>yykv-executor: Execute Graph
-    yykv-executor-->>we-trust-postgres: Rows Data
-    we-trust-postgres-->>Client: DataRow + CommandComplete
+    Client->>we-trust-postgres: Parse (SQL)
+    we-trust-postgres->>yykv-operators: Generate Plan
+    Client->>we-trust-postgres: Bind (Params)
+    we-trust-postgres->>yykv-executor: Prepare Execution
+    Client->>we-trust-postgres: Execute
+    yykv-executor->>yykv-compute: Pushdown Scan
+    yykv-compute-->>we-trust-postgres: Result Rows
+    we-trust-postgres-->>Client: DataRow Packets
 ```
+
+## 5. Type System Alignment
+
+| Postgres OID | YYKV Type | Description |
+| :--- | :--- | :--- |
+| `INT4`, `INT8` | `Int` | Mapped to 64-bit integer |
+| `TEXT`, `VARCHAR` | `String` | UTF-8 encoded |
+| `BYTEA` | `Binary` | Raw byte blocks |
+| `BOOL` | `Bool` | Boolean value |
+
+## 6. Advanced Feature: Operator Pushdown
+
+When connecting via a PostgreSQL client, complex filtering conditions (WHERE clauses) are identified by the compatibility layer and pushed directly to the storage nodes using `yykv-compute`. Only rows meeting the conditions are returned, significantly saving network bandwidth.

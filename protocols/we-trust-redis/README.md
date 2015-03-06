@@ -1,48 +1,30 @@
-# we-trust-redis (RESP3 Protocol Adapter)
+# Redis Compatibility Protocol
 
-`we-trust-redis` 是 YYKV 的高性能 Redis 协议接入层。它将 YYKV 的存算一体化能力通过标准 RESP (Redis Serialization Protocol) 暴露给现有的生态系统，支持低延迟的 KV 操作与实时事件流。
+**we-trust-redis** implements the Redis Serialization Protocol (RESP), allowing YYKV to serve as a high-performance, persistent alternative to Redis.
 
-## 核心技术实现
+## 1. Protocol Core: RESP
 
-### 🚀 高并发 RESP 解码
-基于 `tokio-util` 的 `Codec` 机制与 `bytes` 库实现非阻塞编解码。
-- **RESP3 支持**: 完美处理 Map, Set, Push 等新协议类型。
-- **零拷贝解析**: 在协议层尽量保留对原始字节切片的引用，减少内存分配。
+YYKV fully supports various data types of RESP (REdis Serialization Protocol):
+- **Simple Strings**: Starts with `+`, e.g., `+OK\r\n`.
+- **Errors**: Starts with `-`, includes error type.
+- **Integers**: Starts with `:`.
+- **Bulk Strings**: Starts with `$`, binary-safe.
+- **Arrays**: Starts with `*`, supports nested structures.
 
-### 🧠 算子图映射 (Command to OpsGraph)
-Redis 命令不只是简单的 Key 查找，`we-trust-redis` 将其映射为 YYKV 的物理算子：
-- `GET/SET` -> `TableScan` + `Filter` / `Insert`。
-- `HGETALL` -> 范围扫描算子。
-- 复杂聚合逻辑自动下推至 `yykv-compute`。
+## 2. Command Mapping Logic
 
-### ⚡ 实时订阅集成
-利用 YYKV 的 **WAE (写入即事件)** 架构，Redis 协议层天然支持高性能的 `SUBSCRIBE` 机制，甚至可以订阅特定租户或表的物理变更流。
+The Redis compatibility layer employs a **dynamic mapping engine** that converts common KV operations directly into YYKV native atomic instructions, bypassing SQL parsing overhead.
 
-## 关键特性
+| Redis Command | YYKV Native Operation | Performance |
+| :--- | :--- | :--- |
+| `SET` | `MessageType::Put` | $O(1)$, direct write to WAL and MemTable |
+| `GET` | `MessageType::Get` | $O(1)$, supports cache hit optimization |
+| `DEL` | `MessageType::Delete` | $O(1)$, writes a deletion marker (Tombstone) |
+| `KEYS` | `MessageType::Scan` | $O(N)$, utilizes prefix scanning optimization |
 
-- **多租户隔离**: 通过协议扩展或逻辑映射，支持不同 Redis 客户端连接到不同的物理租户空间。
-- **持久化策略控制**: 支持通过 Redis 命令自定义 `SDR` (软件定义冗余) 等级。
-- **高性能**: 单实例 QPS 目标 > 500k (Pipeline 模式)。
+## 3. Architecture & Execution Flow
 
-## 兼容命令集
-
-- **Strings**: `GET`, `SET`, `INCR`, `MGET`, `MSET`
-- **Hashes**: `HGET`, `HSET`, `HGETALL`, `HDEL`
-- **Sets**: `SADD`, `SMEMBERS`, `SISMEMBER`
-- **System**: `PING`, `INFO`, `CLIENT`, `COMMAND`
-
-## 使用示例
-
-```bash
-# 使用标准 redis-cli 连接
-redis-cli -h 127.0.0.1 -p 6379
-127.0.0.1:6379> SET mykey "yykv-power"
-OK
-127.0.0.1:6379> GET mykey
-"yykv-power"
-```
-
-## 技术架构图
+The following diagram shows how a Redis command is processed within the YYKV kernel:
 
 ```mermaid
 sequenceDiagram
@@ -54,3 +36,20 @@ sequenceDiagram
     yykv-executor-->>we-trust-redis: Success
     we-trust-redis-->>Client: +OK
 ```
+
+## 4. Persistence & Consistency
+
+Unlike standard Redis AOF/RDB, YYKV provides **database-grade persistence guarantees** for the Redis protocol:
+- **WAL Strong Sync**: Ensures logs are flushed to disk before returning from a `SET` operation.
+- **Multi-Level Tiering**: Hot data stays in Memory/SSD, while cold data automatically migrates to HDD, breaking the memory capacity limit of Redis.
+
+## 5. Multi-Tenant Extensions
+
+YYKV provides non-destructive extensions to the Redis protocol:
+- **Tenant Prefixing**: Internal physical isolation via Tenant IDs, transparent to the client.
+- **Enhanced AUTH**: Supports fine-grained tenant-level authentication via `AUTH <tenant_id> <password>`.
+
+## 6. Performance Advantages
+
+- **Zero-Copy Path**: Leverages the `bytes` crate to directly mount data from network buffers into the storage engine, avoiding frequent `sds` string copies internal to Redis.
+- **Multi-Core Concurrency**: Powered by Rust's `tokio` scheduler, YYKV fully utilizes multi-core CPUs to handle Redis requests, overcoming the bottleneck of the single-threaded Redis model.

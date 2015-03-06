@@ -1,40 +1,50 @@
-# we-trust (High-Performance Binary Protocol)
+# We-Trust Protocol
 
-`we-trust` is the core binary communication protocol of the YYKV storage engine. It is designed for microsecond-level inter-component communication (RPC) and deeply integrates multi-tenant isolation, request tracking, and security signature mechanisms into the protocol header.
+**We-Trust** is YYKV's native high-performance binary communication protocol, specifically designed for ultra-low latency and large-scale multi-tenant environments. It is located at the communication layer of the storage engine and is responsible for efficient data exchange between nodes, clients, and servers.
 
-## Core Design
+## 1. Design Goals
 
-### ⚡ Ultra-Fast Binary Codec
-- **Low Overhead**: Adopts a compact binary layout, featuring lower serialization latency in specific scenarios compared to text protocols (like JSON) or general Protobuf.
-- **Async Streaming**: Based on the `tokio-util` `Codec` framework, supporting streaming of large data and backpressure control.
+- **Microsecond Latency**: Employs a compact binary layout to minimize encoding/decoding overhead and support zero-copy parsing.
+- **Native Multi-Tenancy**: Deeply integrates tenant identification in the protocol header, supporting physical-level traffic control and resource isolation.
+- **Strong Security**: Every packet includes an encrypted signature to prevent man-in-the-middle attacks and unauthorized access.
+- **Streaming Support**: Works with the `tokio-util` `Codec` framework to support streaming scanning and backpressure control for massive data.
 
-### 🏢 Native Multi-Tenant Support
-- **Tenant Context**: The protocol header includes a 16-byte `TenantID`, ensuring every message carries identity information, supporting physical-level resource isolation and precise billing.
-- **Request Tracking**: A 16-byte `RequestID` (Uuid v7) runs through the entire processing chain, facilitating distributed tracing.
+## 2. Message Structure (80-Byte Header)
 
-### 🛡️ Secure Communication Framework
-- **Message Signature**: Supports 32-byte HMAC or digital signature fields to prevent message tampering and ensure the security of communication between nodes within the cluster.
+A We-Trust message consists of an **80-byte fixed header** and an **optional Payload**.
 
-## Protocol Layout (80 Bytes Header)
+### 2.1 Header Layout
 
-| Field | Size | Description |
-| :--- | :--- | :--- |
-| Magic Number | 2B | Fixed as `0x54 0x52` (TR) |
-| Version | 1B | Protocol version number |
-| Message Type | 1B | Request, Response, Notification, or Heartbeat |
-| Flags | 4B | Compression, encryption, priority, etc. |
-| Total Length | 4B | Byte length of the entire packet including the header |
-| Request ID | 16B | Globally unique request tracking ID |
-| Tenant ID | 16B | Tenant space identifier |
-| Signature | 32B | Message integrity verification signature |
-| Reserved | 4B | Reserved for future expansion |
+| Offset | Length | Field Name | Description |
+| :--- | :--- | :--- | :--- |
+| 0 | 2 | `Magic` | Protocol magic number, fixed as `0x59 0x59` (ASCII "YY") |
+| 2 | 1 | `Version` | Protocol version, currently `0x01` |
+| 3 | 1 | `MsgType` | Message type (1: Put, 2: Get, 4: Query, 12: KQL, etc.) |
+| 4 | 4 | `Flags` | Control flags (bitmask: 0x01-Compression, 0x02-Encryption, 0x04-High Priority) |
+| 8 | 4 | `Length` | Total byte length of the message (including header and payload) |
+| 12 | 16 | `RequestID` | Unique request ID (UUID) for asynchronous response matching |
+| 28 | 16 | `TenantID` | Tenant ID (UUID), used by the storage engine for physical resource routing |
+| 44 | 32 | `Signature` | HMAC-SHA256 based signature of the header and payload |
+| 76 | 4 | `Reserved` | Reserved field for future extensions |
 
-## Core Components
+### 2.2 Message Types (`MessageType`)
 
-- `TrustCodec`: Implements `tokio_util::codec::Encoder` and `Decoder`.
-- `Header`: Serialization and deserialization logic for the protocol header.
-- `MessageType`: Defines all operation types supported by the protocol (Query, Mutation, Admin, etc.).
+- **`0x01` Put**: Write/Update key-value pairs.
+- **`0x02` Get**: Retrieve key-value pairs.
+- **`0x04` Query**: Execute complex operator graph queries (OpsGraph).
+- **`0x05` Rbq**: Reliable Byte Queue operations as defined in the Architecture White Paper.
+- **`0x0C` KQL**: Execute native YYKV Query Language instructions.
+- **`0x0B` Heartbeat**: Liveness detection between nodes.
+- **`0xFF` Error**: Error response.
 
-## Technical Advantages
-- **Microsecond Parsing**: The header is a fixed 80 bytes, with extremely low parsing overhead, suitable for high-performance storage scenarios.
-- **Storage-Compute Synergy**: The protocol maps directly to `yykv-operators`, reducing conversion costs in intermediate layers.
+## 3. Connection & Authentication Flow
+
+1. **Establish Connection**: Client establishes a TCP connection (default port `8889`).
+2. **Handshake Authentication**: Client sends a `MessageType::Auth` message containing `TenantID` and an encrypted `SecretKey`.
+3. **Establish Session**: Server validates the signature and returns a `Response`. All subsequent messages must carry a valid `Signature` for real-time verification.
+
+## 4. Performance Optimization Features
+
+- **CRC32C Checksum**: Cyclic redundancy check optimized for physical media.
+- **Zero-Copy Parsing**: Strictly aligned header fields support direct reading of structures from the buffer, avoiding memory copies.
+- **Pipelining Support**: Supports sending multiple requests over a single connection without waiting for individual responses.

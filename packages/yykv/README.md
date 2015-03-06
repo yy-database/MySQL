@@ -1,18 +1,18 @@
 # yykv
 
-YYKV 高性能 Key-Value 存储引擎。
+YYKV High-Performance Key-Value Storage Engine.
 
-## 功能特性
+## Features
 
-- **分层存储 (Tiering)**: 支持 SSD, HDD 等不同介质的自动冷热数据迁移。
-- **Direct IO**: 针对 Windows 平台优化的 `FILE_FLAG_NO_BUFFERING` 直接 IO 访问。
-- **LSM-Tree 架构**: 高效的写入性能与优化的压缩算法。
-- **存储级 UDF**: 支持在存储引擎内部直接运行 WASM 算子进行数据预过滤。
-- **硬件抽象 (HAL)**: 统一的块设备抽象接口，易于适配不同操作系统与硬件。
+- **Tiered Storage (Tiering)**: Supports automatic migration of hot and cold data across different media like SSD and HDD.
+- **Direct IO**: Optimized `FILE_FLAG_NO_BUFFERING` direct IO access for the Windows platform.
+- **LSM-Tree Architecture**: Efficient write performance and optimized compaction algorithms.
+- **Storage-Level UDF**: Supports running WASM operators directly inside the storage engine for data pre-filtering.
+- **Hardware Abstraction Layer (HAL)**: Unified block device abstraction interface, easy to adapt to different operating systems and hardware.
 
-## 子项目说明
+## Sub-projects
 
-- `yykv-io`: 底层异步 Direct IO 实现。
-- `yykv-allocator`: 专为数据库设计的页面分配器。
-- `yykv-tiering`: 冷热数据检测与自动迁移逻辑。
-- `yykv-udf`: 基于 WIT 定义的存储级 UDF 接口。
+- `yykv-io`: Low-level asynchronous Direct IO implementation.
+- `yykv-allocator`: Page allocator specifically designed for databases.
+- `yykv-tiering`: Logic for hot/cold data detection and automatic migration.
+- `yykv-udf`: Storage-level UDF interface based on WIT definitions.
