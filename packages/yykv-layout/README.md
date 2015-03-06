@@ -1,40 +1,40 @@
 # yykv-layout (Physical Data Layout)
 
-`yykv-layout` 定义了 YYKV 存储引擎在原始磁盘介质上的物理组织结构。它负责将内存中的复杂数据对象（`DsValue`）序列化为紧凑、对齐且具备自校验能力的二进制页面流，是确保存储引擎高性能与可靠性的基石。
+`yykv-layout` defines the physical organizational structure of the YYKV storage engine on raw disk media. It is responsible for serializing complex in-memory data objects (`DsValue`) into compact, aligned, and self-verifying binary page streams, serving as the cornerstone for the storage engine's high performance and reliability.
 
-## 核心设计
+## Core Design
 
-### 📑 统一页面模型 (Unified Page Model)
-YYKV 不依赖文件系统，而是直接管理物理页面：
-- **页面规格**: 支持 4KB (SSD 优化) 和 16KB (吞吐量优化) 等多种规格。
-- **页面类型**:
-  - `DataPage`: 存储实际的 KV 或行记录。
-  - `IndexPage`: 存储 B-Tree 或 HNSW 索引节点。
-  - `MetaPage`: 存储租户元数据与系统配置。
+### 📑 Unified Page Model
+YYKV does not rely on a file system; instead, it manages physical pages directly:
+- **Page Specifications**: Supports various sizes like 4KB (SSD optimized) and 16KB (throughput optimized).
+- **Page Types**:
+  - `DataPage`: Stores actual KV or row records.
+  - `IndexPage`: Stores B-Tree or HNSW index nodes.
+  - `MetaPage`: Stores tenant metadata and system configurations.
 
-### 📦 变长二进制存储
-- **紧凑序列化**: 针对不同数据类型（Varint, Bit-packing）优化的二进制布局。
-- **零拷贝读取**: 设计上允许直接在 `AlignedBuffer` 上进行反序列化，避免内存拷贝。
+### 📦 Variable-Length Binary Storage
+- **Compact Serialization**: Binary layouts optimized for different data types (Varint, Bit-packing).
+- **Zero-Copy Reading**: Designed to allow deserialization directly on `AlignedBuffer`, avoiding memory copies.
 
-### 🛡️ 数据完整性保护
-- **CRC32C 校验**: 每个页面头部包含循环冗余校验和，防止由于硬件故障导致的静默数据损坏。
-- **版本控制**: 页面头包含版本信息，支持在线平滑升级存储格式。
+### 🛡️ Data Integrity Protection
+- **CRC32C Checksum**: Each page header includes a cyclic redundancy check to prevent silent data corruption caused by hardware failure.
+- **Version Control**: The page header contains version information, supporting smooth online upgrades of storage formats.
 
-## 物理布局
+## Physical Layout
 
-| 区域 | 说明 |
+| Region | Description |
 | :--- | :--- |
-| **File Header (100B)** | 包含 SQLite 兼容魔数、版本号、页面大小、首个自由页指针。 |
-| **Page Header** | 页面类型 (1B)、标志位 (1B)、校验和 (4B)、Lsn (8B)。 |
-| **Page Body** | 实际的记录槽（Slots）或 B-Tree 节点条目。 |
-| **Page Trailer** | 页面尾部指针，用于辅助页面扫描与损坏检测。 |
+| **File Header (100B)** | Contains SQLite-compatible magic number, version, page size, and first free page pointer. |
+| **Page Header** | Page type (1B), flags (1B), checksum (4B), Lsn (8B). |
+| **Page Body** | Actual record slots or B-Tree node entries. |
+| **Page Trailer** | Page footer pointer for assisting page scanning and corruption detection. |
 
-## 核心组件
+## Core Components
 
-- `LayoutManager`: 负责管理内存对象与磁盘字节流的转换。
-- `Header`: 物理文件/驱动器的起始元数据解析器。
-- `Page`: 抽象页面对象，支持不同类型的物理页面解析。
+- `LayoutManager`: Manages the conversion between memory objects and disk byte streams.
+- `Header`: Initial metadata parser for physical files/drives.
+- `Page`: Abstract page object supporting parsing of various physical page types.
 
-## 技术优势
-- **硬件友好**: 所有数据布局严格遵循扇区对齐，完美匹配 Direct IO。
-- **跨模态一致性**: 无论是向量数据还是 SQL 行数据，都遵循统一的页面管理框架。
+## Technical Advantages
+- **Hardware-Friendly**: All data layouts strictly follow sector alignment, perfectly matching Direct IO.
+- **Cross-Modal Consistency**: Both vector data and SQL row data follow a unified page management framework.

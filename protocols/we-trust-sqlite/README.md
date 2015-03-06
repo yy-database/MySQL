@@ -1,28 +1,28 @@
 # we-trust-sqlite (SQLite Compatibility Layer)
 
-`we-trust-sqlite` 是 YYKV 的 SQLite 兼容层。它使 YYKV 能够以“单文件数据库”的形式提供服务，同时保持与标准 SQLite 文件格式（B-Tree Page）及 SQL 语法的深度兼容，是实现从嵌入式数据库平滑升级到高性能分层存储的关键组件。
+`we-trust-sqlite` is the SQLite compatibility layer for YYKV. It enables YYKV to provide services as a "single-file database" while maintaining deep compatibility with standard SQLite file formats (B-Tree Page) and SQL syntax. It is a key component for smooth upgrades from embedded databases to high-performance tiered storage.
 
-## 核心设计
+## Core Design
 
-### 📁 原生文件兼容
-- **B-Tree 映射**: 能够直接读取和写入符合标准 SQLite 页面格式的 `.db` 文件。
-- **页面适配**: 在 SQLite 的 B-Tree 页面模型与 YYKV 的物理布局之间建立双向映射，支持标准的页面缓存 (Page Cache) 机制。
+### 📁 Native File Compatibility
+- **B-Tree Mapping**: Capable of directly reading and writing `.db` files that comply with standard SQLite page formats.
+- **Page Adaptation**: Establishes bidirectional mapping between SQLite's B-Tree page model and YYKV's physical layout, supporting standard Page Cache mechanisms.
 
-### ⌨️ SQL 执行引擎
-- **语法支持**: 集成 `sqlparser` 解析标准 SQL 语句。
-- **算子转换**: 将 SQL 查询计划转化为 YYKV 高性能算子图（`OpsGraph`），在存储层执行。
+### ⌨️ SQL Execution Engine
+- **Syntax Support**: Integrates `sqlparser` to parse standard SQL statements.
+- **Operator Conversion**: Translates SQL query plans into high-performance YYKV operator graphs (`OpsGraph`) for execution in the storage layer.
 
-### 🔒 并发与事务
-- **ACID 特性**: 实现 SQLite 风格的共享/独占锁机制，确保事务隔离。
-- **WAL 模式支持**: 利用 YYKV 的 `yykv-event` (WAE) 机制模拟 SQLite 的预写日志。
+### 🔒 Concurrency & Transactions
+- **ACID Features**: Implements SQLite-style shared/exclusive locking mechanisms to ensure transaction isolation.
+- **WAL Mode Support**: Utilizes YYKV's `yykv-event` (WAE) mechanism to simulate SQLite's Write-Ahead Log.
 
-## 核心组件
+## Core Components
 
-- `SqliteAdapter`: 负责 SQL 语句到 `OpsGraph` 的编译与结果集封装。
-- `Pager`: 专为异步 IO 环境优化的页面管理器，支持 LRU 缓存策略。
-- `BTree`: 核心索引结构，兼容 SQLite 的物理页面布局。
+- `SqliteAdapter`: Responsible for compiling SQL statements to `OpsGraph` and encapsulating result sets.
+- `Pager`: A page manager optimized for asynchronous IO environments, supporting LRU cache policies.
+- `BTree`: The core index structure, compatible with SQLite's physical page layout.
 
-## 技术架构
+## Technical Architecture
 
 ```mermaid
 sequenceDiagram
@@ -38,7 +38,7 @@ sequenceDiagram
     SqliteAdapter-->>Client: Result Set
 ```
 
-## 使用场景
-- **嵌入式升级**: 需要本地数据库但追求更高 IO 性能或多租户隔离的应用。
-- **混合检索**: 在标准的 SQLite 表上运行 YYKV 特有的向量相似度搜索。
-- **云原生扩展**: 将现有的 SQLite 数据无缝搬运至 YYKV 驱动的云端分层存储。
+## Use Cases
+- **Embedded Upgrade**: Applications that need a local database but seek higher IO performance or multi-tenant isolation.
+- **Hybrid Retrieval**: Running YYKV's unique vector similarity search on standard SQLite tables.
+- **Cloud-Native Expansion**: Seamlessly migrating existing SQLite data to YYKV-driven cloud tiered storage.
