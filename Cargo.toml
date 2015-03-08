@@ -1,8 +1,10 @@
 [workspace]
 resolver = "3"
 members = [
+    "clients/yykv",
+    "clients/yyds",
+    "tools/yyds-tools",
     "packages/yykv-types",
-    "packages/yykv",
     "packages/yykv-profile",
     "packages/yykv-bench",
     "packages/yykv-udf",
@@ -23,6 +25,20 @@ members = [
     "packages/yykv-event",
     "packages/yykv-index",
     "packages/yykv-storage",
+    "packages/yyds-types",
+    "packages/yyds-ai",
+    "packages/yyds-billing",
+    "packages/yyds-cache",
+    "packages/yyds-compute",
+    "packages/yyds-consensus",
+    "packages/yyds-gateway",
+    "packages/yyds-observability",
+    "packages/yyds-pubsub",
+    "packages/yyds-quota",
+    "packages/yyds-server",
+    "packages/yyds-storage",
+    "packages/yyds-task",
+    "packages/yyds-tenant",
     "protocols/we-trust",
     "protocols/we-trust-arrow",
     "protocols/we-trust-d1",
@@ -46,10 +62,11 @@ homepage = "https://yydb.io"
 
 
 [workspace.dependencies]
-# Main Package
-yykv = { path = "packages/yykv", version = "0.0.0" }
+# Main Packages (Clients)
+yykv = { path = "clients/yykv", version = "0.0.0" }
+yyds = { path = "clients/yyds", version = "0.0.0" }
 
-# Workspace Internal Packages
+# YYKV Internal Packages
 yykv-types = { path = "packages/yykv-types", version = "0.0.0" }
 yykv-hal = { path = "packages/yykv-hal", version = "0.0.0" }
 yykv-allocator = { path = "packages/yykv-allocator", version = "0.0.0" }
@@ -70,6 +87,22 @@ yykv-schema = { path = "packages/yykv-schema", version = "0.0.0" }
 yykv-event = { path = "packages/yykv-event", version = "0.0.0" }
 yykv-storage = { path = "packages/yykv-storage", version = "0.0.0" }
 
+# YYDS Internal Packages
+yyds-types = { path = "packages/yyds-types", version = "0.0.0" }
+yyds-ai = { path = "packages/yyds-ai", version = "0.0.0" }
+yyds-billing = { path = "packages/yyds-billing", version = "0.0.0" }
+yyds-cache = { path = "packages/yyds-cache", version = "0.0.0" }
+yyds-compute = { path = "packages/yyds-compute", version = "0.0.0" }
+yyds-consensus = { path = "packages/yyds-consensus", version = "0.0.0" }
+yyds-gateway = { path = "packages/yyds-gateway", version = "0.0.0" }
+yyds-observability = { path = "packages/yyds-observability", version = "0.0.0" }
+yyds-pubsub = { path = "packages/yyds-pubsub", version = "0.0.0" }
+yyds-quota = { path = "packages/yyds-quota", version = "0.0.0" }
+yyds-server = { path = "packages/yyds-server", version = "0.0.0" }
+yyds-storage = { path = "packages/yyds-storage", version = "0.0.0" }
+yyds-task = { path = "packages/yyds-task", version = "0.0.0" }
+yyds-tenant = { path = "packages/yyds-tenant", version = "0.0.0" }
+
 # Protocols
 we-trust = { path = "protocols/we-trust", version = "0.0.0" }
 we-trust-arrow = { path = "protocols/we-trust-arrow", version = "0.0.0" }
@@ -85,17 +118,11 @@ we-trust-vector = { path = "protocols/we-trust-vector", version = "0.0.0" }
 
 # External projects for Local
 oak-sql = { path = "../oaks/examples/oak-sql" }
+oak-rbq = { path = "../oaks/examples/oak-rbq" }
 oak-json = { path = "../oaks/examples/oak-json" }
 oak-toml = { path = "../oaks/examples/oak-toml" }
 oak-core = { path = "../oaks/projects/oak-core" }
 oak-xml = { path = "../oaks/examples/oak-xml" }
-
-# External projects for CI
-# oak-sql = "0.0.3"
-# oak-json = "0.0.3"
-# oak-core = "0.0.3"
-# oak-toml = "0.0.3"
-# oak-xml = "0.0.3"
 
 # External Dependencies
 bytes = { version = "1.11.1", features = ["serde"] }
@@ -131,6 +158,14 @@ wasmtime = { version = "41.0.3", default-features = false, features = ["componen
 wasmtime-wasi = "41.0.3"
 wit-bindgen = "0.53.0"
 md5 = "0.8.0"
-
-# Benchmark Dependencies
 resp = "1.0.3"
+arrow = { version = "57.3", features = ["ipc"] }
+arrow-flight = "57.3"
+tonic = { version = "0.14", features = ["codegen", "prost"] }
+prost = "0.14"
+mio = { version = "1.1", features = ["net", "os-poll"] }
+prometheus = { version = "0.14", features = ["process"] }
+tracing-opentelemetry = "0.22"
+opentelemetry = { version = "0.21", features = [] }
+opentelemetry-otlp = "0.14"
+thiserror = "2.0"

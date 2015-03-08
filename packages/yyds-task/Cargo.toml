@@ -1,0 +1,15 @@
+[package]
+name = "yyds-task"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Task scheduling and background job management for YYDS"
+
+[dependencies]
+serde = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+yyds-types = { workspace = true }
+yykv-event = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,50 @@
+[package]
+name = "yyds-server"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Main server process for YYDS, handling client connections and request orchestration"
+
+[[bin]]
+name = "yyds-server"
+path = "src/main.rs"
+
+[[bin]]
+name = "test-client"
+path = "src/test_client.rs"
+
+[[bin]]
+name = "pg-test-client"
+path = "src/pg_test_client.rs"
+
+[dependencies]
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+uuid = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# yyds dependencies
+yyds-types = { workspace = true }
+yyds-tenant = { workspace = true }
+yyds-billing = { workspace = true }
+yyds-quota = { workspace = true }
+yyds-task = { workspace = true }
+yyds-gateway = { workspace = true }
+yyds-compute = { workspace = true }
+yykv-compute = { workspace = true }
+yyds-storage = { workspace = true }
+
+# yykv components
+yykv-event = { workspace = true }
+yykv-index = { workspace = true }
+yykv-operators = { workspace = true }
+yykv-executor = { workspace = true }
+
+# Protocols
+we-trust = { workspace = true }
+we-trust-postgres = { workspace = true }
+crc32fast = { workspace = true }
+tracing-subscriber = { workspace = true }

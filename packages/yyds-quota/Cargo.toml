@@ -1,0 +1,9 @@
+[package]
+name = "yyds-quota"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Resource quota and rate limiting service for YYDS tenants"
+
+[dependencies]
+serde = { workspace = true }

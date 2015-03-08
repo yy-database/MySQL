@@ -1,28 +1,28 @@
-# yykv-stream (Async Data Streaming Interface)
+# Async Data Streaming Interface
 
-`yykv-stream` 为 YYKV 提供了高效的异步流式数据访问接口。它封装了底层复杂的页面预取（Prefetching）与缓存管理逻辑，为上层引擎提供符合 Rust `Stream` 特性的数据迭代能力。
+**yykv-stream** provides an efficient asynchronous streaming data access interface for YYKV. It encapsulates complex underlying logic such as page prefetching and cache management, providing data iteration capabilities that conform to Rust's `Stream` trait for the upper-level engine.
 
-## 核心功能
+## 1. Core Features
 
-### 🌊 异步流式扫描 (Async Scanning)
-支持对海量存储数据进行流式读取，避免一次性加载导致的内存溢出（OOM）。
-- **零拷贝迭代**: 尽可能返回对内部缓冲区的引用，减少内存拷贝开销。
-- **并发预取**: 在处理当前页面的同时，异步从 `yykv-scheduler` 预取后续页面，消除磁盘 IO 等待。
+### 🌊 Async Scanning
+Supports streaming reads of massive storage data, avoiding memory overflow (OOM) caused by one-time loading.
+- **Zero-Copy Iteration**: Returns references to internal buffers whenever possible to reduce memory copy overhead.
+- **Concurrent Prefetching**: While processing the current page, it asynchronously prefetches subsequent pages from `yykv-scheduler`, eliminating disk I/O wait times.
 
-### 🛡️ 智能背压 (Backpressure Control)
-配合上层执行引擎，根据消费者的处理速度动态调整读取频率：
-- 缓冲区满时自动暂停 IO 提交。
-- 确保系统在处理大规模聚合或排序任务时的稳定性。
+### 🛡️ Smart Backpressure Control
+Works with the upper-level execution engine to dynamically adjust reading frequency based on consumer processing speed:
+- Automatically pauses I/O submission when the buffer is full.
+- Ensures system stability when handling large-scale aggregation or sorting tasks.
 
-### 🧩 多租户感知
-流式接口天然支持租户隔离，确保每个 `Stream` 仅能访问授权的物理页面。
+### 🧩 Multi-Tenant Awareness
+The streaming interface naturally supports tenant isolation, ensuring each `Stream` can only access authorized physical pages.
 
-## 核心组件
+## 2. Core Components
 
-- `YykvStream`: 主流对象，实现了 `futures::Stream` 特征。
-- `Prefetcher`: 背景页面预取器，管理前瞻性 IO 请求。
+- `YykvStream`: The main stream object, implementing the `futures::Stream` trait.
+- `Prefetcher`: Background page prefetcher, managing forward-looking I/O requests.
 
-## 使用示例
+## 3. Usage Example
 
 ```rust
 use yykv_stream::YykvStream;
@@ -32,11 +32,11 @@ let mut stream = YykvStream::new(page_ids, scheduler);
 
 while let Some(page_result) = stream.next().await {
     let page_data = page_result?;
-    // 处理页面数据...
+    // Process page data...
 }
 ```
 
-## 技术设计
+## 4. Technical Design
 
 ```mermaid
 sequenceDiagram

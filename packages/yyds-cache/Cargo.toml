@@ -1,0 +1,13 @@
+[package]
+name = "yyds-cache"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Distributed caching layer for YYDS with support for multiple backends"
+
+[dependencies]
+yyds-types.workspace = true
+tokio.workspace = true
+serde.workspace = true
+uuid.workspace = true
+lru.workspace = true

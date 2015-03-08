@@ -1,9 +1,9 @@
-# yyds-ai
+# YYDS AI & Vector Computing Extension
 
-YYDS AI 与向量计算扩展。
+**yyds-ai** provides AI and vector computing extensions for the YYDS ecosystem.
 
-## 功能特性
+## 1. Core Features
 
-- **向量化集成**: 支持将数据向量化并进行高效的相似度检索。
-- **AI 算子**: 在执行引擎中提供 AI 驱动的数据分析与预测算子。
-- **智能优化器**: 利用 AI 技术优化分布式查询的执行计划。
+- **Vectorized Integration**: Supports data vectorization and efficient similarity retrieval.
+- **AI Operators**: Provides AI-driven data analysis and prediction operators within the execution engine.
+- **Smart Optimizer**: Utilizes AI technology to optimize execution plans for distributed queries.

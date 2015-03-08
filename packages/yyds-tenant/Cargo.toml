@@ -1,0 +1,11 @@
+[package]
+name = "yyds-tenant"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Multi-tenancy and isolation management for the YYDS ecosystem"
+
+[dependencies]
+serde = { workspace = true }
+uuid = { workspace = true }
+yyds-types = { workspace = true }

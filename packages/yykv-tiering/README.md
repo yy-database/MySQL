@@ -1,49 +1,49 @@
-# yykv-tiering (Auto-Tiering Storage Engine)
+# Auto-Tiering Storage Engine
 
-`yykv-tiering` 是 YYKV 存储引擎的冷热数据分层管理模块。它实现了跨物理介质的自动数据搬运，旨在实现高性能（NVM/SSD）与低成本（HDD）的完美平衡。
+**yykv-tiering** is the cold and hot data tiering management module of the YYKV storage engine. It implements automatic data movement across physical media, aiming to achieve a perfect balance between high performance (NVM/SSD) and low cost (HDD).
 
-## 核心功能
+## 1. Core Features
 
-### 🔥 冷热探测 (Hot/Cold Detection)
-基于 `HotColdDetector` 记录数据页面的访问频率：
-- **热点识别**: 当页面访问次数超过预设阈值（默认 10 次）时，标记为“热”页面。
-- **自动晋升 (Promotion)**: 检测到热页面位于慢速介质（如 HDD）时，自动异步搬运至快速介质（如 NVMe SSD）。
+### 🔥 Hot/Cold Detection
+Based on the `HotColdDetector`, it records the access frequency of data pages:
+- **Hotspot Identification**: When a page's access count exceeds a preset threshold (default is 10), it is marked as a "hot" page.
+- **Automatic Promotion**: When a hot page is detected on slow media (such as HDD), it is automatically and asynchronously moved to fast media (such as NVMe SSD).
 
-### ❄️ 自动降级 (Demotion)
-后台任务扫描长时间未访问的冷页面，并将其从昂贵的 SSD 迁移至大容量 HDD，释放高性能空间。
+### ❄️ Automatic Demotion
+A background task scans for cold pages that haven't been accessed for a long time and migrates them from expensive SSDs to high-capacity HDDs, releasing high-performance space.
 
-### 🗺️ 透明映射 (Transparent Physical Mapping)
-维护 `PageId` 到 `(MediumType, PhysicalOffset)` 的动态映射关系：
-- 上层引擎无需关心数据存储的具体物理介质。
-- 数据搬运过程中，映射关系原子化更新，确保访问的一致性。
+### 🗺️ Transparent Physical Mapping
+Maintains a dynamic mapping relationship from `PageId` to `(MediumType, PhysicalOffset)`:
+- The upper-level engine does not need to care about the specific physical media where data is stored.
+- During data movement, mapping relationships are updated atomically to ensure access consistency.
 
-## 核心组件
+## 2. Core Components
 
-- **HotColdDetector**: 统计页面访问计数。
-- **TieredStorage**: 核心管理器，协调多个介质驱动与分配器。
-- **Promotion Manager**: 负责从 HDD 到 SSD 的数据晋升。
+- **HotColdDetector**: Counts page access counts.
+- **TieredStorage**: The core manager, coordinating multiple media drivers and allocators.
+- **Promotion Manager**: Responsible for data promotion from HDD to SSD.
 
-## 使用示例
+## 3. Usage Example
 
 ```rust
 let mut storage = TieredStorage::new();
 
-// 添加不同介质的设备
+// Add devices of different media
 storage.add_device(MediumType::NvmeSSD, ssd_device);
 storage.add_device(MediumType::HDD, hdd_device);
 
-// 写入数据（默认先落入 SSD）
+// Write data (falls into SSD by default)
 let page_id = storage.write_value(&my_data).await?;
 
-// 多次访问触发热点检测
+// Multiple accesses trigger hotspot detection
 for _ in 0..20 {
     let _ = storage.read_value(page_id).await?;
 }
 
-// 若数据在 HDD，此处将自动触发向 SSD 的晋升
+// If the data is on HDD, this will automatically trigger promotion to SSD
 ```
 
-## 技术架构
+## 4. Technical Architecture
 
 ```mermaid
 graph LR

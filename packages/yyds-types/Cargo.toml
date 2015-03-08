@@ -1,0 +1,17 @@
+[package]
+name = "yyds-types"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Common type system for the yyds ecosystem, providing YYValue and zero-copy data layout"
+publish = false
+
+[dependencies]
+yykv-types = { workspace = true }
+bytes = "1.11"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+# serde_json = "1.0" # replaced by oak-json
+oak-json = { workspace = true }
+hex = "0.4"
+crc32fast = "1.5"
