@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "yyds-compute"
 version.workspace = true
 authors.workspace = true
@@ -7,7 +7,7 @@ description = "Distributed computation engine for YYDS, supporting WebAssembly a
 
 [dependencies]
 yyds-types.workspace = true
-yykv-udf = { path = "../../../yykv/packages/yykv-udf" }
+yykv-udf = { workspace = true }
 tokio.workspace = true
 serde.workspace = true
 # serde_json.workspace = true # replaced by oak-json
@@ -18,3 +18,4 @@ wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 mio.workspace = true
 async-trait.workspace = true
+
