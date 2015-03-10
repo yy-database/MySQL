@@ -3,7 +3,7 @@ resolver = "3"
 members = [
     "clients/yykv",
     "clients/yyds",
-    "tools/yyds-tools",
+    "clients/yyds-tools",
     "packages/yykv-types",
     "packages/yykv-profile",
     "packages/yykv-bench",

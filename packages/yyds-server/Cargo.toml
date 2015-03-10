@@ -6,10 +6,6 @@ edition.workspace = true
 description = "Main server process for YYDS, handling client connections and request orchestration"
 
 [[bin]]
-name = "yyds-server"
-path = "src/main.rs"
-
-[[bin]]
 name = "test-client"
 path = "src/test_client.rs"
 
