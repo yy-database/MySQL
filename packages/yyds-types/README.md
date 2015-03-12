@@ -1,15 +1,15 @@
-# yyds-types
+# Core Types System
 
-YYDS 核心类型系统。
+`yyds-types` provides the core type system for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **YYValue**: 多模态统一值类型，支持 16 种基础与复杂数据类型。
-- **Zero-Copy Layout**: 基于二进制头部的零拷贝数据访问，无需完全反序列化即可读取字段。
-- **YYError**: 统一的错误模型，支持跨组件的错误传递与映射。
-- **SDR Levels**: 软件定义冗余级别（Single, Double, Truth），控制数据的副本策略。
+- **YYValue**: A unified multi-modal value type supporting 16 basic and complex data types.
+- **Zero-Copy Layout**: Binary header-based zero-copy data access, allowing field reads without full deserialization.
+- **YYError**: A unified error model supporting error propagation and mapping across components.
+- **SDR Levels**: Software-Defined Redundancy levels (Single, Double, Truth) for controlling data replica strategies.
 
-## 核心组件
+## Core Components
 
-- `lib.rs`: 定义 `YYValue` 枚举及基础转换逻辑。
-- `layout.rs`: 实现二进制布局的编解码，支持高效的内存映射访问。
+- `lib.rs`: Defines the `YYValue` enum and basic conversion logic.
+- `layout.rs`: Implements binary layout encoding/decoding, supporting efficient memory-mapped access.

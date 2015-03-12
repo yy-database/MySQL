@@ -1,15 +1,15 @@
-# yyds-compute
+# WASM-based Distributed Compute Engine
 
-基于 WASM 的分布式计算引擎。
+`yyds-compute` is a WASM-based distributed compute engine for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **UDF 运行时**: 基于 `wasmtime` 实现的轻量级、沙箱化用户自定义函数 (UDF) 执行环境。
-- **高性能**: 利用 JIT 编译技术，提供接近原生的计算性能。
-- **WASI 集成**: 支持 WASI 预览 2，允许 UDF 访问受限的系统资源。
-- **安全隔离**: 严格的内存与 CPU 指令限制，防止恶意代码影响主机。
+- **UDF Runtime**: A lightweight, sandboxed User-Defined Function (UDF) execution environment based on `wasmtime`.
+- **High Performance**: Utilizes JIT compilation technology to provide near-native compute performance.
+- **WASI Integration**: Supports WASI Preview 2, allowing UDFs to access restricted system resources.
+- **Security Isolation**: Strict memory and CPU instruction limits to prevent malicious code from affecting the host.
 
-## 核心接口
+## Core Interfaces
 
-- `UdfEngine`: 统一定义计算引擎的调用契约。
-- `WasmtimeUdfEngine`: 基于 Wasmtime 的具体实现，支持异步执行。
+- `UdfEngine`: Unified definition of the compute engine invocation contract.
+- `WasmtimeUdfEngine`: Concrete implementation based on Wasmtime, supporting asynchronous execution.

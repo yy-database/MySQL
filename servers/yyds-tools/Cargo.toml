@@ -20,3 +20,5 @@ yyds = { workspace = true }
 yykv = { workspace = true }
 yyds-server = { workspace = true }
 yykv-server = { workspace = true }
+yykv-bench = { workspace = true }
+yykv-profile = { workspace = true }

@@ -70,7 +70,7 @@ yyds = { path = "clients/yyds", version = "0.0.0" }
 yyds-odbc = { path = "clients/yyds-odbc", version = "0.0.0" }
 
 # Servers
-yyds-server = { path = "servers/yyds-server", version = "0.0.0" }
+
 yykv-server = { path = "servers/yykv-server", version = "0.0.0" }
 
 # YYKV Internal Packages

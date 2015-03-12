@@ -1,10 +1,10 @@
-# yyds-gateway
+# Unified Entrance Gateway
 
-YYDS 统一入口网关。
+`yyds-gateway` is the unified entrance gateway for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **多协议接入**: 支持 Trust 协议、HTTP/JSON 以及数据库原生协议（如 MySQL/PG）的代理接入。
-- **租户路由**: 根据请求头中的 `TenantID` 将请求分发至对应的后端执行节点。
-- **配额控制**: 集成 `yyds-quota` 进行实时速率限制与资源消耗管理。
-- **安全审计**: 记录所有进入系统的请求日志，支持合规性审计。
+- **Multi-Protocol Access**: Supports proxy access for the Trust protocol, HTTP/JSON, and native database protocols (e.g., MySQL/PG).
+- **Tenant Routing**: Distributes requests to corresponding backend execution nodes based on the `TenantID` in the request header.
+- **Quota Control**: Integrates with `yyds-quota` for real-time rate limiting and resource consumption management.
+- **Security Audit**: Records logs for all requests entering the system, supporting compliance auditing.
