@@ -1,0 +1,14 @@
+[package]
+name = "yyds-odbc"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+yyds-types = { workspace = true }
+we-trust = { workspace = true }
+tokio = { workspace = true }
+odbc-sys = "0.28"
+rust_decimal = { workspace = true }

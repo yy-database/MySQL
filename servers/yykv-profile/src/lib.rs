@@ -15,8 +15,8 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
-enum Commands {
+#[derive(Subcommand, Debug, Clone)]
+pub enum ProfileCommands {
     /// Benchmark a physical device or file
     Bench {
         /// Path to the device or file
@@ -45,25 +45,22 @@ enum Commands {
     },
 }
 
-#[tokio::main]
-async fn main() -> DsResult<()> {
-    let cli = Cli::parse();
-
-    match cli.command {
-        Commands::Bench {
+pub async fn run(command: ProfileCommands) -> DsResult<()> {
+    match command {
+        ProfileCommands::Bench {
             path,
             size,
             block_size,
         } => {
             run_bench(path, size, block_size).await?;
         }
-        Commands::Layout { path } => {
+        ProfileCommands::Layout { path } => {
             run_layout(path).await?;
         }
-        Commands::Hotspots { path } => {
+        ProfileCommands::Hotspots { path } => {
             run_hotspots(path).await?;
         }
-        Commands::AiBench { path } => {
+        ProfileCommands::AiBench { path } => {
             run_ai_bench(path).await?;
         }
     }
@@ -71,7 +68,7 @@ async fn main() -> DsResult<()> {
     Ok(())
 }
 
-async fn run_bench(path: String, size_mb: u64, block_size_kb: u32) -> DsResult<()> {
+pub async fn run_bench(path: String, size_mb: u64, block_size_kb: u32) -> DsResult<()> {
     println!(
         "{} Benchmarking {}",
         style("YYKV-Profile").cyan().bold(),
@@ -156,7 +153,7 @@ async fn run_bench(path: String, size_mb: u64, block_size_kb: u32) -> DsResult<(
 
 use yykv_layout::Header;
 
-async fn run_layout(path: String) -> DsResult<()> {
+pub async fn run_layout(path: String) -> DsResult<()> {
     println!(
         "{} Visualizing layout for {}",
         style("YYKV-Profile").cyan().bold(),
@@ -239,7 +236,7 @@ async fn run_layout(path: String) -> DsResult<()> {
 
 use rand::Rng;
 
-async fn run_hotspots(path: String) -> DsResult<()> {
+pub async fn run_hotspots(path: String) -> DsResult<()> {
     println!(
         "{} Analyzing hot spots for {}",
         style("YYKV-Profile").cyan().bold(),
@@ -294,7 +291,7 @@ async fn run_hotspots(path: String) -> DsResult<()> {
     Ok(())
 }
 
-async fn run_ai_bench(path: String) -> DsResult<()> {
+pub async fn run_ai_bench(path: String) -> DsResult<()> {
     println!(
         "{} Benchmarking AI-Enhanced Features for {}",
         style("YYKV-Profile").cyan().bold(),
