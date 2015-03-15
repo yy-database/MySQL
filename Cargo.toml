@@ -8,8 +8,6 @@ members = [
     "servers/yyds-server",
     "servers/yykv-server",
     "packages/yykv-types",
-    "servers/yykv-profile",
-    "servers/yykv-bench",
     "packages/yykv-udf",
     "packages/yykv-scheduler",
     "packages/yykv-tiering",
@@ -75,8 +73,6 @@ yykv-server = { path = "servers/yykv-server", version = "0.0.0" }
 
 # YYKV Internal Packages
 yykv-types = { path = "packages/yykv-types", version = "0.0.0" }
-yykv-profile = { path = "servers/yykv-profile", version = "0.0.0" }
-yykv-bench = { path = "servers/yykv-bench", version = "0.0.0" }
 yykv-hal = { path = "packages/yykv-hal", version = "0.0.0" }
 yykv-allocator = { path = "packages/yykv-allocator", version = "0.0.0" }
 yykv-io = { path = "packages/yykv-io", version = "0.0.0" }
