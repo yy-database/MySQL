@@ -1,55 +1,10 @@
 [workspace]
 resolver = "3"
 members = [
-    "clients/yykv",
-    "clients/yyds",
-    "clients/yyds-odbc",
-    "servers/yyds-tools",
-    "servers/yyds-server",
-    "servers/yykv-server",
-    "packages/yykv-types",
-    "packages/yykv-udf",
-    "packages/yykv-scheduler",
-    "packages/yykv-tiering",
-    "packages/yykv-hal",
-    "packages/yykv-compaction",
-    "packages/yykv-layout",
-    "packages/yykv-allocator",
-    "packages/yykv-io",
-    "packages/yykv-policy",
-    "packages/yykv-compute",
-    "packages/yykv-stream",
-    "packages/yykv-wal",
-    "packages/yykv-operators",
-    "packages/yykv-executor",
-    "packages/yykv-schema",
-    "packages/yykv-event",
-    "packages/yykv-index",
-    "packages/yykv-storage",
-    "packages/yyds-types",
-    "packages/yyds-ai",
-    "packages/yyds-billing",
-    "packages/yyds-cache",
-    "packages/yyds-compute",
-    "packages/yyds-consensus",
-    "packages/yyds-gateway",
-    "packages/yyds-observability",
-    "packages/yyds-pubsub",
-    "packages/yyds-quota",
-    "packages/yyds-storage",
-    "packages/yyds-task",
-    "packages/yyds-tenant",
-    "protocols/we-trust",
-    "protocols/we-trust-arrow",
-    "protocols/we-trust-d1",
-    "protocols/we-trust-mysql",
-    "protocols/we-trust-otel",
-    "protocols/we-trust-postgres",
-    "protocols/we-trust-redis",
-    "protocols/we-trust-s3",
-    "protocols/we-trust-sqlite",
-    "protocols/we-trust-sqlserver",
-    "protocols/we-trust-vector"
+    "clients/*",
+    "servers/*",
+    "packages/*",
+    "protocols/*",
 ]
 
 [workspace.package]
@@ -99,7 +54,7 @@ yyds-billing = { path = "packages/yyds-billing", version = "0.0.0" }
 yyds-cache = { path = "packages/yyds-cache", version = "0.0.0" }
 yyds-compute = { path = "packages/yyds-compute", version = "0.0.0" }
 yyds-consensus = { path = "packages/yyds-consensus", version = "0.0.0" }
-yyds-gateway = { path = "packages/yyds-gateway", version = "0.0.0" }
+yyds-gateway = { path = "servers/yyds-gateway", version = "0.0.0" }
 yyds-observability = { path = "packages/yyds-observability", version = "0.0.0" }
 yyds-pubsub = { path = "packages/yyds-pubsub", version = "0.0.0" }
 yyds-quota = { path = "packages/yyds-quota", version = "0.0.0" }
