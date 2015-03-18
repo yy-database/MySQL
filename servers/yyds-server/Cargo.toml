@@ -23,7 +23,7 @@ yyds-task = { workspace = true }
 yyds-gateway = { workspace = true }
 yyds-compute = { workspace = true }
 yykv-compute = { workspace = true }
-yyds-storage = { workspace = true }
+yykv-storage = { workspace = true }
 
 # yykv components
 yykv-event = { workspace = true }
