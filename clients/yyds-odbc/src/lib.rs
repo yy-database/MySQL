@@ -198,46 +198,123 @@ pub unsafe extern "C" fn SQLFetch(statement_handle: HStmt) -> SqlReturn {
 pub unsafe extern "C" fn SQLGetData(
     statement_handle: HStmt,
     column_number: USmallInt,
-    _target_type: SmallInt,
+    target_type: SmallInt,
     target_value_ptr: Pointer,
-    buffer_length: Len,
-    str_len_or_ind_ptr: *mut Len,
+    buffer_length: Integer,
+    str_len_or_ind_ptr: *mut Integer,
 ) -> SqlReturn {
     let stmt = statement_handle as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
-    let stmt_obj = unsafe { &*stmt };
+    let stmt_obj = unsafe { &mut *stmt };
 
     if stmt_obj.current_row == 0 || stmt_obj.current_row > stmt_obj.results.len() {
         return SqlReturn::ERROR;
     }
 
     let row = &stmt_obj.results[stmt_obj.current_row - 1];
-    if (column_number as usize) > row.len() {
+    let col_idx = (column_number - 1) as usize;
+
+    if col_idx >= row.len() {
         return SqlReturn::ERROR;
     }
 
-    let val = &row[column_number as usize - 1];
-    let s = match val {
-        YYValue::Text(t) => t.to_string(),
-        _ => format!("{:?}", val),
-    };
-
-    let bytes = s.as_bytes();
-    let len = bytes.len().min(buffer_length as usize - 1);
-    unsafe {
-        ptr::copy_nonoverlapping(bytes.as_ptr(), target_value_ptr as *mut u8, len);
-        *(target_value_ptr as *mut u8).add(len) = 0;
-
-        if !str_len_or_ind_ptr.is_null() {
-            *str_len_or_ind_ptr = bytes.len() as Len;
+    let val = &row[col_idx];
+    match val {
+        YYValue::Text(s) => {
+            let bytes = s.as_bytes();
+            let len = bytes.len();
+            if !target_value_ptr.is_null() {
+                let copy_len = std::cmp::min(len, buffer_length as usize - 1);
+                unsafe {
+                    ptr::copy_nonoverlapping(bytes.as_ptr(), target_value_ptr as *mut u8, copy_len);
+                    *(target_value_ptr as *mut u8).add(copy_len) = 0;
+                }
+            }
+            if !str_len_or_ind_ptr.is_null() {
+                unsafe { *str_len_or_ind_ptr = len as Integer };
+            }
+            SqlReturn::SUCCESS
         }
+        YYValue::Int(i) => {
+            if !target_value_ptr.is_null() {
+                unsafe { *(target_value_ptr as *mut i64) = *i };
+            }
+            if !str_len_or_ind_ptr.is_null() {
+                unsafe { *str_len_or_ind_ptr = 8 };
+            }
+            SqlReturn::SUCCESS
+        }
+        _ => SqlReturn::ERROR,
     }
-
-    SqlReturn::SUCCESS
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn SQLNumResultCols(
+    statement_handle: HStmt,
+    column_count_ptr: *mut SmallInt,
+) -> SqlReturn {
+    let stmt = statement_handle as *mut Stmt;
+    if stmt.is_null() {
+        return SqlReturn::INVALID_HANDLE;
+    }
+    let stmt_obj = unsafe { &mut *stmt };
+
+    if let Some(first_row) = stmt_obj.results.first() {
+        unsafe { *column_count_ptr = first_row.len() as SmallInt };
+        SqlReturn::SUCCESS
+    } else {
+        unsafe { *column_count_ptr = 0 };
+        SqlReturn::SUCCESS
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn SQLDescribeCol(
+    statement_handle: HStmt,
+    column_number: USmallInt,
+    column_name: *mut Char,
+    buffer_length: SmallInt,
+    name_length_ptr: *mut SmallInt,
+    data_type_ptr: *mut SmallInt,
+    column_size_ptr: *mut UInteger,
+    decimal_digits_ptr: *mut SmallInt,
+    nullable_ptr: *mut SmallInt,
+) -> SqlReturn {
+    let stmt = statement_handle as *mut Stmt;
+    if stmt.is_null() {
+        return SqlReturn::INVALID_HANDLE;
+    }
+    let stmt_obj = unsafe { &mut *stmt };
+
+    if let Some(first_row) = stmt_obj.results.first() {
+        let col_idx = (column_number - 1) as usize;
+        if col_idx < first_row.len() {
+            let name = format!("col{}", column_number);
+            let name_bytes = name.as_bytes();
+            if !column_name.is_null() {
+                let copy_len = std::cmp::min(name_bytes.len(), buffer_length as usize - 1);
+                unsafe {
+                    ptr::copy_nonoverlapping(name_bytes.as_ptr(), column_name as *mut u8, copy_len);
+                    *(column_name as *mut u8).add(copy_len) = 0;
+                }
+            }
+            if !name_length_ptr.is_null() {
+                unsafe { *name_length_ptr = name_bytes.len() as SmallInt };
+            }
+            // Simplified type mapping
+            unsafe {
+                *data_type_ptr = 12; // SQL_VARCHAR
+                *column_size_ptr = 255;
+                *decimal_digits_ptr = 0;
+                *nullable_ptr = 1; // SQL_NULLABLE
+            }
+            return SqlReturn::SUCCESS;
+        }
+    }
+    SqlReturn::ERROR
+}
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn SQLDisconnect(connection_handle: HDbc) -> SqlReturn {
     let conn = connection_handle as *mut Conn;
