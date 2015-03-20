@@ -103,13 +103,10 @@ impl Client {
 
     /// Put a value into the YYDS storage.
     pub async fn put(&mut self, table: &str, key: &str, value: YYValue) -> Result<()> {
-        let payload = oak_json::serialize(&value)
-            .map_err(|e| YYError::internal(format!("Serialization failed: {}", e)))?;
-        
-        // Use a simple Put message via we-trust
-        self.inner.send_request(we_trust::MessageType::Put, bytes::Bytes::from(payload))
-            .await
-            .map_err(|e| YYError::internal(format!("Put failed: {:?}", e)))?;
+        let payload = oak_json::to_string(&value)
+            .map_err(|e| YYError::internal(format!("Serialization error: {}", e)))?;
+        let payload_bytes = bytes::Bytes::from(payload);
+        self.inner.put(key, payload_bytes.into()).await?;
         Ok(())
     }
 }

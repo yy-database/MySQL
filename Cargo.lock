@@ -4128,6 +4128,7 @@ dependencies = [
  "oak-json",
  "serde",
  "tokio",
+ "uuid",
  "we-trust",
  "we-trust-arrow",
  "we-trust-mysql",
@@ -4144,7 +4145,6 @@ dependencies = [
  "yyds-observability",
  "yyds-pubsub",
  "yyds-quota",
- "yyds-storage",
  "yyds-task",
  "yyds-tenant",
  "yyds-types",
@@ -4152,6 +4152,7 @@ dependencies = [
  "yykv-index",
  "yykv-operators",
  "yykv-schema",
+ "yykv-storage",
  "yykv-wal",
 ]
 
@@ -4291,7 +4292,6 @@ dependencies = [
  "yyds-compute",
  "yyds-gateway",
  "yyds-quota",
- "yyds-storage",
  "yyds-task",
  "yyds-tenant",
  "yyds-types",
@@ -4300,18 +4300,7 @@ dependencies = [
  "yykv-executor",
  "yykv-index",
  "yykv-operators",
-]
-
-[[package]]
-name = "yyds-storage"
-version = "0.0.0"
-dependencies = [
- "bytes",
- "parking_lot",
- "serde",
- "tokio",
- "tracing",
- "yyds-types",
+ "yykv-storage",
 ]
 
 [[package]]
@@ -4379,6 +4368,8 @@ dependencies = [
  "oak-json",
  "tokio",
  "tracing",
+ "uuid",
+ "we-trust",
  "windows",
  "yykv-allocator",
  "yykv-compute",
@@ -4397,10 +4388,6 @@ dependencies = [
  "yykv-hal",
  "yykv-types",
 ]
-
-[[package]]
-name = "yykv-bench"
-version = "0.0.0"
 
 [[package]]
 name = "yykv-compaction"

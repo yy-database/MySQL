@@ -1,4 +1,5 @@
-pub use yykv_types::layout;
+pub mod layout;
+
 pub use yykv_types::{
     FieldConstraint, FieldType, InternalId, DsError, DsErrorKind, DsValue, MediumType, PageId,
     Redundancy, ToValue, Uuid, Vector, DsSchema, DsFile,
