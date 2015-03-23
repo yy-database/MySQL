@@ -32,34 +32,34 @@ pub extern "C" fn SQLAllocHandle(
 ) -> SqlReturn {
     match handle_type {
         HandleType::Env => {
-            let env = Box::into_raw(Box::new(Env { version: 0 })) as *mut std::ffi::c_void as Handle;
-            unsafe { *output_handle = env };
+            let env = Env { version: 0 };
+            unsafe { *output_handle = Handle(Box::into_raw(Box::new(env)) as *mut std::ffi::c_void) };
             SqlReturn::SUCCESS
         }
         HandleType::Dbc => {
-            let env_ptr = input_handle as *mut std::ffi::c_void as *mut Env;
+            let env_ptr = input_handle.0 as *mut Env;
             if env_ptr.is_null() {
                 return SqlReturn::INVALID_HANDLE;
             }
             let runtime = Runtime::new().unwrap();
-            let conn = Box::into_raw(Box::new(Conn {
+            let conn = Conn {
                 runtime,
                 client: None,
-            })) as *mut std::ffi::c_void as Handle;
-            unsafe { *output_handle = conn };
+            };
+            unsafe { *output_handle = Handle(Box::into_raw(Box::new(conn)) as *mut std::ffi::c_void) };
             SqlReturn::SUCCESS
         }
         HandleType::Stmt => {
-            let conn_ptr = input_handle as *mut std::ffi::c_void as *mut Conn;
+            let conn_ptr = input_handle.0 as *mut Conn;
             if conn_ptr.is_null() {
                 return SqlReturn::INVALID_HANDLE;
             }
-            let stmt = Box::into_raw(Box::new(Stmt {
+            let stmt = Stmt {
                 conn: conn_ptr,
                 results: Vec::new(),
                 current_row: 0,
-            })) as *mut std::ffi::c_void as Handle;
-            unsafe { *output_handle = stmt };
+            };
+            unsafe { *output_handle = Handle(Box::into_raw(Box::new(stmt)) as *mut std::ffi::c_void) };
             SqlReturn::SUCCESS
         }
         _ => SqlReturn::ERROR,
@@ -68,20 +68,20 @@ pub extern "C" fn SQLAllocHandle(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn SQLFreeHandle(handle_type: HandleType, handle: Handle) -> SqlReturn {
-    if handle.is_null() {
+    if handle.0.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
     match handle_type {
         HandleType::Env => {
-            unsafe { drop(Box::from_raw(handle as *mut std::ffi::c_void as *mut Env)) };
+            unsafe { drop(Box::from_raw(handle.0 as *mut Env)) };
             SqlReturn::SUCCESS
         }
         HandleType::Dbc => {
-            unsafe { drop(Box::from_raw(handle as *mut std::ffi::c_void as *mut Conn)) };
+            unsafe { drop(Box::from_raw(handle.0 as *mut Conn)) };
             SqlReturn::SUCCESS
         }
         HandleType::Stmt => {
-            unsafe { drop(Box::from_raw(handle as *mut std::ffi::c_void as *mut Stmt)) };
+            unsafe { drop(Box::from_raw(handle.0 as *mut Stmt)) };
             SqlReturn::SUCCESS
         }
         _ => SqlReturn::ERROR,
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn SQLDriverConnect(
     _string_length2_ptr: *mut SmallInt,
     _driver_completion: USmallInt,
 ) -> SqlReturn {
-    let conn = connection_handle as *mut std::ffi::c_void as *mut Conn;
+    let conn = connection_handle.0 as *mut Conn;
     if conn.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -146,7 +146,7 @@ pub unsafe extern "C" fn SQLExecDirect(
     statement_text: *const Char,
     text_length: Integer,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -180,7 +180,7 @@ pub unsafe extern "C" fn SQLExecDirect(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn SQLFetch(statement_handle: HStmt) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn SQLGetData(
     buffer_length: Integer,
     str_len_or_ind_ptr: *mut Integer,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn SQLNumResultCols(
     statement_handle: HStmt,
     column_count_ptr: *mut SmallInt,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -282,7 +282,7 @@ pub unsafe extern "C" fn SQLDescribeCol(
     decimal_digits_ptr: *mut SmallInt,
     nullable_ptr: *mut SmallInt,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn SQLDescribeCol(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn SQLDisconnect(connection_handle: HDbc) -> SqlReturn {
-    let conn = connection_handle as *mut std::ffi::c_void as *mut Conn;
+    let conn = connection_handle.0 as *mut Conn;
     if conn.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }

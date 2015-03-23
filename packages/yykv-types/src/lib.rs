@@ -14,8 +14,6 @@ pub mod layout;
 
 pub use errors::{DsError, DsErrorKind, DsResult};
 
-pub mod layout;
-
 pub type PageId = u64;
 pub type Lsn = u64;
 
