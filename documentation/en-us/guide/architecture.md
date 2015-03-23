@@ -17,4 +17,6 @@ The YYKV architecture is divided into the following layers:
 | `yykv-allocator` | **Raw Space Allocator**. Manages sectors and blocks on raw disks, supporting space reclamation and defragmentation. |
 | `yykv-layout` | **Physical Layout**. Defines how data is arranged on disk (e.g., variable-length key-values, index page layout). |
 | `yykv-compaction` | **Data Merging & GC**. Responsible for background multi-level data merging and garbage collection. |
+| `yykv-scheduler` | **I/O Scheduler**. Manages disk I/O requests based on priority and tenant quotas to ensure low latency. |
+| `yykv-tiering` | **Auto-Tiering**. Automatically migrates data between NVMe, SSD, and HDD to optimize storage costs. |
 | `yykv-udf` | **User Defined Functions**. Supports execution of sandboxed UDF code directly at the storage layer. |
