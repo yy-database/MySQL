@@ -4,17 +4,20 @@
 
 ## 核心组件
 
-### [yyds-task](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yyds-task)
+### [yyds-task](../../packages/yyds-task)
 **分布式任务管理器**。
 - **职责**：接收、存储并分发各类后台任务。
-- **调度特性**：支持 Cron 风格的定时调度，具备任务重试、挂起和全生命周期追踪能力。
+- **调度特性**：
+    - **分布式 Cron**：支持定时触发计费汇总（`yyds-billing`）和系统巡检。
+    - **状态追踪**：任务状态持久化于 WAL，支持节点宕机后的自动重调度。
+    - **协同调度**：感知 `yykv-scheduler` 的负载，在 I/O 繁忙时自动挂起非紧急后台任务。
 
-### [yykv-event](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yykv-event)
+### [yykv-event](../../packages/yykv-event)
 **事件驱动系统**。
 - **职责**：监听存储层的状态变化（如 Page 变更、事务提交）。
-- **调度相关**：根据事件触发后续的调度逻辑，如自动触发 Compaction 或通知上层应用。
+- **WAE 机制**：实现 **Write-Ahead Event**，当数据写入 WAL 时实时触发订阅者，支持在数据落盘前完成索引预构建。
 
-### [yykv-wal](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yykv-wal)
+### [yykv-wal](../../packages/yykv-wal)
 **预写日志管理器**。
 - **职责**：确保任务和数据的持久化。
-- **调度保障**：通过 WAE (Write Ahead Event) 机制，任务调度层可以确保即使在节点崩溃后，未完成的任务也能被重新调度执行。
+- **调度保障**：通过 WAL 机制确保任务的原子性与可恢复性。

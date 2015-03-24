@@ -18,8 +18,20 @@ export default defineConfig({
             text: 'Guide',
             items: [
               { text: 'Introduction', link: '/en-us/guide/' },
-              { text: 'Architecture', link: '/en-us/guide/architecture' },
-              { text: 'Scheduling', link: '/en-us/guide/scheduler' }
+              { text: 'Architecture', link: '/en-us/guide/architecture' }
+            ]
+          },
+          {
+            text: 'Scheduling System',
+            collapsed: false,
+            items: [
+              { text: 'Overview', link: '/en-us/scheduler/' },
+              { text: 'I/O Scheduling', link: '/en-us/scheduler/io-scheduling' },
+              { text: 'Background Tasks', link: '/en-us/scheduler/background-tasks' },
+              { text: 'Data Lifecycle', link: '/en-us/scheduler/data-lifecycle' },
+              { text: 'Compute Orchestration', link: '/en-us/scheduler/compute-orchestration' },
+              { text: 'Resource Control', link: '/en-us/scheduler/resource-control' },
+              { text: 'Distributed Consensus', link: '/en-us/scheduler/distributed-consensus' }
             ]
           },
           {
@@ -63,8 +75,20 @@ export default defineConfig({
             text: '指南',
             items: [
               { text: '介绍', link: '/zh-hans/guide/' },
-              { text: '架构设计', link: '/zh-hans/guide/architecture' },
-              { text: '调度系统', link: '/zh-hans/guide/scheduler' }
+              { text: '架构设计', link: '/zh-hans/guide/architecture' }
+            ]
+          },
+          {
+            text: '调度系统',
+            collapsed: false,
+            items: [
+              { text: '总览', link: '/zh-hans/scheduler/' },
+              { text: 'I/O 调度', link: '/zh-hans/scheduler/io-scheduling' },
+              { text: '任务调度', link: '/zh-hans/scheduler/background-tasks' },
+              { text: '数据生命周期', link: '/zh-hans/scheduler/data-lifecycle' },
+              { text: '计算编排', link: '/zh-hans/scheduler/compute-orchestration' },
+              { text: '资源控制', link: '/zh-hans/scheduler/resource-control' },
+              { text: '分布式共识', link: '/zh-hans/scheduler/distributed-consensus' }
             ]
           },
           {

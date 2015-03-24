@@ -198,7 +198,7 @@ pub unsafe extern "C" fn SQLFetch(statement_handle: HStmt) -> SqlReturn {
 pub unsafe extern "C" fn SQLGetData(
     statement_handle: HStmt,
     column_number: USmallInt,
-    target_type: SmallInt,
+    _target_type: SmallInt,
     target_value_ptr: Pointer,
     buffer_length: Integer,
     str_len_or_ind_ptr: *mut Integer,

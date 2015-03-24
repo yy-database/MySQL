@@ -1,6 +1,8 @@
 #![warn(missing_docs)]
 
+#[cfg(feature = "engine")]
 use std::sync::Arc;
+#[cfg(feature = "engine")]
 use tracing::info;
 use yykv_types::{DsError, DsResult, DsValue, Redundancy};
 
@@ -58,17 +60,9 @@ impl Client {
     }
 
     /// Put a value by key.
-    pub async fn put(&mut self, key: &str, value: DsValue, sdr: Redundancy) -> DsResult<()> {
-        let mut payload = bytes::BytesMut::new();
-        yykv_types::layout::DsValueEncoder::encode_to_buf(&value, &mut payload)
-            .map_err(|e| DsError::internal(format!("Encoding failed: {}", e)))?;
-        
-        // In a real implementation, we might need to send both key and value.
-        // For now, let's assume a simple format or use a more complex message.
-        self.inner.send_request(we_trust::MessageType::Put, payload.freeze())
-            .await
-            .map_err(|e| DsError::internal(format!("Put failed: {:?}", e)))?;
-        Ok(())
+    pub async fn put(&mut self, key: &str, value: DsValue, _sdr: Redundancy) -> DsResult<()> {
+        self.inner.put(key, value).await
+            .map_err(|e| DsError::internal(format!("Put failed: {:?}", e)))
     }
 }
 

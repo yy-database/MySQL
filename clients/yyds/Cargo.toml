@@ -78,7 +78,3 @@ full = [
 
 [lib]
 path = "src/lib.rs"
-
-[[bin]]
-name = "yyds"
-path = "src/bin/main.rs"

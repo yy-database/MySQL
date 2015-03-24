@@ -102,12 +102,9 @@ impl Client {
     }
 
     /// Put a value into the YYDS storage.
-    pub async fn put(&mut self, table: &str, key: &str, value: YYValue) -> Result<()> {
-        let payload = oak_json::to_string(&value)
-            .map_err(|e| YYError::internal(format!("Serialization error: {}", e)))?;
-        let payload_bytes = bytes::Bytes::from(payload);
-        self.inner.put(key, payload_bytes.into()).await?;
-        Ok(())
+    pub async fn put(&mut self, _table: &str, key: &str, value: YYValue) -> Result<()> {
+        self.inner.put(key, value).await
+            .map_err(|e| YYError::internal(format!("Put failed: {:?}", e)))
     }
 }
 
