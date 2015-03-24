@@ -27,4 +27,4 @@ YYKV is not a standalone terminal database, but it is the core technical engine 
 
 1. **Bypass File System (Bypass FS)**: Directly manages disk blocks through `yykv-hal` and `yykv-allocator`, eliminating file system metadata locks and log redundancy.
 2. **Pushdown Slots**: Built-in `yykv-compute` in the storage layer supports direct filtering (Filter) and projection (Project) during data reading, greatly reducing bus data transmission.
-3. **I/O Priority Scheduling**: `yykv-scheduler` supports fine-grained I/O scheduling based on tenant priority and request type (e.g., WAL writing vs. background Compaction).
+3. **I/O Priority Scheduling**: `yykv-scheduler` supports fine-grained I/O scheduling based on tenant priority and request type (e.g., WAL writing vs. background Compaction). See [Scheduling System](file:///e:/yydb/yykv/documentation/en-us/guide/scheduler/index.md).
