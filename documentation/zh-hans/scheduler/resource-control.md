@@ -4,26 +4,24 @@
 
 ## 核心组件
 
-### [yyds-quota](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yyds-quota)
+### [yyds-quota](../../packages/yyds-quota)
 **配额控制系统**。
-- **职责**：实时监控租户的 I/O、计算和存储消耗。
+- **职责**：实时监控租户的 I/O、计算和存储消耗，限制后台任务的总带宽占用。
 - **调度逻辑**：根据租户等级自动进行限流（Throttling），防止恶意或异常请求耗尽系统资源。
 
-### [yyds-tenant](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yyds-tenant)
+### [yyds-tenant](../../packages/yyds-tenant)
 **租户管理中心**。
 - **职责**：管理租户身份、权限和元数据。
-- **调度相关**：为调度系统提供租户上下文，实现资源请求的路由。
+- **租户隔离**：任务执行时绑定 `TenantId`，严格限制每个租户的 CPU 时间片和内存配额。
 
-### [yyds-billing](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yyds-billing)
+### [yyds-billing](../../packages/yyds-billing)
 **计费调度系统**。
-- **职责**：异步汇总租户资源消耗并生成账单。
-- **调度相关**：通过 `yyds-task` 调度周期性的计费聚合任务。
+- **职责**：异步汇总租户资源消耗（I/O、存储空间）并生成账单。
 
-### [yyds-observability](file:///e:/yydb%20%E6%95%B0%E6%8D%AE%E5%BA%93/yykv/packages/yyds-observability)
+### [yyds-observability](../../packages/yyds-observability)
 **可观测性系统**。
-- **职责**：收集调度系统的各项指标（Latency, Throughput, Queue depth）。
-- **调度反馈**：为自动扩缩容和动态负载均衡提供决策依据。
+- **职责**：实时追踪任务执行延迟与资源占用，为自动扩缩容提供决策依据。
 
 ### 类型与策略支持
-- **相关包**：`yyds-types`, `yykv-types`, `yykv-policy`, `yykv-schema`
-- **职责**：定义统一的数据类型、调度策略模板和元数据模式，确保调度指令在各组件间语义一致。
+- **相关包**：[yyds-types](../../packages/yyds-types), [yykv-types](../../packages/yykv-types), [yykv-policy](../../packages/yykv-policy), [yykv-schema](../../packages/yykv-schema)
+- **职责**：定义统一的数据类型、调度策略模板和元数据模式。
