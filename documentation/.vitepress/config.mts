@@ -75,6 +75,8 @@ export default defineConfig({
             text: '指南',
             items: [
               { text: '介绍', link: '/zh-hans/guide/' },
+              { text: '快速连接', link: '/zh-hans/guide/connect' },
+              { text: '部署指南', link: '/zh-hans/guide/deploy' },
               { text: '架构设计', link: '/zh-hans/guide/architecture' }
             ]
           },
