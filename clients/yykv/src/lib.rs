@@ -1,3 +1,8 @@
+//! YYKV Client and Engine implementation.
+//! 
+//! This crate provides both a lightweight client for connecting to a YYKV server
+//! and the core storage engine for the YYKV database.
+
 #![warn(missing_docs)]
 
 #[cfg(feature = "engine")]
@@ -42,27 +47,26 @@ impl Client {
 
     /// Get a value by key.
     pub async fn get(&mut self, key: &str) -> DsResult<Option<DsValue>> {
-        let resp = self.inner.send_request(we_trust::MessageType::Get, bytes::Bytes::from(key.to_string()))
-            .await
-            .map_err(|e| DsError::internal(format!("Get failed: {:?}", e)))?;
-        
-        if resp.header.msg_type == we_trust::MessageType::Error as u8 {
-            return Err(DsError::protocol("Server returned error"));
-        }
-
-        if resp.payload.is_empty() {
-            Ok(None)
-        } else {
-            let value = yykv_types::layout::YYValueDecoder::decode(&resp.payload)
-                .map_err(|e| DsError::internal(format!("Decoding failed: {}", e)))?;
-            Ok(Some(value))
-        }
+        self.inner.get(key).await
+            .map_err(|e| DsError::internal(format!("Get failed: {:?}", e)))
     }
 
     /// Put a value by key.
     pub async fn put(&mut self, key: &str, value: DsValue, _sdr: Redundancy) -> DsResult<()> {
         self.inner.put(key, value).await
             .map_err(|e| DsError::internal(format!("Put failed: {:?}", e)))
+    }
+
+    /// Delete a value by key.
+    pub async fn delete(&mut self, key: &str) -> DsResult<()> {
+        self.inner.delete(key).await
+            .map_err(|e| DsError::internal(format!("Delete failed: {:?}", e)))
+    }
+
+    /// Execute a query against the YYKV server.
+    pub async fn query(&mut self, query: &str) -> DsResult<Vec<Vec<DsValue>>> {
+        self.inner.send_query(query).await
+            .map_err(|e| DsError::internal(format!("Query failed: {:?}", e)))
     }
 }
 

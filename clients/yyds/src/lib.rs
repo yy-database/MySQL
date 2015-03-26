@@ -106,6 +106,18 @@ impl Client {
         self.inner.put(key, value).await
             .map_err(|e| YYError::internal(format!("Put failed: {:?}", e)))
     }
+
+    /// Get a value from the YYDS storage.
+    pub async fn get(&mut self, _table: &str, key: &str) -> Result<Option<YYValue>> {
+        self.inner.get(key).await
+            .map_err(|e| YYError::internal(format!("Get failed: {:?}", e)))
+    }
+
+    /// Delete a value from the YYDS storage.
+    pub async fn delete(&mut self, _table: &str, key: &str) -> Result<()> {
+        self.inner.delete(key).await
+            .map_err(|e| YYError::internal(format!("Delete failed: {:?}", e)))
+    }
 }
 
 pub fn version() -> &'static str {

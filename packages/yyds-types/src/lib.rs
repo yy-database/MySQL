@@ -1,19 +1,34 @@
-pub mod layout;
+//! yyds-types: Common type system for the yyds ecosystem.
+//! 
+//! This crate re-exports types from yykv-types to ensure compatibility
+//! across the entire ecosystem while providing a consistent naming convention.
 
 pub use yykv_types::{
-    FieldConstraint, FieldType, InternalId, DsError, DsErrorKind, DsValue, MediumType, PageId,
-    Redundancy, ToValue, Uuid, Vector, DsSchema, DsFile,
+    DsError, DsErrorKind, DsResult, DsValue, Redundancy, PageId, Lsn, Page,
+    StorageConfig, DeviceConfig, MediumType, FieldType, FieldConstraint,
+    InternalId, Vector, DsFile, DsSchema, TableInfo, IndexInfo, ColumnInfo,
+    ConstraintInfo, ForeignKeyInfo, EnumInfo, SchemaInspector, ToValue,
 };
 
-/// A specialized Result type for YYDS operations.
+/// Specialized result type for YYDS.
 pub type Result<T> = std::result::Result<T, YYError>;
-/// YYDS Error type.
+/// YYDS error type.
 pub type YYError = DsError;
-/// YYDS Error kind.
+/// YYDS error kind.
 pub type YYErrorKind = DsErrorKind;
-/// YYDS Value type, the core data unit.
+/// YYDS value type.
 pub type YYValue = DsValue;
-/// YYDS File type.
-pub type YyFile = DsFile;
-/// YYDS Schema type.
+/// YYDS schema type.
 pub type YYSchema = DsSchema;
+
+pub mod layout {
+    //! Data layout and serialization.
+    pub use yykv_types::layout::*;
+}
+
+pub mod errors {
+    //! Error types and utilities.
+    pub use yykv_types::DsError as Error;
+    pub use yykv_types::DsErrorKind as ErrorKind;
+    pub use yykv_types::DsResult as Result;
+}
