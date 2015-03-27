@@ -7,12 +7,13 @@ description = "Common type system for the yyds ecosystem, providing YYValue and 
 publish = false
 
 [dependencies]
-bytes = "1.11"
-chrono = { version = "0.4", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"] }
+yykv-types = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
 oak-json = { workspace = true }
-hex = "0.4"
-crc32fast = "1.5"
+hex = { workspace = true }
+crc32fast = { workspace = true }
 uuid = { workspace = true }
 rust_decimal = { workspace = true }
 async-trait = { workspace = true }

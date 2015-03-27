@@ -52,7 +52,7 @@ impl Client {
     }
 
     /// Put a value by key.
-    pub async fn put(&mut self, key: &str, value: DsValue, _sdr: Redundancy) -> DsResult<()> {
+    pub async fn put(&mut self, key: &str, value: DsValue) -> DsResult<()> {
         self.inner.put(key, value).await
             .map_err(|e| DsError::internal(format!("Put failed: {:?}", e)))
     }

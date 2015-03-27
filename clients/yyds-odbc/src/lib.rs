@@ -200,7 +200,7 @@ pub unsafe extern "C" fn SQLGetData(
     column_number: USmallInt,
     _target_type: SmallInt,
     target_value_ptr: Pointer,
-    buffer_length: Integer,
+    _buffer_length: Integer,
     str_len_or_ind_ptr: *mut Integer,
 ) -> SqlReturn {
     let stmt = statement_handle.0 as *mut Stmt;
@@ -226,10 +226,14 @@ pub unsafe extern "C" fn SQLGetData(
             let bytes = s.as_bytes();
             let len = bytes.len();
             if !target_value_ptr.is_null() {
-                let copy_len = std::cmp::min(len, buffer_length as usize - 1);
-                unsafe {
-                    ptr::copy_nonoverlapping(bytes.as_ptr(), target_value_ptr as *mut u8, copy_len);
-                    *(target_value_ptr as *mut u8).add(copy_len) = 0;
+                // Buffer length in ODBC includes the null terminator for strings
+                let max_copy = if _buffer_length > 0 { _buffer_length as usize } else { 0 };
+                if max_copy > 0 {
+                    let copy_len = std::cmp::min(len, max_copy - 1);
+                    unsafe {
+                        ptr::copy_nonoverlapping(bytes.as_ptr(), target_value_ptr as *mut u8, copy_len);
+                        *(target_value_ptr as *mut u8).add(copy_len) = 0;
+                    }
                 }
             }
             if !str_len_or_ind_ptr.is_null() {
@@ -243,6 +247,30 @@ pub unsafe extern "C" fn SQLGetData(
             }
             if !str_len_or_ind_ptr.is_null() {
                 unsafe { *str_len_or_ind_ptr = 8 };
+            }
+            SqlReturn::SUCCESS
+        }
+        YYValue::Float(f) => {
+            if !target_value_ptr.is_null() {
+                unsafe { *(target_value_ptr as *mut f64) = *f };
+            }
+            if !str_len_or_ind_ptr.is_null() {
+                unsafe { *str_len_or_ind_ptr = 8 };
+            }
+            SqlReturn::SUCCESS
+        }
+        YYValue::Bool(b) => {
+            if !target_value_ptr.is_null() {
+                unsafe { *(target_value_ptr as *mut u8) = if *b { 1 } else { 0 } };
+            }
+            if !str_len_or_ind_ptr.is_null() {
+                unsafe { *str_len_or_ind_ptr = 1 };
+            }
+            SqlReturn::SUCCESS
+        }
+        YYValue::Null => {
+            if !str_len_or_ind_ptr.is_null() {
+                unsafe { *str_len_or_ind_ptr = -1 }; // SQL_NULL_DATA
             }
             SqlReturn::SUCCESS
         }

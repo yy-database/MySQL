@@ -4604,7 +4604,6 @@ dependencies = [
  "rust_decimal",
  "serde",
  "uuid",
- "yyds-types",
 ]
 
 [[package]]

@@ -1,8 +1,5 @@
 use yykv_types::layout::{DsValueEncoder, VALUE_MAGIC};
-pub use yykv_types::layout::{ValueHeader, ValueTypeId};
-
-/// YYDS Binary Decoder for YYValue.
-pub type YYValueDecoder = yykv_types::layout::YYValueDecoder;
+pub use yykv_types::layout::{ValueHeader, ValueTypeId, YYValueDecoder};
 
 /// YYDS Binary Encoder for YYValue.
 pub struct YYDSValueEncoder;
