@@ -10,5 +10,5 @@ crate-type = ["cdylib", "rlib"]
 yyds-types = { workspace = true }
 we-trust = { workspace = true }
 tokio = { workspace = true }
-odbc-sys = "0.28"
+odbc-sys = { workspace = true }
 rust_decimal = { workspace = true }
