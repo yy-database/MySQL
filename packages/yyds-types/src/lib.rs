@@ -438,6 +438,12 @@ impl ToValue for &str { fn to_value(&self) -> DsValue { DsValue::Text(self.to_st
 impl ToValue for bool { fn to_value(&self) -> DsValue { DsValue::Bool(*self) } }
 impl ToValue for Uuid { fn to_value(&self) -> DsValue { DsValue::Uuid(*self) } }
 
+/// Trait for converting from DsValue.
+pub trait FromValue: Sized {
+    /// Convert from DsValue.
+    fn from_value(v: DsValue) -> DsResult<Self>;
+}
+
 /// Specialized result type for YYDS.
 pub type Result<T> = std::result::Result<T, YYError>;
 /// YYDS error type.

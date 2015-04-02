@@ -4375,7 +4375,6 @@ dependencies = [
  "rust_decimal",
  "serde",
  "uuid",
- "yykv-types",
 ]
 
 [[package]]
@@ -4527,6 +4526,7 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+ "yykv-schema",
  "yykv-types",
 ]
 
@@ -4621,6 +4621,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "uuid",
+ "yyds-types",
 ]
 
 [[package]]

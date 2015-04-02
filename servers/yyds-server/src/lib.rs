@@ -17,8 +17,8 @@ use yykv_operators::OpsGraph;
 use yykv_executor::YykvExecutor as YydsExecutor;
 use yykv_compute::MockWasmRuntime;
 use yykv_index::SearchIndexManager;
-use yyds_types::{Redundancy, YYError, Result, YYValue};
-use yyds_storage::{YydsStorage, StorageConfig, DeviceConfig, MediumType};
+use yyds_types::{Redundancy, YYError, Result, YYValue, StorageConfig, DeviceConfig, MediumType};
+use yykv_storage::BTree as YykvStorage;
 use yyds_gateway::YydsGateway;
 use async_trait::async_trait;
 
@@ -32,7 +32,7 @@ pub struct ServerState {
     pub quota_manager: Arc<RwLock<QuotaManager>>,
     pub task_manager: Arc<Mutex<TaskManager>>,
     pub wal: Arc<WalManager>,
-    pub storage: Arc<YydsStorage>,
+    pub storage: Arc<YykvStorage>,
     pub executor: Arc<YydsExecutor>,
     pub index: Arc<SearchIndexManager>,
 }
@@ -356,7 +356,7 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                     continue;
                 }
                 let key = String::from_utf8(p.copy_to_bytes(key_len).to_vec())?;
-                let value = yyds_types::layout::YYValueDecoder::decode(&p)
+                let value = yyds_types::layout::YYValueDecoder::decode(&mut p)
                     .map_err(|e| YYError::serialization(format!("Value decode error: {:?}", e)))?;
                 
                 state.handle_insert(header.tenant_id, "default".into(), key, value, header.sdr_level()).await?;
@@ -427,7 +427,8 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                 framed.send(resp).await?;
             }
             t if t == MessageType::Query as u8 => { // QUERY
-                let graph_value = YYValueDecoder::decode(&payload)
+                let mut p = payload;
+                let graph_value = YYValueDecoder::decode(&mut p)
                     .map_err(|e| YYError::serialization(format!("OpsGraph decode error: {:?}", e)))?;
                 let graph = OpsGraph::from_value(graph_value)
                     .map_err(|e| YYError::serialization(format!("OpsGraph parse error: {:?}", e)))?;

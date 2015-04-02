@@ -356,7 +356,8 @@ impl LayoutManager {
                 Some(DsValue::Object { schema_id, fields })
             }
             ValueType::Raw => {
-                yykv_types::layout::YYValueDecoder::decode(&Bytes::copy_from_slice(payload)).ok()
+                let mut data = Bytes::copy_from_slice(payload);
+                yykv_types::layout::YYValueDecoder::decode(&mut data).ok()
             }
         }
     }
