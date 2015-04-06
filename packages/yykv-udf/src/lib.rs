@@ -6,7 +6,7 @@ use wasmtime::{
     Config, Engine,
     component::{Linker, ResourceTable},
 };
-use wasmtime_wasi::preview2::{WasiCtx, WasiView};
+use wasmtime_wasi::{WasiCtx, WasiView, WasiCtxBuilder};
 use yykv_types::{DsError, DsResult, DsValue};
 
 #[async_trait]

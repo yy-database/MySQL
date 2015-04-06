@@ -30,7 +30,7 @@ yyds-pubsub = { workspace = true, optional = true }
 yyds-cache = { workspace = true, optional = true }
 
 # Optional yykv components for full feature
-yykv-wal = { workspace = true, optional = true }
+yykv-event = { workspace = true, optional = true }
 yykv-index = { workspace = true, optional = true }
 yykv-operators = { workspace = true, optional = true }
 yykv-executor = { workspace = true, optional = true }
@@ -62,7 +62,6 @@ full = [
     "yyds-quota",
     "yyds-pubsub",
     "yyds-cache",
-    "yykv-wal",
     "yykv-index",
     "yykv-operators",
     "yykv-executor",
