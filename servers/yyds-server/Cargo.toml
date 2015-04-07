@@ -26,7 +26,7 @@ yykv-compute = { workspace = true }
 yykv-storage = { workspace = true }
 
 # yykv components
-yykv-event = { workspace = true }
+yykv-wal = { workspace = true }
 yykv-index = { workspace = true }
 yykv-operators = { workspace = true }
 yykv-executor = { workspace = true }

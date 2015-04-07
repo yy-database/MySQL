@@ -7,6 +7,7 @@ description = "Publish-Subscribe messaging system for YYDS"
 
 [dependencies]
 yyds-types = { workspace = true }
+yykv-types = { workspace = true }
 yykv-event = { workspace = true }
 serde = { workspace = true }
 uuid = { workspace = true }

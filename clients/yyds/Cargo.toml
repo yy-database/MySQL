@@ -8,6 +8,7 @@ description = "High-performance distributed middleware framework, unifying datab
 [dependencies]
 # Core dependencies for client
 yyds-types = { workspace = true }
+yykv-types = { workspace = true }
 we-trust = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }

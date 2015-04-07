@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use yyds_types::{YYValue, YYError};
 use yykv_event::{WalManager, OpType};
+use yykv_types::Redundancy;
 
 /// Task status in the queue.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -61,7 +62,7 @@ impl TaskManager {
             tenant_id,
             "sys:tasks".to_string(),
             OpType::Insert,
-            yyds_types::Redundancy::TRUTH, // Tasks are critical, use high redundancy
+            Redundancy::TRUTH, // Tasks are critical, use high redundancy
             payload
         ).await.map_err(|e| YYError::internal(e.to_string()))?;
 
@@ -90,7 +91,7 @@ impl TaskManager {
             tenant_id,
             "sys:tasks".to_string(),
             OpType::Insert,
-            yyds_types::Redundancy::TRUTH,
+            Redundancy::TRUTH,
             payload
         ).await.map_err(|e| YYError::internal(e.to_string()))?;
 

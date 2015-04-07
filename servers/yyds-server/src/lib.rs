@@ -12,18 +12,20 @@ use yyds_tenant::TenantManager;
 use yyds_billing::{BillingManager, ResourceType};
 use yyds_quota::{QuotaManager, Quota};
 use yyds_task::TaskManager;
-use yykv_event::{WalManager, OpType};
+use yykv_wal::{WalManager, OpType};
 use yykv_operators::OpsGraph;
 use yykv_executor::YykvExecutor as YydsExecutor;
 use yykv_compute::MockWasmRuntime;
 use yykv_index::SearchIndexManager;
-use yyds_types::{Redundancy, YYError, Result, YYValue, StorageConfig, DeviceConfig, MediumType};
+use yyds_types::{Redundancy, DsError, DsResult, DsValue, StorageConfig, DeviceConfig, MediumType};
 use yykv_storage::BTree as YykvStorage;
 use yyds_gateway::YydsGateway;
 use async_trait::async_trait;
 
 use std::time::Duration;
 use tokio::time;
+
+type Result<T> = std::result::Result<T, DsError>;
 
 /// Global state for the YYDS Server.
 pub struct ServerState {
@@ -38,10 +40,10 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    pub async fn handle_insert(&self, tenant_id: Uuid, table: String, key: String, value: YYValue, redundancy: Redundancy) -> Result<()> {
+    pub async fn handle_insert(&self, tenant_id: Uuid, table: String, key: String, value: DsValue, redundancy: Redundancy) -> DsResult<()> {
         let tenant_internal_id = {
             let tm = self.tenant_manager.read().await;
-            tm.get_internal_id(tenant_id).ok_or(YYError::internal("Tenant not found"))?
+            tm.get_internal_id(tenant_id).ok_or(DsError::internal("Tenant not found"))?
         };
 
         // Calculate storage size (rough estimate)
@@ -55,14 +57,14 @@ impl ServerState {
             let mut bm = self.billing_manager.lock().await;
             let current_usage = bm.get_total_usage(tenant_internal_id, ResourceType::Storage);
             if !qm.check_storage(tenant_internal_id, current_usage + storage_size) {
-                return Err(YYError::permission("storage_put", "quota_exceeded"));
+                return Err(DsError::permission("storage_put", "quota_exceeded"));
             }
             bm.record_usage(tenant_internal_id, ResourceType::Storage, storage_size);
         }
 
         // Storage
         self.storage.put(tenant_internal_id, key, value.clone(), redundancy).await
-            .map_err(|e| YYError::storage(format!("Storage error: {:?}", e)))?;
+            .map_err(|e| DsError::storage("put", format!("Storage error: {:?}", e)))?;
 
         // WAL
         self.wal.write(
@@ -82,21 +84,21 @@ use yyds_types::FromValue;
 
 #[async_trait]
 impl yyds_gateway::GatewayBackend for ServerState {
-    async fn execute_query(&self, tenant_id: Uuid, graph: OpsGraph) -> Result<Vec<YYValue>> {
+    async fn execute_query(&self, tenant_id: Uuid, graph: OpsGraph) -> DsResult<Vec<DsValue>> {
         self.executor.execute_local(graph, tenant_id).await
     }
 
-    async fn execute_insert(&self, tenant_id: Uuid, table: String, key: YYValue, value: YYValue) -> Result<()> {
+    async fn execute_insert(&self, tenant_id: Uuid, table: String, key: DsValue, value: DsValue) -> DsResult<()> {
         let key_str = match key {
-            YYValue::Text(s) => s,
-            YYValue::Int(i) => i.to_string(),
-            YYValue::Uuid(u) => u.to_string(),
-            _ => return Err(YYError::execution("Unsupported key type for PG insert")),
+            DsValue::Text(s) => s,
+            DsValue::Int(i) => i.to_string(),
+            DsValue::Uuid(u) => u.to_string(),
+            _ => return Err(DsError::execution("insert", "Unsupported key type for PG insert")),
         };
         self.handle_insert(tenant_id, table, key_str, value, Redundancy::TRUTH).await
     }
 
-    async fn execute_delete(&self, _tenant_id: Uuid, _table: String, _selection: Option<yykv_operators::Expr>) -> Result<()> {
+    async fn execute_delete(&self, _tenant_id: Uuid, _table: String, _selection: Option<yykv_operators::Expr>) -> DsResult<()> {
         // Selection handling is complex, for now we just support simple delete or return error
         // In a real implementation, we would translate Expr to storage predicates
         Err(YYError::execution("Complex DELETE via PG gateway not yet fully implemented"))

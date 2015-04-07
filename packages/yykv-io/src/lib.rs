@@ -32,7 +32,7 @@ impl WindowsDirectIo {
                 None,
                 OPEN_EXISTING,
                 FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH,
-                HANDLE::default(),
+                None,
             )
             .map_err(|e| {
                 DsError::io_raw(

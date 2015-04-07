@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use yyds_types::{YYValue, YYError};
+use yykv_types::{DsValue, DsError};
 use we_trust_s3::{PutObjectOutput};
 use yykv_operators::OpsGraph;
 
@@ -16,13 +16,13 @@ use std::sync::Arc;
 use tracing::{info, error};
 use uuid::Uuid;
 
-type Result<T> = std::result::Result<T, YYError>;
+type Result<T> = std::result::Result<T, DsError>;
 
 /// GatewayBackend defines the operations that a gateway can perform on the core.
 #[async_trait]
 pub trait GatewayBackend: Send + Sync {
-    async fn execute_query(&self, tenant_id: Uuid, graph: OpsGraph) -> Result<Vec<YYValue>>;
-    async fn execute_insert(&self, tenant_id: Uuid, table: String, key: YYValue, value: YYValue) -> Result<()>;
+    async fn execute_query(&self, tenant_id: Uuid, graph: OpsGraph) -> Result<Vec<DsValue>>;
+    async fn execute_insert(&self, tenant_id: Uuid, table: String, key: DsValue, value: DsValue) -> Result<()>;
     async fn execute_delete(&self, tenant_id: Uuid, table: String, selection: Option<yykv_operators::Expr>) -> Result<()>;
 }
 
@@ -46,12 +46,12 @@ impl YydsGateway {
     /// 启动 Postgres 协议监听
     pub async fn listen_postgres(&self, addr: &str) -> Result<()> {
         let listener = TcpListener::bind(addr).await
-            .map_err(|e| YYError::io_raw(e, None))?;
+            .map_err(|e| DsError::io_raw(e, None))?;
         info!("YYDS Postgres Gateway listening on {}", addr);
 
         loop {
             let (socket, _) = listener.accept().await
-                .map_err(|e| YYError::io_raw(e, None))?;
+                .map_err(|e| DsError::io_raw(e, None))?;
             let gateway = self.clone();
             
             tokio::spawn(async move {
@@ -90,12 +90,12 @@ impl YydsGateway {
 
                                         for row in &rows {
                                             let val_bytes = match row {
-                                                YYValue::Text(s) => Some(s.clone().into()),
-                                                YYValue::Int(i) => Some(i.to_string().into()),
-                                                YYValue::Float(f) => Some(f.to_string().into()),
-                                                YYValue::Bool(b) => Some(b.to_string().into()),
-                                                YYValue::Uuid(u) => Some(u.to_string().into()),
-                                                YYValue::Null => None,
+                                                DsValue::Text(s) => Some(s.clone().into()),
+                                                DsValue::Int(i) => Some(i.to_string().into()),
+                                                DsValue::Float(f) => Some(f.to_string().into()),
+                                                DsValue::Bool(b) => Some(b.to_string().into()),
+                                                DsValue::Uuid(u) => Some(u.to_string().into()),
+                                                DsValue::Null => None,
                                                 _ => Some(format!("{:?}", row).into()),
                                             };
                                             let _ = framed.send(BackendMessage::DataRow { values: vec![val_bytes] }).await;
@@ -133,16 +133,16 @@ impl YydsGateway {
     }
 
     /// 处理 Postgres 协议请求
-    pub async fn handle_pg_query(&self, tenant_id: Uuid, sql: &str) -> Result<Vec<YYValue>> {
+    pub async fn handle_pg_query(&self, tenant_id: Uuid, sql: &str) -> Result<Vec<DsValue>> {
         // 1. Parse SQL to SqlStatement (which contains OpsGraph for queries)
         let stmt = SqlParser::parse_sql(sql)
-            .map_err(|e| YYError::query(format!("Parse error: {:?}", e)))?;
+            .map_err(|e| DsError::query_with_sql(sql, format!("Parse error: {:?}", e)))?;
         
         // 2. Execute based on statement type
         match stmt {
             SqlStatement::Query(graph) => {
                 self.backend.execute_query(tenant_id, graph).await
-                    .map_err(|e| YYError::internal(format!("Execution error: {:?}", e)))
+                    .map_err(|e| DsError::internal(format!("Execution error: {:?}", e)))
             }
             SqlStatement::Insert { table, key, value } => {
                 self.backend.execute_insert(tenant_id, table, key, value).await?;
@@ -153,27 +153,27 @@ impl YydsGateway {
                 Ok(Vec::new())
             }
             _ => {
-                Err(YYError::query("Unsupported statement type via gateway for now"))
+                Err(DsError::query_with_sql(sql, "Unsupported statement type via gateway for now"))
             }
         }
     }
 
     /// 处理 MySQL 协议请求
-    pub async fn handle_mysql_query(&self, tenant_id: Uuid, sql: &str) -> Result<Vec<YYValue>> {
+    pub async fn handle_mysql_query(&self, tenant_id: Uuid, sql: &str) -> Result<Vec<DsValue>> {
         self.handle_pg_query(tenant_id, sql).await
     }
 
     /// 处理 RBQ 协议请求
-    pub async fn handle_rbq_query(&self, tenant_id: Uuid, rbq: &str) -> Result<Vec<YYValue>> {
+    pub async fn handle_rbq_query(&self, tenant_id: Uuid, rbq: &str) -> Result<Vec<DsValue>> {
         // 1. Parse RBQ to RbqStatement
         let stmt = RbqParser::parse_rbq(rbq)
-            .map_err(|e| YYError::query(format!("Parse error: {:?}", e)))?;
+            .map_err(|e| DsError::query_with_sql(rbq, format!("Parse error: {:?}", e)))?;
         
         // 2. Execute based on statement type
         match stmt {
             RbqStatement::Query(graph) => {
                 self.backend.execute_query(tenant_id, graph).await
-                    .map_err(|e| YYError::internal(format!("Execution error: {:?}", e)))
+                    .map_err(|e| DsError::internal(format!("Execution error: {:?}", e)))
             }
         }
     }
@@ -197,20 +197,4 @@ impl YydsGateway {
         // ... 映射逻辑 ...
         Ok(())
     }
-}
-
-pub mod pg {
-    // 集成 we-trust-postgres
-}
-
-pub mod mysql {
-    // 集成 we-trust-mysql
-}
-
-pub mod s3 {
-    // 集成 we-trust-s3 并实现 S3Service 接口
-}
-
-pub mod arrow {
-    // 集成 we-trust-arrow 实现 Arrow Flight 接口
 }

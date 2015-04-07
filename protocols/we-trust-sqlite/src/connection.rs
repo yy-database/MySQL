@@ -96,7 +96,7 @@ impl SqliteConnection {
     }
 
     pub async fn execute(&self, sql: &str, _params: &[DsValue]) -> Result<u64> {
-        // For now, SqliteExecutor::execute_query returns Vec<YYValue>
+        // For now, SqliteExecutor::execute_query returns Vec<DsValue>
         // We'll wrap it to return affected rows if possible, or 0 for queries.
         let results = self.executor.execute_query(sql).await?;
         Ok(results.len() as u64)

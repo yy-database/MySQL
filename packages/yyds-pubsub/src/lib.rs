@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use yyds_types::{YYValue, YYError};
 use yykv_event::{WalManager, OpType};
+use yykv_types::Redundancy;
 use uuid::Uuid;
 use tokio::sync::broadcast;
 use std::sync::Arc;
@@ -45,7 +46,7 @@ impl PubSubManager {
             tenant_id,
             format!("pubsub:{}", topic),
             OpType::Insert,
-            yyds_types::Redundancy::SINGLE, // Pub/Sub might not need high redundancy by default
+            Redundancy::SINGLE, // Pub/Sub might not need high redundancy by default
             payload
         ).await.map_err(|e| YYError::internal(e.to_string()))?;
 

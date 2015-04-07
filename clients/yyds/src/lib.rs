@@ -40,8 +40,9 @@ pub use we_trust_mysql as mysql;
 #[cfg(feature = "full")]
 pub use we_trust_vector as vector;
 
-pub use yyds_types as types;
-pub use yyds_types::{YYValue, YYError, Result};
+pub use yykv_types as types;
+pub use yykv_types::{DsValue as YYValue, DsError as YYError};
+pub type Result<T> = std::result::Result<T, YYError>;
 
 #[cfg(feature = "full")]
 pub use yyds_consensus as consensus;

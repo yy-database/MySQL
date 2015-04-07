@@ -4164,12 +4164,13 @@ dependencies = [
  "yyds-task",
  "yyds-tenant",
  "yyds-types",
+ "yykv-event",
  "yykv-executor",
  "yykv-index",
  "yykv-operators",
  "yykv-schema",
  "yykv-storage",
- "yykv-wal",
+ "yykv-types",
 ]
 
 [[package]]
@@ -4281,6 +4282,7 @@ dependencies = [
  "uuid",
  "yyds-types",
  "yykv-event",
+ "yykv-types",
 ]
 
 [[package]]
@@ -4313,11 +4315,11 @@ dependencies = [
  "yyds-tenant",
  "yyds-types",
  "yykv-compute",
- "yykv-event",
  "yykv-executor",
  "yykv-index",
  "yykv-operators",
  "yykv-storage",
+ "yykv-wal",
 ]
 
 [[package]]
@@ -4331,6 +4333,7 @@ dependencies = [
  "uuid",
  "yyds-types",
  "yykv-event",
+ "yykv-types",
 ]
 
 [[package]]
@@ -4397,7 +4400,6 @@ dependencies = [
  "yykv-scheduler",
  "yykv-tiering",
  "yykv-types",
- "yykv-wal",
 ]
 
 [[package]]
@@ -4643,10 +4645,13 @@ dependencies = [
 name = "yykv-wal"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "bytes",
+ "chrono",
  "serde",
  "tokio",
  "tracing",
+ "uuid",
  "yykv-types",
 ]
 
