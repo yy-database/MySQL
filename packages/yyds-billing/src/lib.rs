@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

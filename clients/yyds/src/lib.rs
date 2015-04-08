@@ -40,6 +40,9 @@ pub use we_trust_mysql as mysql;
 #[cfg(feature = "full")]
 pub use we_trust_vector as vector;
 
+#![warn(missing_docs)]
+#![doc = include_str!("../readme.md")]
+
 pub use yykv_types as types;
 pub use yykv_types::{DsValue as YYValue, DsError as YYError};
 pub type Result<T> = std::result::Result<T, YYError>;

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use serde::{Deserialize, Serialize};
 use yyds_types::{YYValue, YYError};
 use yykv_event::{WalManager, OpType};

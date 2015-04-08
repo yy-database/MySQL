@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub use yykv_udf::{UdfEngine, UdfRuntime as WasmtimeUdfEngine};
 use yyds_types::{DsValue, DsResult};
 use async_trait::async_trait;

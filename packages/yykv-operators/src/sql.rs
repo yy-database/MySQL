@@ -11,12 +11,12 @@ pub enum SqlStatement {
     },
     Update {
         table: String,
-        selection: Option<crate::OperatorNode>, // Changed from Expr to OperatorNode or whatever is appropriate
-        updates: Vec<(String, crate::OperatorNode)>,
+        selection: Option<crate::Expr>,
+        updates: Vec<(String, crate::Expr)>,
     },
     Delete {
         table: String,
-        selection: Option<crate::OperatorNode>,
+        selection: Option<crate::Expr>,
     },
     CreateTable {
         name: String,

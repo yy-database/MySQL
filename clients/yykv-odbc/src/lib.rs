@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use odbc_sys::*;
 use we_trust::{WeTrustClient, ConnectionOptions};
 use yyds_types::YYValue;

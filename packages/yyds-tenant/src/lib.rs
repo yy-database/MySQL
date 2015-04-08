@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yyds_types::{Redundancy, YYError, InternalId};

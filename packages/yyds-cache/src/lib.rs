@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use yyds_types::{DsValue, DsError};
 use lru::LruCache;
 use std::num::NonZeroUsize;
