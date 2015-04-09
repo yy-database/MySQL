@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
-use yyds_types::YYError;
+use yyds_types::{DsError, DsResult};
 use yykv_event::WalEvent;
 use uuid::Uuid;
 
@@ -49,8 +49,8 @@ pub enum ConsensusMessage {
 /// ConsensusAdapter allows switching between different consensus protocols (e.g., Raft, Gossip).
 #[async_trait]
 pub trait ConsensusAdapter: Send + Sync {
-    async fn propose(&self, event: WalEvent) -> Result<(), YYError>;
-    async fn step(&self, msg: ConsensusMessage) -> Result<(), YYError>;
+    async fn propose(&self, event: WalEvent) -> DsResult<()>;
+    async fn step(&self, msg: ConsensusMessage) -> DsResult<()>;
     async fn role(&self) -> NodeRole;
     async fn term(&self) -> u64;
 }
@@ -80,12 +80,12 @@ impl GossipAdapter {
 
 #[async_trait]
 impl ConsensusAdapter for GossipAdapter {
-    async fn propose(&self, _event: WalEvent) -> Result<(), YYError> {
+    async fn propose(&self, _event: WalEvent) -> DsResult<()> {
         // Implement epidemic propagation
         Ok(())
     }
 
-    async fn step(&self, _msg: ConsensusMessage) -> Result<(), YYError> {
+    async fn step(&self, _msg: ConsensusMessage) -> DsResult<()> {
         // Handle gossip messages
         Ok(())
     }
@@ -107,20 +107,30 @@ pub struct RaftAdapter {
     msg_tx: mpsc::Sender<(Uuid, ConsensusMessage)>,
 }
 
-struct RaftState {
-    role: NodeRole,
-    current_term: u64,
-    voted_for: Option<Uuid>,
-    log: Vec<WalEvent>,
-    commit_index: u64,
-    _last_applied: u64,
-    // Leader state
-    next_index: HashMap<Uuid, u64>,
-    match_index: HashMap<Uuid, u64>,
-    votes_received: HashMap<Uuid, bool>,
+/// Internal state of the Raft node.
+pub struct RaftState {
+    /// Current role of the node.
+    pub role: NodeRole,
+    /// Current term of the node.
+    pub current_term: u64,
+    /// Who the node voted for in the current term.
+    pub voted_for: Option<Uuid>,
+    /// Log entries.
+    pub log: Vec<WalEvent>,
+    /// Index of the highest log entry known to be committed.
+    pub commit_index: u64,
+    /// Index of the highest log entry applied to the state machine.
+    pub _last_applied: u64,
+    /// For each server, index of the next log entry to send to that server.
+    pub next_index: HashMap<Uuid, u64>,
+    /// For each server, index of the highest log entry known to be replicated on that server.
+    pub match_index: HashMap<Uuid, u64>,
+    /// Votes received in the current term.
+    pub votes_received: HashMap<Uuid, bool>,
 }
 
 impl RaftAdapter {
+    /// Create a new RaftAdapter.
     pub fn new(id: Uuid, peers: Vec<Uuid>, msg_tx: mpsc::Sender<(Uuid, ConsensusMessage)>) -> Self {
         Self {
             id,
@@ -138,6 +148,11 @@ impl RaftAdapter {
             }),
             msg_tx,
         }
+    }
+
+    /// Access the internal state of the Raft node.
+    pub fn state(&self) -> &tokio::sync::RwLock<RaftState> {
+        &self.state
     }
 
     /// Internal function to become a candidate and start election
@@ -297,67 +312,5 @@ impl ConsensusAdapter for RaftAdapter {
 
     async fn term(&self) -> u64 {
         self.state.read().await.current_term
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use yykv_types::{YYValue, Redundancy};
-    use chrono::Utc;
-
-    #[tokio::test]
-    async fn test_raft_propose_and_step() {
-        let node_id = Uuid::new_v4();
-        let raft = RaftAdapter::new(node_id);
-        
-        // Mocking leader state
-        {
-            let mut state = raft.state.write().await;
-            state.role = NodeRole::Leader;
-            state.current_term = 1;
-        }
-
-        let event = WalEvent {
-            id: Uuid::now_v7(),
-            tenant_id: Uuid::new_v4(),
-            timestamp: Utc::now(),
-            table: "test".into(),
-            op_type: yyds_wal::OpType::Insert,
-            sdr_level: Redundancy::SINGLE,
-            data: YYValue::Int(100),
-        };
-
-        // Propose a change
-        raft.propose(event.clone()).await.unwrap();
-        
-        {
-            let state = raft.state.read().await;
-            assert_eq!(state.log.len(), 1);
-            assert_eq!(state.log[0].id, event.id);
-        }
-
-        // Simulate receiving AppendEntries as a follower
-        let follower_id = Uuid::new_v4();
-        let follower_raft = RaftAdapter::new(follower_id);
-        
-        let msg = ConsensusMessage::AppendEntries {
-            term: 1,
-            leader_id: node_id,
-            prev_log_index: 0,
-            prev_log_term: 0,
-            entries: vec![event.clone()],
-            leader_commit: 0,
-        };
-
-        follower_raft.step(msg).await.unwrap();
-
-        {
-            let state = follower_raft.state.read().await;
-            assert_eq!(state.log.len(), 1);
-            assert_eq!(state.log[0].id, event.id);
-            assert_eq!(state.role, NodeRole::Follower);
-            assert_eq!(state.current_term, 1);
-        }
     }
 }

@@ -1,10 +1,10 @@
-use crate::{DsError, YYError, YYValue};
+use crate::{DsError, DsValue};
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use chrono::{Datelike, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 use crc32fast::Hasher;
 use uuid::Uuid;
 
-/// YYValue Binary Header (16 bytes minimum)
+/// DsValue Binary Header (16 bytes minimum)
 /// | Magic (2B) | Type (1B) | Flags (1B) | Length (4B) | Checksum (4B) | Payload_Offset (4B) |
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValueHeader {
@@ -89,13 +89,13 @@ impl ValueHeader {
 pub struct DsValueEncoder;
 
 impl DsValueEncoder {
-    pub fn encode(value: &YYValue) -> Result<Bytes, YYError> {
+    pub fn encode(value: &DsValue) -> Result<Bytes, DsError> {
         let mut result = BytesMut::new();
         Self::encode_to_buf(value, &mut result)?;
         Ok(result.freeze())
     }
 
-    pub fn encode_to_buf(value: &YYValue, dst: &mut BytesMut) -> Result<(), YYError> {
+    pub fn encode_to_buf(value: &DsValue, dst: &mut BytesMut) -> Result<(), DsError> {
         let mut payload = BytesMut::new();
         let type_id = Self::encode_payload(value, &mut payload)?;
 
@@ -117,7 +117,7 @@ impl DsValueEncoder {
         Ok(())
     }
 
-    pub fn encode_value(value: &YYValue, dst: &mut BytesMut) -> Result<ValueTypeId, YYError> {
+    pub fn encode_value(value: &DsValue, dst: &mut BytesMut) -> Result<ValueTypeId, DsError> {
         let pos = dst.len();
         dst.put_u8(0); // Placeholder for type ID
         let type_id = Self::encode_payload(value, dst)?;
@@ -125,69 +125,69 @@ impl DsValueEncoder {
         Ok(type_id)
     }
 
-    fn encode_payload(value: &YYValue, dst: &mut BytesMut) -> Result<ValueTypeId, YYError> {
+    fn encode_payload(value: &DsValue, dst: &mut BytesMut) -> Result<ValueTypeId, DsError> {
         match value {
-            YYValue::Null => Ok(ValueTypeId::Null),
-            YYValue::Bool(b) => {
+            DsValue::Null => Ok(ValueTypeId::Null),
+            DsValue::Bool(b) => {
                 dst.put_u8(if *b { 1 } else { 0 });
                 Ok(ValueTypeId::Bool)
             }
-            YYValue::Int(i) => {
+            DsValue::Int(i) => {
                 dst.put_i64(*i);
                 Ok(ValueTypeId::Int)
             }
-            YYValue::Float(f) => {
+            DsValue::Float(f) => {
                 dst.put_f64(*f);
                 Ok(ValueTypeId::Float)
             }
-            YYValue::Text(s) => {
+            DsValue::Text(s) => {
                 dst.put_u32(s.len() as u32);
                 dst.put_slice(s.as_bytes());
                 Ok(ValueTypeId::Text)
             }
-            YYValue::Bytes(b) => {
+            DsValue::Bytes(b) => {
                 dst.put_u32(b.len() as u32);
                 dst.put_slice(b);
                 Ok(ValueTypeId::Bytes)
             }
-            YYValue::Binary(b) => {
+            DsValue::Binary(b) => {
                 dst.put_u32(b.len() as u32);
                 dst.put_slice(b);
                 Ok(ValueTypeId::Binary)
             }
-            YYValue::Uuid(u) => {
+            DsValue::Uuid(u) => {
                 dst.put_slice(u.as_bytes());
                 Ok(ValueTypeId::Uuid)
             }
-            YYValue::Decimal(d) => {
+            DsValue::Decimal(d) => {
                 let s = d.to_string();
                 dst.put_u32(s.len() as u32);
                 dst.put_slice(s.as_bytes());
                 Ok(ValueTypeId::Decimal)
             }
-            YYValue::Date(d) => {
+            DsValue::Date(d) => {
                 dst.put_i32(d.num_days_from_ce());
                 Ok(ValueTypeId::Date)
             }
-            YYValue::Time(t) => {
+            DsValue::Time(t) => {
                 let nanos =
                     t.num_seconds_from_midnight() as u64 * 1_000_000_000 + t.nanosecond() as u64;
                 dst.put_u64(nanos);
                 Ok(ValueTypeId::Time)
             }
-            YYValue::DateTime(dt) => {
+            DsValue::DateTime(dt) => {
                 dst.put_i64(dt.timestamp());
                 dst.put_u32(dt.timestamp_subsec_nanos());
                 Ok(ValueTypeId::DateTime)
             }
-            YYValue::Vector(v) => {
+            DsValue::Vector(v) => {
                 dst.put_u32(v.0.len() as u32);
                 for &f in &v.0 {
                     dst.put_f32(f);
                 }
                 Ok(ValueTypeId::Vector)
             }
-            YYValue::List(l) => {
+            DsValue::List(l) => {
                 dst.put_u32(l.len() as u32);
                 let table_pos = dst.len();
                 for _ in 0..l.len() {
@@ -206,7 +206,7 @@ impl DsValueEncoder {
                 }
                 Ok(ValueTypeId::List)
             }
-            YYValue::Dict(d) => {
+            DsValue::Dict(d) => {
                 dst.put_u32(d.len() as u32);
                 let mut entries: Vec<_> = d.iter().collect();
                 entries.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
@@ -235,7 +235,7 @@ impl DsValueEncoder {
                 }
                 Ok(ValueTypeId::Dict)
             }
-            YYValue::Object { schema_id, fields } => {
+            DsValue::Object { schema_id, fields } => {
                 dst.put_u32(*schema_id);
                 dst.put_u32(fields.len() as u32);
                 let mut sorted_fields: Vec<_> = fields.iter().collect();
@@ -260,14 +260,14 @@ impl DsValueEncoder {
                 }
                 Ok(ValueTypeId::Object)
             }
-            YYValue::Ext(name, data) => {
+            DsValue::Ext(name, data) => {
                 dst.put_u32(name.len() as u32);
                 dst.put_slice(name.as_bytes());
                 dst.put_u32(data.len() as u32);
                 dst.put_slice(data);
                 Ok(ValueTypeId::Ext)
             }
-            YYValue::File(file) => {
+            DsValue::File(file) => {
                 dst.put_slice(file.file_id.as_bytes());
                 dst.put_u32(file.name.len() as u32);
                 dst.put_slice(file.name.as_bytes());
@@ -280,45 +280,45 @@ impl DsValueEncoder {
     }
 }
 
-pub struct YYValueDecoder;
+pub struct DsValueDecoder;
 
-impl YYValueDecoder {
-    pub fn decode(src: &mut Bytes) -> Result<YYValue, YYError> {
+impl DsValueDecoder {
+    pub fn decode(src: &mut Bytes) -> Result<DsValue, DsError> {
         let header = ValueHeader::decode(src)?;
         src.advance(ValueHeader::SIZE);
         Self::decode_payload(ValueTypeId::from_u8(header.value_type), src)
     }
 
-    fn decode_payload(type_id: ValueTypeId, src: &mut Bytes) -> Result<YYValue, YYError> {
+    fn decode_payload(type_id: ValueTypeId, src: &mut Bytes) -> Result<DsValue, DsError> {
         match type_id {
-            ValueTypeId::Null => Ok(YYValue::Null),
+            ValueTypeId::Null => Ok(DsValue::Null),
             ValueTypeId::Bool => {
                 let b = src.get_u8() != 0;
-                Ok(YYValue::Bool(b))
+                Ok(DsValue::Bool(b))
             }
-            ValueTypeId::Int => Ok(YYValue::Int(src.get_i64())),
-            ValueTypeId::Float => Ok(YYValue::Float(src.get_f64())),
+            ValueTypeId::Int => Ok(DsValue::Int(src.get_i64())),
+            ValueTypeId::Float => Ok(DsValue::Float(src.get_f64())),
             ValueTypeId::Text => {
                 let len = src.get_u32() as usize;
                 let data = src.split_to(len);
                 let s = String::from_utf8(data.to_vec())
                     .map_err(|e| DsError::serialization_with_format("binary", e.to_string()))?;
-                Ok(YYValue::Text(s))
+                Ok(DsValue::Text(s))
             }
             ValueTypeId::Bytes => {
                 let len = src.get_u32() as usize;
                 let data = src.split_to(len);
-                Ok(YYValue::Bytes(data))
+                Ok(DsValue::Bytes(data))
             }
             ValueTypeId::Binary => {
                 let len = src.get_u32() as usize;
                 let data = src.split_to(len);
-                Ok(YYValue::Binary(data))
+                Ok(DsValue::Binary(data))
             }
             ValueTypeId::Uuid => {
                 let mut bytes = [0u8; 16];
                 src.copy_to_slice(&mut bytes);
-                Ok(YYValue::Uuid(Uuid::from_bytes(bytes)))
+                Ok(DsValue::Uuid(Uuid::from_bytes(bytes)))
             }
             ValueTypeId::Decimal => {
                 let len = src.get_u32() as usize;
@@ -328,13 +328,13 @@ impl YYValueDecoder {
                 use std::str::FromStr;
                 let d = rust_decimal::Decimal::from_str(&s)
                     .map_err(|e| DsError::serialization_with_format("binary", e.to_string()))?;
-                Ok(YYValue::Decimal(d))
+                Ok(DsValue::Decimal(d))
             }
             ValueTypeId::Date => {
                 let days = src.get_i32();
                 let d = NaiveDate::from_num_days_from_ce_opt(days)
                     .ok_or_else(|| DsError::serialization_with_format("binary", "Invalid date"))?;
-                Ok(YYValue::Date(d))
+                Ok(DsValue::Date(d))
             }
             ValueTypeId::Time => {
                 let nanos = src.get_u64();
@@ -342,7 +342,7 @@ impl YYValueDecoder {
                 let n = (nanos % 1_000_000_000) as u32;
                 let t = NaiveTime::from_num_seconds_from_midnight_opt(secs as u32, n)
                     .ok_or_else(|| DsError::serialization_with_format("binary", "Invalid time"))?;
-                Ok(YYValue::Time(t))
+                Ok(DsValue::Time(t))
             }
             ValueTypeId::DateTime => {
                 let secs = src.get_i64();
@@ -350,7 +350,7 @@ impl YYValueDecoder {
                 let dt = Utc.timestamp_opt(secs, n)
                     .single()
                     .ok_or_else(|| DsError::serialization_with_format("binary", "Invalid datetime"))?;
-                Ok(YYValue::DateTime(dt))
+                Ok(DsValue::DateTime(dt))
             }
             ValueTypeId::Vector => {
                 let len = src.get_u32() as usize;
@@ -358,7 +358,7 @@ impl YYValueDecoder {
                 for _ in 0..len {
                     v.push(src.get_f32());
                 }
-                Ok(YYValue::Vector(crate::Vector(v)))
+                Ok(DsValue::Vector(crate::Vector(v)))
             }
             ValueTypeId::List => {
                 let len = src.get_u32() as usize;
@@ -370,7 +370,7 @@ impl YYValueDecoder {
                 for _ in 0..len {
                     list.push(Self::decode_value(src)?);
                 }
-                Ok(YYValue::List(list))
+                Ok(DsValue::List(list))
             }
             ValueTypeId::Dict => {
                 let len = src.get_u32() as usize;
@@ -389,7 +389,7 @@ impl YYValueDecoder {
                     let value = Self::decode_value(src)?;
                     dict.insert(key, value);
                 }
-                Ok(YYValue::Dict(dict))
+                Ok(DsValue::Dict(dict))
             }
             ValueTypeId::Object => {
                 let schema_id = src.get_u32();
@@ -405,7 +405,7 @@ impl YYValueDecoder {
                     let value = Self::decode_value(src)?;
                     fields.insert(tag, value);
                 }
-                Ok(YYValue::Object { schema_id, fields })
+                Ok(DsValue::Object { schema_id, fields })
             }
             ValueTypeId::Ext => {
                 let name_len = src.get_u32() as usize;
@@ -414,7 +414,7 @@ impl YYValueDecoder {
                     .map_err(|e| DsError::serialization_with_format("binary", e.to_string()))?;
                 let data_len = src.get_u32() as usize;
                 let data = src.split_to(data_len).to_vec();
-                Ok(YYValue::Ext(name, data))
+                Ok(DsValue::Ext(name, data))
             }
             ValueTypeId::File => {
                 let mut file_id_bytes = [0u8; 16];
@@ -429,7 +429,7 @@ impl YYValueDecoder {
                 let mime_data = src.split_to(mime_len);
                 let mime_type = String::from_utf8(mime_data.to_vec())
                     .map_err(|e| DsError::serialization_with_format("binary", e.to_string()))?;
-                Ok(YYValue::File(crate::DsFile {
+                Ok(DsValue::File(crate::DsFile {
                     file_id,
                     name,
                     size,
@@ -439,7 +439,7 @@ impl YYValueDecoder {
         }
     }
 
-    pub fn decode_value(src: &mut Bytes) -> Result<YYValue, YYError> {
+    pub fn decode_value(src: &mut Bytes) -> Result<DsValue, DsError> {
         let type_id_u8 = src.get_u8();
         let type_id = ValueTypeId::from_u8(type_id_u8);
         Self::decode_payload(type_id, src)
@@ -472,16 +472,16 @@ impl ValueTypeId {
     }
 }
 
-/// YYDS Binary Encoder for YYValue.
-pub struct YYDSValueEncoder;
+/// DsValue Binary Encoder for DsValue.
+pub struct DsValueBinaryEncoder;
 
-impl YYDSValueEncoder {
-    /// Encode a YYValue into its binary representation.
-    pub fn encode(value: &crate::YYValue) -> Result<bytes::Bytes, crate::YYError> {
+impl DsValueBinaryEncoder {
+    /// Encode a DsValue into its binary representation.
+    pub fn encode(value: &crate::DsValue) -> Result<bytes::Bytes, crate::DsError> {
         DsValueEncoder::encode(value)
     }
 
-    /// Get the magic bytes used for YYDS binary format.
+    /// Get the magic bytes used for binary format.
     pub fn magic() -> [u8; 2] {
         VALUE_MAGIC
     }

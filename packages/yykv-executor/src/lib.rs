@@ -110,16 +110,6 @@ impl YykvExecutor {
         Ok(results)
     }
 
-    /*
-        /// Execute a search query using the local index
-        pub async fn execute_search(&self, query: &str, tenant_id: Uuid) -> Result<Vec<YYValue>> {
-            let ids = self.index.search(query, tenant_id).await
-                .map_err(|e| YYError::Execution(format!("Search failed: {:?}", e)))?;
-
-            Ok(ids.into_iter().map(|id| YYValue::Uuid(id)).collect())
-        }
-    */
-
     pub fn add_peer(&mut self, node: ComputeNode) {
         self.peers.insert(node.id, node);
     }
