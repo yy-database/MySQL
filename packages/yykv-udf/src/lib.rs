@@ -38,14 +38,7 @@ struct UdfState {
     table: ResourceTable,
 }
 
-impl WasiView for UdfState {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
-    }
-    fn ctx(&mut self) -> &mut WasiCtx {
-        &mut self.wasi_ctx
-    }
-}
+impl WasiView for UdfState {}
 
 impl UdfRuntime {
     pub fn new() -> DsResult<Self> {

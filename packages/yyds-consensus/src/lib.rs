@@ -156,7 +156,7 @@ impl RaftAdapter {
     }
 
     /// Internal function to become a candidate and start election
-    pub async fn start_election(&self) -> Result<(), YYError> {
+    pub async fn start_election(&self) -> DsResult<()> {
         let mut state = self.state.write().await;
         state.role = NodeRole::Candidate;
         state.current_term += 1;
@@ -188,10 +188,10 @@ impl RaftAdapter {
 
 #[async_trait]
 impl ConsensusAdapter for RaftAdapter {
-    async fn propose(&self, event: WalEvent) -> Result<(), YYError> {
+    async fn propose(&self, event: WalEvent) -> DsResult<()> {
         let mut state = self.state.write().await;
         if state.role != NodeRole::Leader {
-            return Err(YYError::execution("Not a leader"));
+            return Err(DsError::execution("Not a leader"));
         }
 
         // Add to local log
@@ -222,7 +222,7 @@ impl ConsensusAdapter for RaftAdapter {
         Ok(())
     }
 
-    async fn step(&self, msg: ConsensusMessage) -> Result<(), YYError> {
+    async fn step(&self, msg: ConsensusMessage) -> DsResult<()> {
         let mut state = self.state.write().await;
         
         match msg {
