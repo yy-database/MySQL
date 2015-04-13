@@ -11,8 +11,8 @@ pub enum SqlStatement {
     },
     Update {
         table: String,
-        selection: Option<crate::Expr>,
         updates: Vec<(String, crate::Expr)>,
+        selection: Option<crate::Expr>,
     },
     Delete {
         table: String,

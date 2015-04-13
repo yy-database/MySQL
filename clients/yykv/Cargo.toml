@@ -19,6 +19,7 @@ oak-json = { workspace = true }
 uuid = { workspace = true }
 
 # Engine dependencies (optional)
+yykv-wal = { workspace = true, optional = true }
 yykv-hal = { workspace = true, optional = true }
 yykv-allocator = { workspace = true, optional = true }
 yykv-layout = { workspace = true, optional = true }
@@ -30,6 +31,7 @@ async-trait = { workspace = true, optional = true }
 [features]
 default = []
 engine = [
+    "yykv-wal",
     "yykv-hal",
     "yykv-allocator",
     "yykv-layout",

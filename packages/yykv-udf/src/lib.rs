@@ -6,7 +6,7 @@ use wasmtime::{
     Config, Engine,
     component::Linker,
 };
-use wasmtime_wasi::{WasiCtx, WasiView, WasiCtxBuilder, ResourceTable};
+use wasmtime_wasi::{WasiCtx, WasiView, WasiCtxBuilder, ResourceTable, WasiCtxView};
 use yykv_types::{DsError, DsResult, DsValue};
 
 #[async_trait]
@@ -38,7 +38,14 @@ struct UdfState {
     table: ResourceTable,
 }
 
-impl WasiView for UdfState {}
+impl WasiView for UdfState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            ctx: &mut self.wasi_ctx,
+            table: &mut self.table,
+        }
+    }
+}
 
 impl UdfRuntime {
     pub fn new() -> DsResult<Self> {

@@ -12,5 +12,6 @@ chrono = { workspace = true }
 tokio = { workspace = true }
 yyds-types = { workspace = true }
 yykv-types = { workspace = true }
+yykv-wal = { workspace = true }
 yykv-event = { workspace = true }
 tracing = { workspace = true }

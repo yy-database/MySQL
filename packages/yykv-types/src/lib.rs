@@ -9,7 +9,7 @@ pub mod layout;
 // Re-export core types from yyds-types
 pub use yyds_types::{
     DsError, DsErrorKind, DsResult,
-    DsValue, DsFile, Vector, FieldType, FieldConstraint, DsSchema, YYSchema,
+    DsValue, DsFile, Vector, FieldType, FieldConstraint, DsSchema,
     ToValue, FromValue, PageId, Lsn, Redundancy, Page, StorageConfig,
     DeviceConfig, MediumType, PageInfo, InternalId, TableInfo, ColumnInfo,
     ForeignKeyInfo, EnumInfo, SchemaInspector,

@@ -1,10 +1,10 @@
 package yykv:udf;
 
 interface processor {
-    /// Process a single YYValue
+    /// Process a single DsValue
     process: func(value: list<u8>) -> result<list<u8>, string>;
     
-    /// Filter a YYValue
+    /// Filter a DsValue
     filter: func(value: list<u8>) -> bool;
 }
 

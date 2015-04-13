@@ -1,6 +1,6 @@
 use yykv_executor::*;
 use yykv_event::{WalManager, OpType};
-use yykv_types::{DsResult, DsValue, DsError};
+use yyds_types::{DsResult, DsValue, DsError};
 use async_trait::async_trait;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -9,8 +9,8 @@ struct MockUdf;
 #[async_trait]
 impl UdfEngine for MockUdf {
     async fn call(&self, name: &str, input: Vec<u8>) -> DsResult<DsValue> {
-        use yykv_types::layout::YYValueDecoder;
-        let val = YYValueDecoder::decode(&input.into())
+        use yyds_types::layout::DsValueDecoder;
+        let val = DsValueDecoder::decode(&input.into())
             .map_err(|e| DsError::internal(format!("UDF decode failed: {:?}", e)))?;
 
         if name == "to_upper"
@@ -38,7 +38,7 @@ async fn test_wae_near_data_computing_distributed() {
         tenant_id,
         "users".into(),
         OpType::Insert,
-        yykv_types::Redundancy::SINGLE,
+        yyds_types::Redundancy::SINGLE,
         DsValue::Text("yykv".into()),
     )
     .await

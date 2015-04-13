@@ -1,5 +1,5 @@
 use yykv_operators::OpsGraph;
-use yykv_types::{DsValue, YYSchema as DsSchema};
+use yyds_types::{DsValue, DsSchema};
 
 // Re-defining SqlStatement here as an intermediate representation inside Gateway
 // before converting to OpsGraph or executing directly (for DDL).
