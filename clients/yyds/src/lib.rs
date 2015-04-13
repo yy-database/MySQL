@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+#![doc = include_str!("../readme.md")]
 //! yyds - Aggregate of the yyds ecosystem
 //!
 //! This crate provides a unified interface to the various components of the yyds ecosystem.
@@ -27,21 +29,6 @@
 //! ```
 
 pub use we_trust as trust;
-#[cfg(feature = "full")]
-pub use we_trust_postgres as postgres;
-#[cfg(feature = "full")]
-pub use we_trust_s3 as s3;
-#[cfg(feature = "full")]
-pub use we_trust_otel as otel;
-#[cfg(feature = "full")]
-pub use we_trust_arrow as arrow;
-#[cfg(feature = "full")]
-pub use we_trust_mysql as mysql;
-#[cfg(feature = "full")]
-pub use we_trust_vector as vector;
-
-#![warn(missing_docs)]
-#![doc = include_str!("../readme.md")]
 
 pub use yykv_types as types;
 pub use yykv_types::{DsValue as YYValue, DsError as YYError};
