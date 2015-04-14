@@ -11,7 +11,7 @@ pub use uuid::Uuid;
 mod errors;
 pub mod layout;
 
-pub use errors::{DsError, DsErrorKind, DsResult, YYError};
+pub use errors::{DsError, DsErrorKind, DsResult};
 
 /// Page ID type.
 pub type PageId = u64;
@@ -317,6 +317,9 @@ pub trait SchemaInspector: Send + Sync {
     /// Retrieve tables and enums.
     async fn introspect(&self, schema: Option<&str>) -> DsResult<(Vec<TableInfo>, Vec<EnumInfo>)>;
 }
+
+/// Core data unit.
+pub type YYValue = DsValue;
 
 /// Core data unit.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

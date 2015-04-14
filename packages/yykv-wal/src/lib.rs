@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
-use tokio::sync::Mutex;
+use tokio::sync::{broadcast, Mutex};
 use tracing::{debug, info, warn};
 use yykv_types::{DsValue, DsResult, Redundancy, DsError, Uuid};
 use bytes::{BytesMut, Buf, BufMut, Bytes};
@@ -130,11 +130,36 @@ impl WalEntry {
             _ => Err(DsError::serialization(format!("Unknown WalEntry type: {}", type_id))),
         }
     }
+
+    /// Get the table name.
+    pub fn table(&self) -> &str {
+        match self {
+            WalEntry::Put { table, .. } => table,
+            WalEntry::Delete { table, .. } => table,
+        }
+    }
+
+    /// Get the tenant ID.
+    pub fn tenant_id(&self) -> Uuid {
+        match self {
+            WalEntry::Put { tenant_id, .. } => *tenant_id,
+            WalEntry::Delete { tenant_id, .. } => *tenant_id,
+        }
+    }
+
+    /// Get the key.
+    pub fn key(&self) -> &str {
+        match self {
+            WalEntry::Put { key, .. } => key,
+            WalEntry::Delete { key, .. } => key,
+        }
+    }
 }
 
 pub struct WalManager {
     path: PathBuf,
     file: Arc<Mutex<File>>,
+    notifier: broadcast::Sender<Arc<WalEntry>>,
 }
 
 impl WalManager {
@@ -147,7 +172,18 @@ impl WalManager {
             .open(&path)
             .await?;
 
-        Ok(Self { path, file: Arc::new(Mutex::new(file)) })
+        let (notifier, _) = broadcast::channel(1024);
+
+        Ok(Self { 
+            path, 
+            file: Arc::new(Mutex::new(file)),
+            notifier,
+        })
+    }
+
+    /// Subscribe to WAL events.
+    pub fn subscribe(&self) -> broadcast::Receiver<Arc<WalEntry>> {
+        self.notifier.subscribe()
     }
 
     pub async fn write(
@@ -171,6 +207,7 @@ impl WalManager {
     }
 
     pub async fn append(&self, entry: WalEntry) -> DsResult<()> {
+        let entry = Arc::new(entry);
         let data = entry.encode()?;
         let len = data.len() as u32;
 
@@ -179,6 +216,9 @@ impl WalManager {
         file.write_u32(len).await?;
         file.write_all(&data).await?;
         file.flush().await?;
+
+        // Notify subscribers
+        let _ = self.notifier.send(entry);
 
         Ok(())
     }

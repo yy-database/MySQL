@@ -81,7 +81,7 @@ impl ServerState {
     }
 }
 
-use yyds_types::layout::YYValueDecoder;
+use yyds_types::layout::DsValueDecoder;
 use yyds_types::FromValue;
 
 #[async_trait]
@@ -103,7 +103,7 @@ impl yyds_gateway::GatewayBackend for ServerState {
     async fn execute_delete(&self, _tenant_id: Uuid, _table: String, _selection: Option<yykv_operators::Expr>) -> DsResult<()> {
         // Selection handling is complex, for now we just support simple delete or return error
         // In a real implementation, we would translate Expr to storage predicates
-        Err(YYError::execution("Complex DELETE via PG gateway not yet fully implemented"))
+        Err(DsError::execution("delete", "Complex DELETE via PG gateway not yet fully implemented"))
     }
 }
 
@@ -140,7 +140,7 @@ impl WaePipeline {
 
             // 2. Real-time Indexing
             if event.table.starts_with("search:") || event.table == "sys:docs" {
-                if let yyds_types::YYValue::Text(content) = event.data {
+                if let yyds_types::DsValue::Text(content) = event.data {
                     let _ = self.index.index_document(event.id, event.tenant_id, content).await;
                 }
             }
@@ -150,11 +150,11 @@ impl WaePipeline {
 
 const BILLING_FILE: &str = "persistence/billing_data.json";
 
-pub async fn run() -> std::result::Result<(), YYError> {
+pub async fn run() -> std::result::Result<(), DsError> {
     tracing_subscriber::fmt::init();
     
     // Ensure persistence directory exists
-    std::fs::create_dir_all("persistence").map_err(|e| YYError::io(format!("Failed to create persistence directory: {}", e)))?;
+    std::fs::create_dir_all("persistence").map_err(|e| DsError::io(format!("Failed to create persistence directory: {}", e)))?;
 
     let storage_config = StorageConfig {
         devices: vec![DeviceConfig {
@@ -167,7 +167,7 @@ pub async fn run() -> std::result::Result<(), YYError> {
         checkpoint_interval_secs: 60, // Checkpoint every minute
         local_shard_id: Some(1),
     };
-    let storage = Arc::new(YydsStorage::new(storage_config).await.map_err(|e| YYError::storage(format!("Failed to init storage: {:?}", e)))?);
+    let storage = Arc::new(YydsStorage::new(storage_config).await.map_err(|e| DsError::storage(format!("Failed to init storage: {:?}", e)))?);
 
     // Initialize WAL
     let wal = Arc::new(WalManager::new(1024));
@@ -265,7 +265,7 @@ pub async fn run() -> std::result::Result<(), YYError> {
         }
     });
 
-    let listener = TcpListener::bind(addr).await.map_err(|e| YYError::io(format!("Failed to bind to {}: {}", addr, e)))?;
+    let listener = TcpListener::bind(addr).await.map_err(|e| DsError::io(format!("Failed to bind to {}: {}", addr, e)))?;
     info!("YYDS Server started on {}", addr);
 
     loop {
@@ -360,8 +360,8 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                     continue;
                 }
                 let key = String::from_utf8(p.copy_to_bytes(key_len).to_vec())?;
-                let value = yyds_types::layout::YYValueDecoder::decode(&mut p)
-                    .map_err(|e| YYError::serialization(format!("Value decode error: {:?}", e)))?;
+                let value = yyds_types::layout::DsValueDecoder::decode(&mut p)
+                    .map_err(|e| DsError::serialization(format!("Value decode error: {:?}", e)))?;
                 
                 state.handle_insert(header.tenant_id, "default".into(), key, value, header.sdr_level()).await?;
                 
@@ -387,11 +387,11 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                 let key = String::from_utf8(p.copy_to_bytes(key_len).to_vec())?;
                 
                 let result = state.storage.get(tenant_internal_id.0, &key).await
-                    .map_err(|e| YYError::storage(format!("YYKV Get error: {:?}", e)))?;
+                    .map_err(|e| DsError::storage("get", format!("YYKV Get error: {:?}", e)))?;
                 
                 if let Some(val) = result {
                     let resp_data = yyds_types::layout::DsValueEncoder::encode(&val)
-                        .map_err(|e| YYError::serialization(format!("Value encode error: {:?}", e)))?;
+                        .map_err(|e| DsError::serialization(format!("Value encode error: {:?}", e)))?;
                     
                     let mut resp = TrustMessage::new(MessageType::Response, header.tenant_id, resp_data);
                     resp.header.sign(&tenant_secret);
@@ -415,7 +415,7 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                 let key = String::from_utf8(p.copy_to_bytes(key_len).to_vec())?;
 
                 state.storage.delete(tenant_internal_id.0, key).await
-                    .map_err(|e| YYError::storage(format!("YYKV Delete error: {:?}", e)))?;
+                    .map_err(|e| DsError::storage("delete", format!("YYKV Delete error: {:?}", e)))?;
                 
                 // WAE for Delete
                 state.wal.write(
@@ -423,7 +423,7 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                     "default".into(),
                     OpType::Delete,
                     header.sdr_level(),
-                    yyds_types::YYValue::Null
+                    yyds_types::DsValue::Null
                 ).await?;
 
                 let mut resp = TrustMessage::new(MessageType::Response, header.tenant_id, Bytes::new());
@@ -432,19 +432,19 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
             }
             t if t == MessageType::Query as u8 => { // QUERY
                 let mut p = payload;
-                let graph_value = YYValueDecoder::decode(&mut p)
-                    .map_err(|e| YYError::serialization(format!("OpsGraph decode error: {:?}", e)))?;
+                let graph_value = DsValueDecoder::decode(&mut p)
+                    .map_err(|e| DsError::serialization(format!("OpsGraph decode error: {:?}", e)))?;
                 let graph = OpsGraph::from_value(graph_value)
-                    .map_err(|e| YYError::serialization(format!("OpsGraph parse error: {:?}", e)))?;
+                    .map_err(|e| DsError::serialization(format!("OpsGraph parse error: {:?}", e)))?;
                 
                 info!("Executing query graph {} for tenant {}", graph.id, header.tenant_id);
                 
                 let results = state.executor.execute_local(graph, header.tenant_id).await
-                    .map_err(|e| YYError::execution(format!("Executor error: {:?}", e)))?;
+                    .map_err(|e| DsError::execution("query", format!("Executor error: {:?}", e)))?;
                 
-                let result_value = yyds_types::YYValue::List(results);
+                let result_value = yyds_types::DsValue::List(results);
                 let resp_data = yyds_types::layout::DsValueEncoder::encode(&result_value)
-                    .map_err(|e| YYError::serialization(format!("Value encode error: {:?}", e)))?;
+                    .map_err(|e| DsError::serialization(format!("Value encode error: {:?}", e)))?;
                 
                 let mut resp = TrustMessage::new(MessageType::QueryResp, header.tenant_id, resp_data);
                 resp.header.sign(&tenant_secret);

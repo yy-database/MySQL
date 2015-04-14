@@ -1,7 +1,6 @@
 use we_trust::*;
 use yykv_types::{DsError, DsValue, Redundancy};
-use yykv_types::layout::YYValueDecoder;
-use yykv_types::encoding::DsValueEncoder;
+use yykv_types::layout::{DsValueDecoder, DsValueEncoder};
 use tokio::net::TcpListener;
 use tokio_stream::StreamExt;
 use futures::SinkExt;
@@ -78,7 +77,7 @@ fn test_yyvalue_codec_zero_copy_logic() -> Result<(), DsError> {
 
     // The rest should be the encoded YYValue
     let payload = encoded.slice(TrustHeader::SIZE..);
-    let decoded_value = YYValueDecoder::decode(&payload)?;
+    let decoded_value = DsValueDecoder::decode(&payload)?;
     assert_eq!(decoded_value, value);
 
     Ok(())

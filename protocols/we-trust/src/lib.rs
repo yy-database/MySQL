@@ -2,7 +2,7 @@
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use uuid::Uuid;
-use yykv_types::layout::{DsValueEncoder, YYValueDecoder};
+use yykv_types::layout::{DsValueDecoder, DsValueEncoder};
 pub use yykv_types::{DsError, DsValue, Redundancy};
 
 use crc32fast::Hasher;
@@ -339,7 +339,7 @@ impl YyValueCodec {
     pub fn decode(mut data: BytesMut) -> Result<(DsValue, TrustHeader), DsError> {
         let header = TrustHeader::decode(&mut data)?;
         let mut payload = data.freeze();
-        let value = YYValueDecoder::decode(&mut payload)?;
+        let value = DsValueDecoder::decode(&mut payload)?;
         Ok((value, header))
     }
 }
@@ -450,8 +450,8 @@ impl WeTrustClient {
             return Ok(None);
         }
 
-        // Use YYValueDecoder to decode the value from the response
-        let val = YYValueDecoder::decode(&mut data)?;
+        // Use DsValueDecoder to decode the value from the response
+        let val = DsValueDecoder::decode(&mut data)?;
         Ok(Some(val))
     }
 
@@ -475,7 +475,7 @@ impl WeTrustClient {
             ));
         }
         let mut data = resp.payload;
-        let value = YYValueDecoder::decode(&mut data)?;
+        let value = DsValueDecoder::decode(&mut data)?;
         Ok(value)
     }
 

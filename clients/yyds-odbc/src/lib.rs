@@ -2,7 +2,7 @@
 
 use odbc_sys::*;
 use we_trust::{WeTrustClient, ConnectionOptions};
-use yyds_types::YYValue;
+use yyds_types::DsValue;
 use tokio::runtime::Runtime;
 use std::ptr;
 use std::slice;
@@ -22,7 +22,7 @@ pub struct Conn {
 
 pub struct Stmt {
     pub conn: *mut Conn,
-    pub results: Vec<Vec<YYValue>>,
+    pub results: Vec<Vec<DsValue>>,
     pub current_row: usize,
 }
 
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn SQLExecDirect(
     };
 
     if let Some(ref mut client) = conn_obj.client {
-        let result: Result<Vec<Vec<YYValue>>, yyds_types::DsError> = conn_obj.runtime.block_on(async {
+        let result: Result<Vec<Vec<DsValue>>, yyds_types::DsError> = conn_obj.runtime.block_on(async {
             client.send_query(&query).await
         });
 
@@ -224,7 +224,7 @@ pub unsafe extern "C" fn SQLGetData(
 
     let val = &row[col_idx];
     match val {
-        YYValue::Text(s) => {
+        DsValue::Text(s) => {
             let bytes = s.as_bytes();
             let len = bytes.len();
             if !target_value_ptr.is_null() {
@@ -243,34 +243,34 @@ pub unsafe extern "C" fn SQLGetData(
             }
             SqlReturn::SUCCESS
         }
-        YYValue::Int(i) => {
+        DsValue::Int(i) => {
             if !target_value_ptr.is_null() {
                 unsafe { *(target_value_ptr as *mut i64) = *i };
             }
             if !str_len_or_ind_ptr.is_null() {
-                unsafe { *str_len_or_ind_ptr = 8 };
+                unsafe { *str_len_or_ind_ptr = 8 }; // sizeof(i64)
             }
             SqlReturn::SUCCESS
         }
-        YYValue::Float(f) => {
+        DsValue::Float(f) => {
             if !target_value_ptr.is_null() {
                 unsafe { *(target_value_ptr as *mut f64) = *f };
             }
             if !str_len_or_ind_ptr.is_null() {
-                unsafe { *str_len_or_ind_ptr = 8 };
+                unsafe { *str_len_or_ind_ptr = 8 }; // sizeof(f64)
             }
             SqlReturn::SUCCESS
         }
-        YYValue::Bool(b) => {
+        DsValue::Bool(b) => {
             if !target_value_ptr.is_null() {
                 unsafe { *(target_value_ptr as *mut u8) = if *b { 1 } else { 0 } };
             }
             if !str_len_or_ind_ptr.is_null() {
-                unsafe { *str_len_or_ind_ptr = 1 };
+                unsafe { *str_len_or_ind_ptr = 1 }; // sizeof(u8)
             }
             SqlReturn::SUCCESS
         }
-        YYValue::Null => {
+        DsValue::Null => {
             if !str_len_or_ind_ptr.is_null() {
                 unsafe { *str_len_or_ind_ptr = -1 }; // SQL_NULL_DATA
             }
