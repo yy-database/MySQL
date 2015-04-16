@@ -24,7 +24,8 @@ use yykv_tiering::TieredStorage;
 #[cfg(feature = "engine")]
 use yykv_types::{PageId, StorageConfig};
 #[cfg(feature = "engine")]
-use yykv_wal::{WalEntry, WalManager};
+use yykv_wal::{OpType, WalEntry, WalManager};
+use uuid::Uuid;
 
 /// YYKV Client: A lightweight client for the YYKV storage engine.
 pub struct Client {
@@ -129,11 +130,14 @@ impl YyKv {
                         key,
                         value,
                         sdr,
+                        ..
                     } => {
-                        kv.put_internal(tenant_id, key, value, sdr).await?;
+                        let tid = (tenant_id.as_u128() & 0xFFFFFFFFFFFFFFFF) as u64;
+                        kv.put_internal(tid, key, value, sdr).await?;
                     }
-                    WalEntry::Delete { tenant_id, key } => {
-                        kv.delete_internal(tenant_id, &key).await?;
+                    WalEntry::Delete { tenant_id, key, .. } => {
+                        let tid = (tenant_id.as_u128() & 0xFFFFFFFFFFFFFFFF) as u64;
+                        kv.delete_internal(tid, &key).await?;
                     }
                 }
             }
@@ -232,7 +236,7 @@ impl YyKv {
     /// Internal put that doesn't write to WAL (used during recovery)
     async fn put_internal(
         &self,
-        tenant_id: u64,
+        tenant_id: uuid::Uuid,
         key: String,
         value: DsValue,
         sdr: Redundancy,
@@ -258,7 +262,7 @@ impl YyKv {
     }
 
     /// Internal delete that doesn't write to WAL (used during recovery)
-    async fn delete_internal(&self, tenant_id: u64, key: &str) -> DsResult<()> {
+    async fn delete_internal(&self, tenant_id: uuid::Uuid, key: &str) -> DsResult<()> {
         let mut index = self.index.write().await;
         let tenant_key = format!("{}:{}", tenant_id, key);
         index.remove(&tenant_key);
@@ -268,21 +272,23 @@ impl YyKv {
     /// Put a value with a specific SDR (Software-Defined Redundancy) level and tenant context.
     pub async fn put(
         &self,
-        tenant_id: u64,
+        tenant_id: uuid::Uuid,
         key: String,
         value: DsValue,
         sdr: Redundancy,
     ) -> DsResult<()> {
         // 1. Write to WAL first
         if let Some(ref wal) = self.wal {
-            let mut wal_lock = wal.write().await;
+            let wal_lock = wal.read().await;
             wal_lock
-                .append(WalEntry::Put {
+                .write(
                     tenant_id,
-                    key: key.clone(),
-                    value: value.clone(),
+                    "default".to_string(),
+                    key.clone(),
+                    yykv_wal::OpType::Insert,
                     sdr,
-                })
+                    value.clone(),
+                )
                 .await
                 .map_err(|e| DsError::storage(format!("WAL write failed: {}", e)))?;
         }
@@ -292,15 +298,12 @@ impl YyKv {
     }
 
     /// Delete a value by key and tenant context.
-    pub async fn delete(&self, tenant_id: u64, key: String) -> DsResult<()> {
+    pub async fn delete(&self, tenant_id: uuid::Uuid, key: String) -> DsResult<()> {
         // 1. Write to WAL first
         if let Some(ref wal) = self.wal {
-            let mut wal_lock = wal.write().await;
+            let wal_lock = wal.read().await;
             wal_lock
-                .append(WalEntry::Delete {
-                    tenant_id,
-                    key: key.clone(),
-                })
+                .delete(tenant_id, "default".to_string(), key.clone())
                 .await
                 .map_err(|e| DsError::storage(format!("WAL write failed: {}", e)))?;
         }
@@ -310,7 +313,7 @@ impl YyKv {
     }
 
     /// Get a value by key and tenant context.
-    pub async fn get(&self, tenant_id: u64, key: &str) -> DsResult<Option<DsValue>> {
+    pub async fn get(&self, tenant_id: uuid::Uuid, key: &str) -> DsResult<Option<DsValue>> {
         let index = self.index.read().await;
         let tenant_key = format!("{}:{}", tenant_id, key);
         let page_ids = match index.get(&tenant_key) {
@@ -333,7 +336,7 @@ impl YyKv {
     /// Perform a vector search with pushdown to the storage layer.
     pub async fn vector_search(
         &self,
-        tenant_id: u64,
+        tenant_id: uuid::Uuid,
         query: Vec<f32>,
         metric: VectorMetric,
         top_k: usize,
@@ -348,38 +351,36 @@ impl YyKv {
                 continue;
             }
 
-            let key = tenant_key
-                .strip_prefix(&prefix)
-                .unwrap_or(tenant_key)
-                .to_string();
-
-            // Try reading from replicas
-            for page_id in page_ids {
+            // Extract original key
+            let key = tenant_key.strip_prefix(&prefix).unwrap_or(tenant_key);
+            
+            // Try reading from any replica
+            if let Some(page_id) = page_ids.first() {
                 let mut tier = self.tiering.write().await;
-                // Get raw data for pushdown
-                if let Ok(raw_data) = tier.read_raw(*page_id).await {
-                    let op = VectorSearchOperator {
-                        query_vector: query.clone(),
-                        metric,
-                        top_k,
-                    };
-
-                    if let Ok(result_bytes) = self.compute.pushdown(&op, &raw_data).await {
-                        // For VectorSearchOperator, result_bytes is f32 similarity
-                        if result_bytes.len() == 4 {
-                            let sim = f32::from_le_bytes(result_bytes.try_into().unwrap());
-                            results.push((sim, key.clone()));
-                        }
+                if let Ok(val) = tier.read_value(*page_id).await {
+                    if let DsValue::Vector(v) = val {
+                        let dist = match metric {
+                            VectorMetric::L2 => {
+                                v.iter().zip(query.iter()).map(|(a, b)| (a - b).powi(2)).sum::<f32>().sqrt()
+                            }
+                            VectorMetric::Cosine => {
+                                let dot: f32 = v.iter().zip(query.iter()).map(|(a, b)| a * b).sum();
+                                let mag1: f32 = v.iter().map(|a| a.powi(2)).sum::<f32>().sqrt();
+                                let mag2: f32 = query.iter().map(|a| a.powi(2)).sum::<f32>().sqrt();
+                                1.0 - (dot / (mag1 * mag2))
+                            }
+                            VectorMetric::Ip => {
+                                -v.iter().zip(query.iter()).map(|(a, b)| a * b).sum::<f32>()
+                            }
+                        };
+                        results.push((dist, key.to_string()));
                     }
-                    break; // Successfully processed this key
                 }
             }
         }
 
-        // Sort and take top_k
-        results.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         results.truncate(top_k);
-
         Ok(results)
     }
 

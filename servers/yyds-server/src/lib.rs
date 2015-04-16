@@ -72,6 +72,7 @@ impl ServerState {
         self.wal.write(
             tenant_id,
             table,
+            key,
             OpType::Insert,
             redundancy,
             value
@@ -130,18 +131,18 @@ impl WaePipeline {
         info!("WAE Pipeline started");
 
         while let Ok(event) = rx.recv().await {
-            info!("WAE Pipeline: Processing event {} for tenant {}", event.id, event.tenant_id);
+            info!("WAE Pipeline: Processing event {} for tenant {}", event.id(), event.tenant_id());
             
             // 1. Audit Task Creation
-            if event.op_type == OpType::Insert {
+            if event.op_type() == OpType::Insert {
                 let tm = self.task_manager.lock().await;
-                let _ = tm.submit(event.tenant_id, format!("Audit:Insert:{}", event.table), event.data.clone()).await;
+                let _ = tm.submit(event.tenant_id(), format!("Audit:Insert:{}", event.table()), event.value().cloned().unwrap_or(DsValue::Null)).await;
             }
 
             // 2. Real-time Indexing
-            if event.table.starts_with("search:") || event.table == "sys:docs" {
-                if let yyds_types::DsValue::Text(content) = event.data {
-                    let _ = self.index.index_document(event.id, event.tenant_id, content).await;
+            if event.table().starts_with("search:") || event.table() == "sys:docs" {
+                if let Some(yyds_types::DsValue::Text(content)) = event.value() {
+                    let _ = self.index.index_document(event.id(), event.tenant_id(), content.clone()).await;
                 }
             }
         }
@@ -163,14 +164,14 @@ pub async fn run() -> std::result::Result<(), DsError> {
             medium: MediumType::NvmeSSD,
         }],
         page_size: 4096,
-        data_path: Some("persistence/yyds_storage.bin".into()),
-        checkpoint_interval_secs: 60, // Checkpoint every minute
-        local_shard_id: Some(1),
+        wal_path: Some("persistence/yyds_wal.bin".into()),
     };
-    let storage = Arc::new(YydsStorage::new(storage_config).await.map_err(|e| DsError::storage(format!("Failed to init storage: {:?}", e)))?);
+    
+    let pager = Arc::new(yykv_storage::Pager::new(storage_config).await.map_err(|e| DsError::storage("init", format!("Failed to init pager: {:?}", e)))?);
+    let storage = Arc::new(YykvStorage::open(pager).await.map_err(|e| DsError::storage("init", format!("Failed to init storage: {:?}", e)))?);
 
     // Initialize WAL
-    let wal = Arc::new(WalManager::new(1024));
+    let wal = Arc::new(WalManager::new("persistence/yyds_wal.bin".into()).await.map_err(|e| DsError::storage("wal_init", format!("{:?}", e)))?);
 
     // Load billing data if exists
     let billing_manager = BillingManager::load(BILLING_FILE).unwrap_or_else(|e| {

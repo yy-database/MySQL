@@ -14,7 +14,7 @@ keywords = ["redis", "resp", "we-trust", "database"]
 yykv-types = { workspace = true }
 yykv-operators = { workspace = true }
 yykv-executor = { workspace = true }
-yykv-event = { workspace = true }
+yykv-wal = { workspace = true }
 yykv-compute = { workspace = true }
 tokio = { workspace = true, features = ["net", "io-util", "sync", "macros", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }

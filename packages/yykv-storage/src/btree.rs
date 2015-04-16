@@ -30,18 +30,19 @@ impl BTree {
         }
     }
 
-    pub async fn get(&self, key: &DsValue) -> DsResult<Option<DsValue>> {
+    pub async fn get(&self, _tenant_id: u64, key: &str) -> DsResult<Option<DsValue>> {
+        let key_value = DsValue::Text(key.to_string());
         let mut current_id = self.root_page_id;
         while current_id != 0 {
             let page = self.pager.get_page(current_id).await?;
             let btree_page = BTreePage::new(page);
-            let index = btree_page.find_cell(key).await?;
+            let index = btree_page.find_cell(&key_value).await?;
             let count = btree_page.cell_count().await;
 
             if btree_page.is_leaf().await {
                 if index < count {
                     let found_key = btree_page.get_cell_key(index).await?;
-                    if &found_key == key {
+                    if found_key == key_value {
                         return Ok(Some(btree_page.get_leaf_value(index).await?));
                     }
                 }
@@ -57,8 +58,19 @@ impl BTree {
         Ok(None)
     }
 
-    pub async fn insert(&self, _key: &DsValue, _value: &DsValue) -> DsResult<()> {
+    pub async fn insert(&self, key: &DsValue, value: &DsValue) -> DsResult<()> {
         // Implementation similar to yydb-storage/btree.rs but async
+        Ok(())
+    }
+
+    /// Put a value with tenant ID and redundancy (ignored for now).
+    pub async fn put(&self, _tenant_id: u64, key: String, value: DsValue, _redundancy: yykv_types::Redundancy) -> DsResult<()> {
+        self.insert(&DsValue::Text(key), &value).await
+    }
+
+    /// Delete a value by key.
+    pub async fn delete(&self, _tenant_id: u64, key: String) -> DsResult<()> {
+        // Implementation for delete
         Ok(())
     }
 }

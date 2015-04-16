@@ -88,9 +88,6 @@ impl ValueHeader {
 
 pub struct DsValueEncoder;
 
-/// Alias for DsValueEncoder for backward compatibility.
-pub use DsValueEncoder as YYValueEncoder;
-
 impl DsValueEncoder {
     pub fn encode(value: &DsValue) -> Result<Bytes, DsError> {
         let mut result = BytesMut::new();
@@ -284,9 +281,6 @@ impl DsValueEncoder {
 }
 
 pub struct DsValueDecoder;
-
-/// Alias for DsValueDecoder for backward compatibility.
-pub use DsValueDecoder as YYValueDecoder;
 
 impl DsValueDecoder {
     pub fn decode(src: &mut Bytes) -> Result<DsValue, DsError> {

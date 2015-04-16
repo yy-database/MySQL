@@ -295,9 +295,10 @@ impl tokio_util::codec::Encoder<TrustMessage> for TrustCodec {
     }
 }
 
-pub struct YyValueCodec;
+/// Codec for encoding/decoding DsValue with TrustHeader.
+pub struct DsValueCodec;
 
-impl YyValueCodec {
+impl DsValueCodec {
     pub fn encode(
         value: &DsValue,
         tenant_id: Uuid,
@@ -307,7 +308,7 @@ impl YyValueCodec {
         // Reserve space for TrustHeader
         result.resize(TrustHeader::SIZE, 0);
 
-        // Encode YYValue directly into result after TrustHeader
+        // Encode DsValue directly into result after TrustHeader
         DsValueEncoder::encode_to_buf(value, &mut result)?;
 
         let total_len = result.len();
