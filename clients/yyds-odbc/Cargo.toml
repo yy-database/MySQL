@@ -1,7 +1,13 @@
 [package]
 name = "yyds-odbc"
-version = "0.0.0"
-edition = "2024"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "ODBC driver for the YYDS ecosystem"
+readme = "readme.md"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

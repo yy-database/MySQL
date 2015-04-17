@@ -132,12 +132,10 @@ impl YyKv {
                         sdr,
                         ..
                     } => {
-                        let tid = (tenant_id.as_u128() & 0xFFFFFFFFFFFFFFFF) as u64;
-                        kv.put_internal(tid, key, value, sdr).await?;
+                        kv.put_internal(tenant_id, key, value, sdr).await?;
                     }
                     WalEntry::Delete { tenant_id, key, .. } => {
-                        let tid = (tenant_id.as_u128() & 0xFFFFFFFFFFFFFFFF) as u64;
-                        kv.delete_internal(tid, &key).await?;
+                        kv.delete_internal(tenant_id, &key).await?;
                     }
                 }
             }
@@ -172,7 +170,7 @@ impl YyKv {
     }
 
     /// Import data from a .yydb file (JSON format for prototype) into a tenant's namespace.
-    pub async fn import_from_file(&self, tenant_id: u64, path: PathBuf) -> DsResult<()> {
+    pub async fn import_from_file(&self, tenant_id: uuid::Uuid, path: PathBuf) -> DsResult<()> {
         if !path.exists() {
             return Err(DsError::storage(format!("File not found: {:?}", path)));
         }
@@ -361,16 +359,16 @@ impl YyKv {
                     if let DsValue::Vector(v) = val {
                         let dist = match metric {
                             VectorMetric::L2 => {
-                                v.iter().zip(query.iter()).map(|(a, b)| (a - b).powi(2)).sum::<f32>().sqrt()
+                                v.0.iter().zip(query.iter()).map(|(a, b)| (a - b).powi(2)).sum::<f32>().sqrt()
                             }
                             VectorMetric::Cosine => {
-                                let dot: f32 = v.iter().zip(query.iter()).map(|(a, b)| a * b).sum();
-                                let mag1: f32 = v.iter().map(|a| a.powi(2)).sum::<f32>().sqrt();
+                                let dot: f32 = v.0.iter().zip(query.iter()).map(|(a, b)| a * b).sum();
+                                let mag1: f32 = v.0.iter().map(|a| a.powi(2)).sum::<f32>().sqrt();
                                 let mag2: f32 = query.iter().map(|a| a.powi(2)).sum::<f32>().sqrt();
                                 1.0 - (dot / (mag1 * mag2))
                             }
-                            VectorMetric::Ip => {
-                                -v.iter().zip(query.iter()).map(|(a, b)| a * b).sum::<f32>()
+                            VectorMetric::DotProduct => {
+                                -v.0.iter().zip(query.iter()).map(|(a, b)| a * b).sum::<f32>()
                             }
                         };
                         results.push((dist, key.to_string()));
@@ -387,7 +385,7 @@ impl YyKv {
     /// Batch put multiple values with tenant context.
     pub async fn batch_put(
         &self,
-        tenant_id: u64,
+        tenant_id: uuid::Uuid,
         entries: Vec<(String, DsValue)>,
         sdr: Redundancy,
     ) -> DsResult<()> {

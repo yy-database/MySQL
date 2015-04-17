@@ -3,7 +3,11 @@ name = "yyds-task"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Task scheduling and background job management for YYDS"
+readme = "readme.md"
 
 [dependencies]
 serde = { workspace = true }

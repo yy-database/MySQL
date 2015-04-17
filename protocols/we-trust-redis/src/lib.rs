@@ -6,6 +6,8 @@ use tokio_util::codec::{Decoder, Encoder};
 use uuid::Uuid;
 use yykv_types::{DsError, DsValue, Redundancy};
 
+use std::path::PathBuf;
+
 type Result<T> = std::result::Result<T, DsError>;
 use yykv_wal::{OpType, WalManager};
 
@@ -551,8 +553,8 @@ pub struct RedisService {
 }
 
 impl RedisService {
-    pub fn new() -> Result<Self> {
-        let wal = Arc::new(WalManager::new(1000));
+    pub async fn new() -> Result<Self> {
+        let wal = Arc::new(WalManager::new(PathBuf::from("wal_redis")).await.map_err(|e| DsError::storage(e.to_string()))?);
         // let index = Arc::new(SearchIndexManager::new_in_memory()?);
 
         Ok(Self {
@@ -579,6 +581,7 @@ impl RedisService {
                     .write(
                         self.tenant_id,
                         "redis_kv".to_string(),
+                        key.clone(),
                         OpType::Insert,
                         Redundancy::SINGLE,
                         DsValue::Binary(value),
@@ -604,6 +607,7 @@ impl RedisService {
                             .write(
                                 self.tenant_id,
                                 "redis_kv".to_string(),
+                                key.clone(),
                                 OpType::Delete,
                                 Redundancy::SINGLE,
                                 DsValue::Text(key),

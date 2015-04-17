@@ -3,7 +3,11 @@ name = "yyds-pubsub"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Publish-Subscribe messaging system for YYDS"
+readme = "readme.md"
 
 [dependencies]
 yyds-types = { workspace = true }

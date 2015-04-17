@@ -3,7 +3,11 @@ name = "yyds-observability"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Observability and monitoring framework for YYDS, integrating metrics, logs, and traces"
+readme = "readme.md"
 
 [dependencies]
 tracing = { workspace = true }
