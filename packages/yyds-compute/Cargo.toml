@@ -11,6 +11,7 @@ readme = "readme.md"
 
 [dependencies]
 yyds-types.workspace = true
+yykv-types.workspace = true
 yykv-udf = { workspace = true }
 tokio.workspace = true
 serde.workspace = true

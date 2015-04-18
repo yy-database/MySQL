@@ -6,7 +6,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
-description = "High-performance distributed middleware framework, unifying database, cache, and storage"
+description = "YYDS client library for connecting to a YYDS cluster"
 readme = "readme.md"
 
 [dependencies]
@@ -14,71 +14,7 @@ readme = "readme.md"
 yyds-types = { workspace = true }
 yykv-types = { workspace = true }
 we-trust = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-serde = { workspace = true }
-oak-json = { workspace = true }
 uuid = { workspace = true }
-bytes = { workspace = true }
-
-# Optional ecosystem packages for full feature
-yyds-consensus = { workspace = true, optional = true }
-yyds-compute = { workspace = true, optional = true }
-yyds-ai = { workspace = true, optional = true }
-yyds-task = { workspace = true, optional = true }
-yyds-gateway = { workspace = true, optional = true }
-yyds-observability = { workspace = true, optional = true }
-yykv-storage = { workspace = true, optional = true }
-yyds-tenant = { workspace = true, optional = true }
-yyds-billing = { workspace = true, optional = true }
-yyds-quota = { workspace = true, optional = true }
-yyds-pubsub = { workspace = true, optional = true }
-yyds-cache = { workspace = true, optional = true }
-
-# Optional yykv components for full feature
-yykv-event = { workspace = true, optional = true }
-yykv-index = { workspace = true, optional = true }
-yykv-operators = { workspace = true, optional = true }
-yykv-executor = { workspace = true, optional = true }
-yykv-schema = { workspace = true, optional = true }
-
-# Protocols
-we-trust-postgres = { workspace = true, optional = true }
-we-trust-s3 = { workspace = true, optional = true }
-we-trust-otel = { workspace = true, optional = true }
-we-trust-arrow = { workspace = true, optional = true }
-we-trust-mysql = { workspace = true, optional = true }
-we-trust-vector = { workspace = true, optional = true }
-
-# External dependencies
-clap = { workspace = true, optional = true }
-
-[features]
-default = []
-full = [
-    "yyds-consensus",
-    "yyds-compute",
-    "yyds-ai",
-    "yyds-task",
-    "yyds-gateway",
-    "yyds-observability",
-    "yykv-storage",
-    "yyds-tenant",
-    "yyds-billing",
-    "yyds-quota",
-    "yyds-pubsub",
-    "yyds-cache",
-    "yykv-index",
-    "yykv-operators",
-    "yykv-executor",
-    "yykv-schema",
-    "we-trust-postgres",
-    "we-trust-s3",
-    "we-trust-otel",
-    "we-trust-arrow",
-    "we-trust-mysql",
-    "we-trust-vector",
-    "clap"
-]
 
 [lib]
 path = "src/lib.rs"

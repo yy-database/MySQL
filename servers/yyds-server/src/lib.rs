@@ -65,8 +65,8 @@ impl ServerState {
         }
 
         // Storage
-        self.storage.put(tenant_internal_id, key, value.clone(), redundancy).await
-            .map_err(|e| DsError::storage("put", format!("Storage error: {:?}", e)))?;
+        self.storage.put(tenant_internal_id, key.clone(), value.clone(), redundancy).await
+            .map_err(|e| DsError::storage_with_op("put", format!("Storage error: {:?}", e)))?;
 
         // WAL
         self.wal.write(
@@ -96,7 +96,7 @@ impl yyds_gateway::GatewayBackend for ServerState {
             DsValue::Text(s) => s,
             DsValue::Int(i) => i.to_string(),
             DsValue::Uuid(u) => u.to_string(),
-            _ => return Err(DsError::execution("insert", "Unsupported key type for PG insert")),
+            _ => return Err(DsError::execution_with_op("insert", "Unsupported key type for PG insert")),
         };
         self.handle_insert(tenant_id, table, key_str, value, Redundancy::TRUTH).await
     }
@@ -104,7 +104,7 @@ impl yyds_gateway::GatewayBackend for ServerState {
     async fn execute_delete(&self, _tenant_id: Uuid, _table: String, _selection: Option<yykv_operators::Expr>) -> DsResult<()> {
         // Selection handling is complex, for now we just support simple delete or return error
         // In a real implementation, we would translate Expr to storage predicates
-        Err(DsError::execution("delete", "Complex DELETE via PG gateway not yet fully implemented"))
+        Err(DsError::execution_with_op("delete", "Complex DELETE via PG gateway not yet fully implemented"))
     }
 }
 
@@ -167,11 +167,24 @@ pub async fn run() -> std::result::Result<(), DsError> {
         wal_path: Some("persistence/yyds_wal.bin".into()),
     };
     
-    let pager = Arc::new(yykv_storage::Pager::new(storage_config).await.map_err(|e| DsError::storage("init", format!("Failed to init pager: {:?}", e)))?);
-    let storage = Arc::new(YykvStorage::open(pager).await.map_err(|e| DsError::storage("init", format!("Failed to init storage: {:?}", e)))?);
+    let device_config = &storage_config.devices[0];
+    // Ensure file exists for WindowsDirectIo (which uses OPEN_EXISTING for now)
+    if !std::path::Path::new(&device_config.path).exists() {
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&device_config.path)
+            .map_err(|e| DsError::io(format!("Failed to create storage file: {}", e)))?;
+        file.set_len(10 * 1024 * 1024) // Initial 10MB
+            .map_err(|e| DsError::io(format!("Failed to set initial size: {}", e)))?;
+    }
+    
+    let device = Arc::new(yykv_io::WindowsDirectIo::open(&device_config.path, device_config.medium)?);
+    let pager = Arc::new(yykv_storage::Pager::new(device, 1024).await.map_err(|e| DsError::storage_with_op("init", format!("Failed to init pager: {:?}", e)))?);
+    let storage = Arc::new(YykvStorage::open(pager).await.map_err(|e| DsError::storage_with_op("init", format!("Failed to init storage: {:?}", e)))?);
 
     // Initialize WAL
-    let wal = Arc::new(WalManager::new("persistence/yyds_wal.bin".into()).await.map_err(|e| DsError::storage("wal_init", format!("{:?}", e)))?);
+    let wal = Arc::new(WalManager::new(std::path::PathBuf::from("persistence/yyds_wal.bin")).await.map_err(|e| DsError::storage_with_op("wal_init", format!("{:?}", e)))?);
 
     // Load billing data if exists
     let billing_manager = BillingManager::load(BILLING_FILE).unwrap_or_else(|e| {
@@ -388,7 +401,7 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                 let key = String::from_utf8(p.copy_to_bytes(key_len).to_vec())?;
                 
                 let result = state.storage.get(tenant_internal_id.0, &key).await
-                    .map_err(|e| DsError::storage("get", format!("YYKV Get error: {:?}", e)))?;
+                    .map_err(|e| DsError::storage_with_op("get", format!("YYKV Get error: {:?}", e)))?;
                 
                 if let Some(val) = result {
                     let resp_data = yyds_types::layout::DsValueEncoder::encode(&val)
@@ -415,16 +428,14 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                 let key_len = p.get_u32() as usize;
                 let key = String::from_utf8(p.copy_to_bytes(key_len).to_vec())?;
 
-                state.storage.delete(tenant_internal_id.0, key).await
-                    .map_err(|e| DsError::storage("delete", format!("YYKV Delete error: {:?}", e)))?;
+                state.storage.delete(tenant_internal_id.0, key.clone()).await
+                    .map_err(|e| DsError::storage_with_op("delete", format!("YYKV Delete error: {:?}", e)))?;
                 
                 // WAE for Delete
-                state.wal.write(
+                state.wal.delete(
                     header.tenant_id,
                     "default".into(),
-                    OpType::Delete,
-                    header.sdr_level(),
-                    yyds_types::DsValue::Null
+                    key
                 ).await?;
 
                 let mut resp = TrustMessage::new(MessageType::Response, header.tenant_id, Bytes::new());
@@ -441,7 +452,7 @@ async fn handle_connection(socket: TcpStream, state: Arc<ServerState>) -> Result
                 info!("Executing query graph {} for tenant {}", graph.id, header.tenant_id);
                 
                 let results = state.executor.execute_local(graph, header.tenant_id).await
-                    .map_err(|e| DsError::execution("query", format!("Executor error: {:?}", e)))?;
+                    .map_err(|e| DsError::execution_with_op("query", format!("Executor error: {:?}", e)))?;
                 
                 let result_value = yyds_types::DsValue::List(results);
                 let resp_data = yyds_types::layout::DsValueEncoder::encode(&result_value)
