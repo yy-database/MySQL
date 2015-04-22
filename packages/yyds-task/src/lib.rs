@@ -1,13 +1,13 @@
 #![warn(missing_docs)]
 
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use yyds_types::{DsValue, DsError, DsResult, Redundancy};
-use yykv_wal::{WalManager, OpType};
+use uuid::Uuid;
+use yyds_types::{DsError, DsResult, DsValue, Redundancy};
+use yykv_wal::{OpType, WalManager};
 
 /// Task status in the queue.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -59,14 +59,17 @@ impl TaskManager {
         };
 
         // 1. Write to WAL (WAE) - This ensures task persistence and distribution
-        self.wal_manager.write(
-            tenant_id,
-            "sys:tasks".to_string(),
-            id.to_string(),
-            OpType::Insert,
-            Redundancy::TRUTH, // Tasks are critical, use high redundancy
-            payload
-        ).await.map_err(|e| DsError::internal(e.to_string()))?;
+        self.wal_manager
+            .write(
+                tenant_id,
+                "sys:tasks".to_string(),
+                id.to_string(),
+                OpType::Insert,
+                Redundancy::TRUTH, // Tasks are critical, use high redundancy
+                payload,
+            )
+            .await
+            .map_err(|e| DsError::internal(e.to_string()))?;
 
         // 2. Add to local memory for immediate processing if this is the leader
         let mut tasks = self.tasks.write().await;
@@ -76,7 +79,13 @@ impl TaskManager {
     }
 
     /// Schedule a task for future execution.
-    pub async fn schedule(&self, tenant_id: Uuid, name: String, payload: DsValue, when: DateTime<Utc>) -> DsResult<Uuid> {
+    pub async fn schedule(
+        &self,
+        tenant_id: Uuid,
+        name: String,
+        payload: DsValue,
+        when: DateTime<Utc>,
+    ) -> DsResult<Uuid> {
         let id = Uuid::now_v7();
         let task = Task {
             id,
@@ -89,14 +98,17 @@ impl TaskManager {
         };
 
         // 1. Write to WAL
-        self.wal_manager.write(
-            tenant_id,
-            "sys:tasks".to_string(),
-            id.to_string(),
-            OpType::Insert,
-            Redundancy::TRUTH,
-            payload
-        ).await.map_err(|e| DsError::internal(e.to_string()))?;
+        self.wal_manager
+            .write(
+                tenant_id,
+                "sys:tasks".to_string(),
+                id.to_string(),
+                OpType::Insert,
+                Redundancy::TRUTH,
+                payload,
+            )
+            .await
+            .map_err(|e| DsError::internal(e.to_string()))?;
 
         // 2. Add to local memory
         let mut tasks = self.tasks.write().await;
@@ -112,18 +124,22 @@ impl TaskManager {
 
     pub async fn list_tenant_tasks(&self, tenant_id: Uuid) -> Vec<Task> {
         let tasks = self.tasks.read().await;
-        tasks.values().filter(|t| t.tenant_id == tenant_id).cloned().collect()
+        tasks
+            .values()
+            .filter(|t| t.tenant_id == tenant_id)
+            .cloned()
+            .collect()
     }
 
     /// Background worker to process tasks.
     /// In a real implementation, this would listen to the WAL stream.
     pub async fn run_worker(self: Arc<Self>) {
         let mut receiver = self.wal_manager.subscribe();
-        
+
         while let Ok(event) = receiver.recv().await {
             if event.table() == "sys:tasks" {
                 // Handle task event (e.g., execute the task)
-                // This is where the actual task logic would go, 
+                // This is where the actual task logic would go,
                 // possibly involving Wasm-based UDFs as mentioned in the roadmap.
                 tracing::debug!("Received task event: {:?}", event.key());
             }

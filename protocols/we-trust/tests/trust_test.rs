@@ -1,13 +1,13 @@
-use we_trust::*;
-use yykv_types::{DsError, DsValue, Redundancy};
-use yykv_types::layout::{DsValueDecoder, DsValueEncoder};
+use bytes::{Bytes, BytesMut};
+use futures::SinkExt;
+use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio_stream::StreamExt;
-use futures::SinkExt;
 use tokio_util::codec::Framed;
-use bytes::{Bytes, BytesMut};
 use uuid::Uuid;
-use std::net::SocketAddr;
+use we_trust::*;
+use yykv_types::layout::{DsValueDecoder, DsValueEncoder};
+use yykv_types::{DsError, DsValue, Redundancy};
 
 #[test]
 fn test_trust_header_signature() {
@@ -119,11 +119,8 @@ async fn test_wetrust_client_server_integration() -> Result<(), DsError> {
             if let Some(Ok(msg)) = framed.next().await
                 && msg.header.msg_type == MessageType::Put as u8
             {
-                let mut resp = TrustMessage::new(
-                    MessageType::Response,
-                    msg.header.tenant_id,
-                    Bytes::new(),
-                );
+                let mut resp =
+                    TrustMessage::new(MessageType::Response, msg.header.tenant_id, Bytes::new());
                 resp.header.sign(&secret_key_clone);
                 let _ = framed.send(resp).await;
             }

@@ -1,6 +1,6 @@
-use we_trust_redis::*;
 use bytes::{Bytes, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
+use we_trust_redis::*;
 
 #[test]
 fn test_redis_codec_simple_string() {

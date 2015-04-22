@@ -1,11 +1,11 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use yyds_types::{DsValue, DsError, DsResult, Redundancy};
-use yykv_wal::{WalManager, OpType};
-use uuid::Uuid;
-use tokio::sync::broadcast;
 use std::sync::Arc;
+use tokio::sync::broadcast;
+use uuid::Uuid;
+use yyds_types::{DsError, DsResult, DsValue, Redundancy};
+use yykv_wal::{OpType, WalManager};
 
 /// Pub/Sub message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,7 +32,12 @@ impl PubSubManager {
     }
 
     /// Publish a message to a topic
-    pub async fn publish(&self, topic: String, tenant_id: Uuid, payload: DsValue) -> DsResult<Uuid> {
+    pub async fn publish(
+        &self,
+        topic: String,
+        tenant_id: Uuid,
+        payload: DsValue,
+    ) -> DsResult<Uuid> {
         let id = Uuid::now_v7();
         let msg = Message {
             id,
@@ -43,14 +48,17 @@ impl PubSubManager {
 
         // 1. Write to WAL (WAE)
         // We use the topic as the "table" name for Pub/Sub events
-        self.wal_manager.write(
-            tenant_id,
-            format!("pubsub:{}", topic),
-            id.to_string(),
-            OpType::Insert,
-            Redundancy::SINGLE, // Pub/Sub might not need high redundancy by default
-            payload
-        ).await.map_err(|e| DsError::internal(e.to_string()))?;
+        self.wal_manager
+            .write(
+                tenant_id,
+                format!("pubsub:{}", topic),
+                id.to_string(),
+                OpType::Insert,
+                Redundancy::SINGLE, // Pub/Sub might not need high redundancy by default
+                payload,
+            )
+            .await
+            .map_err(|e| DsError::internal(e.to_string()))?;
 
         // 2. Broadcast to local subscribers
         let topics = self.topics.read().await;

@@ -4,7 +4,7 @@ use yyds_quota::*;
 fn test_quota_management() {
     let mut manager = QuotaManager::new();
     let tenant_id = 1001;
-    
+
     manager.set_quota(Quota {
         tenant_id,
         max_storage: 1024 * 1024 * 1024, // 1GB

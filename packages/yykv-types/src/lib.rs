@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
 
-use bytes::{BytesMut};
+use bytes::BytesMut;
 pub use rust_decimal::Decimal;
 pub use uuid::Uuid;
 
@@ -8,11 +8,9 @@ pub mod layout;
 
 // Re-export core types from yyds-types
 pub use yyds_types::{
-    DsError, DsErrorKind, DsResult,
-    DsValue, DsFile, Vector, FieldType, FieldConstraint, DsSchema,
-    ToValue, FromValue, PageId, Lsn, Redundancy, Page, StorageConfig,
-    DeviceConfig, MediumType, PageInfo, InternalId, TableInfo, ColumnInfo,
-    ForeignKeyInfo, EnumInfo, SchemaInspector,
+    ColumnInfo, DeviceConfig, DsError, DsErrorKind, DsFile, DsResult, DsSchema, DsValue, EnumInfo,
+    FieldConstraint, FieldType, ForeignKeyInfo, FromValue, InternalId, Lsn, MediumType, Page,
+    PageId, PageInfo, Redundancy, SchemaInspector, StorageConfig, TableInfo, ToValue, Vector,
 };
 
 /// Alias for DsSchema.

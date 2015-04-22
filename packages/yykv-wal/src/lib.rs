@@ -1,17 +1,17 @@
 #![warn(missing_docs)]
 
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::io::SeekFrom;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 use tracing::{debug, info, warn};
-use yykv_types::{DsValue, DsResult, Redundancy, DsError, Uuid};
-use bytes::{BytesMut, Buf, BufMut, Bytes};
-use yykv_types::layout::{DsValueEncoder, DsValueDecoder};
-use chrono::{DateTime, Utc};
+use yykv_types::layout::{DsValueDecoder, DsValueEncoder};
+use yykv_types::{DsError, DsResult, DsValue, Redundancy, Uuid};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum OpType {
@@ -94,11 +94,20 @@ impl WalEntry {
     pub fn encode(&self) -> DsResult<Bytes> {
         let mut buf = BytesMut::new();
         match self {
-            WalEntry::Put { id, tenant_id, table, key, value, sdr, op_type, timestamp } => {
+            WalEntry::Put {
+                id,
+                tenant_id,
+                table,
+                key,
+                value,
+                sdr,
+                op_type,
+                timestamp,
+            } => {
                 buf.put_u8(1); // Type: Put
                 buf.put_slice(id.as_bytes());
                 buf.put_slice(tenant_id.as_bytes());
-                
+
                 let table_bytes = table.as_bytes();
                 buf.put_u32(table_bytes.len() as u32);
                 buf.put_slice(table_bytes);
@@ -112,7 +121,13 @@ impl WalEntry {
                 buf.put_u8(*op_type as u8);
                 buf.put_i64(timestamp.timestamp_nanos_opt().unwrap_or(0));
             }
-            WalEntry::Delete { id, tenant_id, table, key, timestamp } => {
+            WalEntry::Delete {
+                id,
+                tenant_id,
+                table,
+                key,
+                timestamp,
+            } => {
                 buf.put_u8(2); // Type: Delete
                 buf.put_slice(id.as_bytes());
                 buf.put_slice(tenant_id.as_bytes());
@@ -124,7 +139,7 @@ impl WalEntry {
                 let key_bytes = key.as_bytes();
                 buf.put_u32(key_bytes.len() as u32);
                 buf.put_slice(key_bytes);
-                
+
                 buf.put_i64(timestamp.timestamp_nanos_opt().unwrap_or(0));
             }
         }
@@ -138,7 +153,8 @@ impl WalEntry {
         }
         let type_id = buf.get_u8();
         match type_id {
-            1 => { // Put
+            1 => {
+                // Put
                 let mut id_bytes = [0u8; 16];
                 buf.copy_to_slice(&mut id_bytes);
                 let id = Uuid::from_bytes(id_bytes);
@@ -157,7 +173,7 @@ impl WalEntry {
 
                 let value = DsValueDecoder::decode(&mut buf)
                     .map_err(|e| DsError::serialization(format!("{:?}", e)))?;
-                
+
                 let sdr = Redundancy(buf.get_u8());
                 let op_type_u8 = buf.get_u8();
                 let op_type = match op_type_u8 {
@@ -166,13 +182,23 @@ impl WalEntry {
                     2 => OpType::Delete,
                     _ => OpType::Insert,
                 };
-                
+
                 let ts_nanos = buf.get_i64();
                 let timestamp = DateTime::<Utc>::from_timestamp_nanos(ts_nanos);
 
-                Ok(WalEntry::Put { id, tenant_id, table, key, value, sdr, op_type, timestamp })
+                Ok(WalEntry::Put {
+                    id,
+                    tenant_id,
+                    table,
+                    key,
+                    value,
+                    sdr,
+                    op_type,
+                    timestamp,
+                })
             }
-            2 => { // Delete
+            2 => {
+                // Delete
                 let mut id_bytes = [0u8; 16];
                 buf.copy_to_slice(&mut id_bytes);
                 let id = Uuid::from_bytes(id_bytes);
@@ -192,9 +218,18 @@ impl WalEntry {
                 let ts_nanos = buf.get_i64();
                 let timestamp = DateTime::<Utc>::from_timestamp_nanos(ts_nanos);
 
-                Ok(WalEntry::Delete { id, tenant_id, table, key, timestamp })
+                Ok(WalEntry::Delete {
+                    id,
+                    tenant_id,
+                    table,
+                    key,
+                    timestamp,
+                })
             }
-            _ => Err(DsError::serialization(format!("Unknown WalEntry type: {}", type_id))),
+            _ => Err(DsError::serialization(format!(
+                "Unknown WalEntry type: {}",
+                type_id
+            ))),
         }
     }
 }
@@ -217,8 +252,8 @@ impl WalManager {
 
         let (notifier, _) = broadcast::channel(1024);
 
-        Ok(Self { 
-            path, 
+        Ok(Self {
+            path,
             file: Arc::new(Mutex::new(file)),
             notifier,
         })
@@ -251,12 +286,7 @@ impl WalManager {
         self.append(entry).await
     }
 
-    pub async fn delete(
-        &self,
-        tenant_id: Uuid,
-        table: String,
-        key: String,
-    ) -> DsResult<()> {
+    pub async fn delete(&self, tenant_id: Uuid, table: String, key: String) -> DsResult<()> {
         let entry = WalEntry::Delete {
             id: Uuid::new_v4(),
             tenant_id,

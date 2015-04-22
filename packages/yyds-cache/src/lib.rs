@@ -1,10 +1,10 @@
 #![warn(missing_docs)]
 
-use yyds_types::{DsValue, DsError};
 use lru::LruCache;
 use std::num::NonZeroUsize;
-use tokio::sync::Mutex;
 use std::sync::Arc;
+use tokio::sync::Mutex;
+use yyds_types::{DsError, DsValue};
 
 /// Cache entry
 #[derive(Debug, Clone)]
@@ -15,7 +15,7 @@ struct CacheEntry {
 
 /// Cache manager for hot data management (Blaze/Nova levels)
 pub struct CacheManager {
-    // We use a Mutex-wrapped LRU cache. 
+    // We use a Mutex-wrapped LRU cache.
     // In a high-concurrency scenario, we might use multiple shards.
     cache: Arc<Mutex<LruCache<String, CacheEntry>>>,
 }

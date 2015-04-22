@@ -1,10 +1,10 @@
 #![warn(missing_docs)]
 
 use async_trait::async_trait;
-use yykv_wal::WalManager;
 use yykv_operators::{OperatorNode, OpsGraph};
 use yykv_types::layout::DsValueEncoder;
 use yykv_types::{DsError, DsResult, DsValue};
+use yykv_wal::WalManager;
 // use yykv_index::SearchIndexManager;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -53,7 +53,9 @@ impl WaeWorker {
                 if event.tenant_id() == tenant_id && event.table() == table_filter {
                     if let Some(data) = event.value() {
                         if let Ok(data_bytes) = DsValueEncoder::encode(data) {
-                            if let Ok(processed) = compute.call(&udf_name, data_bytes.to_vec()).await {
+                            if let Ok(processed) =
+                                compute.call(&udf_name, data_bytes.to_vec()).await
+                            {
                                 let _ = tx.send(processed).await;
                             }
                         }

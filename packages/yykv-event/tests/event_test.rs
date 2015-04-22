@@ -1,6 +1,6 @@
+use uuid::Uuid;
 use yykv_event::*;
 use yykv_types::{DsValue, Redundancy};
-use uuid::Uuid;
 
 #[tokio::test]
 async fn test_wae_flow() {

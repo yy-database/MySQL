@@ -1,12 +1,12 @@
 #![warn(missing_docs)]
 
 use odbc_sys::*;
-use we_trust::{WeTrustClient, ConnectionOptions};
-use yyds_types::DsValue;
-use tokio::runtime::Runtime;
 use std::ptr;
 use std::slice;
 use std::str::FromStr;
+use tokio::runtime::Runtime;
+use we_trust::{ConnectionOptions, WeTrustClient};
+use yyds_types::DsValue;
 
 const SQL_NTS: Integer = -3;
 
@@ -35,7 +35,9 @@ pub extern "C" fn SQLAllocHandle(
     match handle_type {
         HandleType::Env => {
             let env = Env { version: 0 };
-            unsafe { *output_handle = Handle(Box::into_raw(Box::new(env)) as *mut std::ffi::c_void) };
+            unsafe {
+                *output_handle = Handle(Box::into_raw(Box::new(env)) as *mut std::ffi::c_void)
+            };
             SqlReturn::SUCCESS
         }
         HandleType::Dbc => {
@@ -48,7 +50,9 @@ pub extern "C" fn SQLAllocHandle(
                 runtime,
                 client: None,
             };
-            unsafe { *output_handle = Handle(Box::into_raw(Box::new(conn)) as *mut std::ffi::c_void) };
+            unsafe {
+                *output_handle = Handle(Box::into_raw(Box::new(conn)) as *mut std::ffi::c_void)
+            };
             SqlReturn::SUCCESS
         }
         HandleType::Stmt => {
@@ -61,7 +65,9 @@ pub extern "C" fn SQLAllocHandle(
                 results: Vec::new(),
                 current_row: 0,
             };
-            unsafe { *output_handle = Handle(Box::into_raw(Box::new(stmt)) as *mut std::ffi::c_void) };
+            unsafe {
+                *output_handle = Handle(Box::into_raw(Box::new(stmt)) as *mut std::ffi::c_void)
+            };
             SqlReturn::SUCCESS
         }
         _ => SqlReturn::ERROR,
@@ -119,7 +125,9 @@ pub unsafe extern "C" fn SQLDriverConnect(
     let conn_str = if string_length1 as Integer == SQL_NTS {
         unsafe { std::ffi::CStr::from_ptr(in_connection_string as *const i8).to_string_lossy() }
     } else {
-        let s = unsafe { slice::from_raw_parts(in_connection_string as *const u8, string_length1 as usize) };
+        let s = unsafe {
+            slice::from_raw_parts(in_connection_string as *const u8, string_length1 as usize)
+        };
         String::from_utf8_lossy(s)
     };
 
@@ -163,9 +171,9 @@ pub unsafe extern "C" fn SQLExecDirect(
     };
 
     if let Some(ref mut client) = conn_obj.client {
-        let result: Result<Vec<Vec<DsValue>>, yyds_types::DsError> = conn_obj.runtime.block_on(async {
-            client.send_query(&query).await
-        });
+        let result: Result<Vec<Vec<DsValue>>, yyds_types::DsError> = conn_obj
+            .runtime
+            .block_on(async { client.send_query(&query).await });
 
         match result {
             Ok(rows) => {
@@ -229,11 +237,19 @@ pub unsafe extern "C" fn SQLGetData(
             let len = bytes.len();
             if !target_value_ptr.is_null() {
                 // Buffer length in ODBC includes the null terminator for strings
-                let max_copy = if _buffer_length > 0 { _buffer_length as usize } else { 0 };
+                let max_copy = if _buffer_length > 0 {
+                    _buffer_length as usize
+                } else {
+                    0
+                };
                 if max_copy > 0 {
                     let copy_len = std::cmp::min(len, max_copy - 1);
                     unsafe {
-                        ptr::copy_nonoverlapping(bytes.as_ptr(), target_value_ptr as *mut u8, copy_len);
+                        ptr::copy_nonoverlapping(
+                            bytes.as_ptr(),
+                            target_value_ptr as *mut u8,
+                            copy_len,
+                        );
                         *(target_value_ptr as *mut u8).add(copy_len) = 0;
                     }
                 }
