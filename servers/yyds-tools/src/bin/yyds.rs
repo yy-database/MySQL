@@ -27,6 +27,27 @@ enum Commands {
         #[command(subcommand)]
         subcommand: ClusterCommands,
     },
+    /// Import data from a file
+    Import {
+        /// Path to the file to import
+        #[arg(short, long)]
+        path: String,
+        /// Format of the file (dsv, jsonl)
+        #[arg(short, long)]
+        format: String,
+        /// Delimiter for DSV (default is ',')
+        #[arg(short, long)]
+        delimiter: Option<char>,
+        /// Whether the DSV file has a header row
+        #[arg(long)]
+        has_header: bool,
+        /// Optional schema ID for validation
+        #[arg(long)]
+        schema_id: Option<u32>,
+        /// Path to save/load import state for resumable import
+        #[arg(long)]
+        state_file: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
