@@ -61,6 +61,7 @@ impl Loader for DsvLoader {
             let mut last_was_quote = false;
             let mut is_first_record = offset == 0;
             let mut current_pos = offset;
+            let mut record_start_pos = offset;
             
             loop {
                 let n = reader.read(&mut buffer).await
