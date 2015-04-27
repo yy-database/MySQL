@@ -62,6 +62,12 @@ enum Commands {
         /// Secret key for authentication
         #[arg(long)]
         secret: Option<String>,
+        /// Strategy for schema validation errors
+        #[arg(long, value_enum, default_value_t = yyds_tools::import::ErrorStrategy::Skip)]
+        schema_error_strategy: yyds_tools::import::ErrorStrategy,
+        /// Strategy for insertion errors
+        #[arg(long, value_enum, default_value_t = yyds_tools::import::RetryStrategy::Retry)]
+        insertion_error_strategy: yyds_tools::import::RetryStrategy,
     },
 }
 
@@ -140,6 +146,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             addr,
             tenant_id,
             secret,
+            schema_error_strategy,
+            insertion_error_strategy,
         } => {
             use yyds_loader::{DsvLoader, JsonlLoader, Loader};
             use yyds_tools::import::Importer;
@@ -188,6 +196,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 state_file.as_ref().map(PathBuf::from),
                 client,
                 table.clone(),
+                schema_error_strategy.clone(),
+                insertion_error_strategy.clone(),
             );
 
             if let Err(e) = importer.run(std::path::Path::new(path)).await {
