@@ -185,9 +185,23 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 schema = Some(s);
             } else if let Some(sid) = schema_id {
                 println!("Fetching schema {} from server...", sid);
-                // TODO: Implement schema fetching from server
-                eprintln!("Schema fetching from server not yet implemented. Please use --schema-file.");
-                std::process::exit(1);
+                // In YYDS, schema might be stored as a special key or via a specific API
+                // Assuming it's stored under "schema:{id}" for now
+                let key = format!("schema:{}", sid);
+                match client.get(&key).await? {
+                    Some(DsValue::Text(json)) => {
+                        let s: DsSchema = serde_json::from_str(&json)?;
+                        schema = Some(s);
+                    }
+                    Some(_) => {
+                        eprintln!("Invalid schema format in storage for ID {}", sid);
+                        std::process::exit(1);
+                    }
+                    None => {
+                        eprintln!("Schema {} not found on server", sid);
+                        std::process::exit(1);
+                    }
+                }
             }
 
             let mut importer = Importer::new(
