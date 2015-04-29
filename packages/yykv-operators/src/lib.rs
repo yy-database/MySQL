@@ -272,6 +272,8 @@ pub enum Expr {
     InSubquery(Box<Expr>, Box<OpsGraph>, bool),
     /// EXISTS 子查询
     Exists(Box<OpsGraph>, bool),
+    /// 类型转换
+    Cast(Box<Expr>, String),
 }
 
 /// 二元运算符
@@ -301,6 +303,14 @@ pub enum BinaryOperator {
     And,
     /// 或
     Or,
+    /// 包含 (LIKE)
+    Like,
+    /// 不区分大小写包含 (ILIKE)
+    ILike,
+    /// 正则匹配
+    Regex,
+    /// 字符串拼接
+    Concat,
 }
 
 /// 一元运算符
@@ -476,6 +486,18 @@ impl Expr {
                             Ok(DsValue::Null)
                         }
                     }
+                    BinaryOperator::Concat => {
+                        let s1 = match lv {
+                            DsValue::Text(s) => s.clone(),
+                            _ => lv.to_string(),
+                        };
+                        let s2 = match rv {
+                            DsValue::Text(s) => s.clone(),
+                            _ => rv.to_string(),
+                        };
+                        Ok(DsValue::Text(format!("{}{}", s1, s2)))
+                    }
+                    _ => Ok(DsValue::Null),
                 }
             }
             Expr::Param(idx) => Ok(params.get(*idx).cloned().unwrap_or(DsValue::Null)),
