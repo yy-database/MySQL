@@ -11,5 +11,6 @@ homepage.workspace = true
 [dependencies]
 # Core dependencies for client
 yykv-types = { workspace = true }
+yykv-operators = { workspace = true }
 we-trust = { workspace = true }
 uuid = { workspace = true }
