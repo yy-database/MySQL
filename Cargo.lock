@@ -4211,6 +4211,7 @@ dependencies = [
  "uuid",
  "we-trust",
  "yyds-types",
+ "yykv-operators",
  "yykv-types",
 ]
 
@@ -4284,6 +4285,7 @@ dependencies = [
  "tokio-util",
  "tracing",
  "uuid",
+ "we-trust",
  "we-trust-postgres",
  "we-trust-s3",
  "yyds-types",
@@ -4458,6 +4460,7 @@ version = "0.0.0"
 dependencies = [
  "uuid",
  "we-trust",
+ "yykv-operators",
  "yykv-types",
 ]
 

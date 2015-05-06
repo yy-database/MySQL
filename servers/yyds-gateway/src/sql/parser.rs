@@ -5,12 +5,13 @@ use oak_core::tree::{RedNode, RedTree};
 use oak_sql::kind::SqlSyntaxKind;
 use oak_sql::language::SqlLanguage;
 use oak_sql::parser::SqlParser as OakSqlParser;
+use oak_sql::SqlElementType;
 use yykv_operators::{
     AggExpr, AggregateOp, BinaryOperator, Edge, Expr, FilterOp, JoinType, LimitOp, OperatorNode,
     OpsGraph, OrderBy, ProjectOp, SortOp, SourceOp, UnaryOperator, VectorSearchOp,
 };
 use uuid::Uuid;
-use yykv_types::{DsResult, DsValue, DsSchema, Field, FieldType, Vector};
+use yykv_types::{DsResult, DsValue, DsSchema, FieldType, Vector};
 
 pub struct SqlParser;
 
@@ -30,15 +31,21 @@ impl SqlParser {
         let statement_node = children
             .find(|c| {
                 if let RedTree::Node(n) = c {
-                    let kind: SqlSyntaxKind = n.kind();
-                    kind == SqlSyntaxKind::Statement
-                        || kind == SqlSyntaxKind::SelectStatement
-                        || kind == SqlSyntaxKind::InsertStatement
-                        || kind == SqlSyntaxKind::UpdateStatement
-                        || kind == SqlSyntaxKind::DeleteStatement
-                        || kind == SqlSyntaxKind::CreateStatement
-                        || kind == SqlSyntaxKind::DropStatement
-                        || kind == SqlSyntaxKind::ExplainStatement
+                    let kind: SqlElementType = n.kind();
+                    matches!(
+                        kind,
+                        SqlElementType::SelectStatement
+                            | SqlElementType::InsertStatement
+                            | SqlElementType::UpdateStatement
+                            | SqlElementType::DeleteStatement
+                            | SqlElementType::CreateStatement
+                            | SqlElementType::DropStatement
+                            | SqlElementType::AlterStatement
+                            | SqlElementType::ExplainStatement
+                            | SqlElementType::TransactionStatement
+                            | SqlElementType::PragmaStatement
+                            | SqlElementType::ShowStatement
+                    )
                 } else {
                     false
                 }
@@ -46,16 +53,16 @@ impl SqlParser {
             .and_then(|c| c.as_node())
             .ok_or(yykv_types::DsError::parse("Empty or invalid SQL"))?;
 
-        let kind: SqlSyntaxKind = statement_node.kind();
+        let kind: SqlElementType = statement_node.kind();
         match kind {
-            SqlSyntaxKind::SelectStatement => {
+            SqlElementType::SelectStatement => {
                 Ok(SqlStatement::Query(Self::parse_query_node(statement_node, &source)?))
             }
-            SqlSyntaxKind::ExplainStatement => {
+            SqlElementType::ExplainStatement => {
                 let mut query_node = None;
                 for child in statement_node.children() {
                     if let RedTree::Node(n) = child {
-                        if n.kind() == SqlSyntaxKind::SelectStatement {
+                        if n.kind::<SqlElementType>() == SqlElementType::SelectStatement {
                             query_node = Some(n);
                             break;
                         }
@@ -67,19 +74,19 @@ impl SqlParser {
                     Err(yykv_types::DsError::parse("EXPLAIN must be followed by a SELECT statement"))
                 }
             }
-            SqlSyntaxKind::InsertStatement => {
+            SqlElementType::InsertStatement => {
                 Self::parse_insert_node(statement_node, &source)
             }
-            SqlSyntaxKind::DeleteStatement => {
+            SqlElementType::DeleteStatement => {
                 Self::parse_delete_node(statement_node, &source)
             }
-            SqlSyntaxKind::UpdateStatement => {
+            SqlElementType::UpdateStatement => {
                 Self::parse_update_node(statement_node, &source)
             }
-            SqlSyntaxKind::CreateStatement => {
+            SqlElementType::CreateStatement => {
                 Self::parse_create_node(statement_node, &source)
             }
-            SqlSyntaxKind::DropStatement => {
+            SqlElementType::DropStatement => {
                 Self::parse_drop_node(statement_node, &source)
             }
             _ => Err(yykv_types::DsError::parse(format!("Unsupported statement type: {:?}", kind))),
@@ -107,10 +114,10 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    let kind: SqlSyntaxKind = n.kind();
+                    let kind: SqlElementType = n.kind();
                     match kind {
-                        SqlSyntaxKind::TableName | SqlSyntaxKind::Identifier => table_name = n.text(source).to_string(),
-                        SqlSyntaxKind::JoinClause => {
+                        SqlElementType::TableName | SqlElementType::Identifier => table_name = n.text(source).to_string(),
+                        SqlElementType::JoinClause => {
                             let mut join_type = JoinType::Inner;
                             let mut joined_table = String::new();
                             let mut left_on = String::new();
@@ -118,7 +125,7 @@ impl SqlParser {
                             
                             for c in n.children() {
                                 if let RedTree::Node(child_node) = c {
-                                    if child_node.kind() == SqlSyntaxKind::Expression {
+                                    if child_node.kind::<SqlElementType>() == SqlElementType::Expression {
                                         let expr = Self::translate_expr_node(child_node, source)?;
                                         if let Expr::BinaryOp(left, op, right) = expr {
                                             if op == BinaryOperator::Eq {
@@ -140,30 +147,30 @@ impl SqlParser {
                             }
                             joins.push((joined_table, left_on, right_on, join_type));
                         }
-                        SqlSyntaxKind::GroupByClause => {
+                        SqlElementType::GroupByClause => {
                             for c in n.children() {
                                 if let RedTree::Node(child_node) = c {
-                                    if child_node.kind() == SqlSyntaxKind::Expression {
+                                    if child_node.kind::<SqlElementType>() == SqlElementType::Expression {
                                         group_by.push(Self::translate_expr_node(child_node, source)?);
                                         is_aggregate = true;
                                     }
                                 }
                             }
                         }
-                        SqlSyntaxKind::HavingClause => {
+                        SqlElementType::HavingClause => {
                             for c in n.children() {
                                 if let RedTree::Node(child_node) = c {
-                                    if child_node.kind() == SqlSyntaxKind::Expression {
+                                    if child_node.kind::<SqlElementType>() == SqlElementType::Expression {
                                         having = Some(Self::translate_expr_node(child_node, source)?);
                                         is_aggregate = true;
                                     }
                                 }
                             }
                         }
-                        SqlSyntaxKind::OrderByClause => {
+                        SqlElementType::OrderByClause => {
                             for c in n.children() {
                                 if let RedTree::Node(child_node) = c {
-                                    if child_node.kind() == SqlSyntaxKind::Expression {
+                                    if child_node.kind::<SqlElementType>() == SqlElementType::Expression {
                                         order_bys.push(OrderBy { 
                                             expr: Self::translate_expr_node(child_node, source)?,
                                             desc: false 
@@ -176,7 +183,7 @@ impl SqlParser {
                                 }
                             }
                         }
-                        SqlSyntaxKind::LimitClause => {
+                        SqlElementType::LimitClause => {
                             for c in n.children() {
                                 if let RedTree::Leaf(t) = c {
                                     if t.kind() == SqlSyntaxKind::NumberLiteral {
@@ -187,7 +194,7 @@ impl SqlParser {
                                 }
                             }
                         }
-                        SqlSyntaxKind::Expression => {
+                        SqlElementType::Expression => {
                             let expr = Self::translate_expr_node(n.clone(), source)?;
                             match current_keyword {
                                 Some(SqlSyntaxKind::Select) => {
@@ -357,9 +364,9 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    match n.kind() {
-                        SqlSyntaxKind::TableName | SqlSyntaxKind::Identifier => table = n.text(source).to_string(),
-                        SqlSyntaxKind::Expression => {
+                    match n.kind::<SqlElementType>() {
+                        SqlElementType::TableName | SqlElementType::Identifier => table = n.text(source).to_string(),
+                        SqlElementType::Expression => {
                             if current_keyword == Some(SqlSyntaxKind::Values) {
                                 let expr = Self::translate_expr_node(n, source)?;
                                 if let Expr::Literal(v) = expr {
@@ -396,9 +403,9 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    match n.kind() {
-                        SqlSyntaxKind::TableName | SqlSyntaxKind::Identifier => table = n.text(source).to_string(),
-                        SqlSyntaxKind::Expression => {
+                    match n.kind::<SqlElementType>() {
+                        SqlElementType::TableName | SqlElementType::Identifier => table = n.text(source).to_string(),
+                        SqlElementType::Expression => {
                             if current_keyword == Some(SqlSyntaxKind::Where) {
                                 selection = Some(Self::translate_expr_node(n, source)?);
                             }
@@ -427,16 +434,16 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    match n.kind() {
-                        SqlSyntaxKind::TableName | SqlSyntaxKind::Identifier => {
+                    match n.kind::<SqlElementType>() {
+                        SqlElementType::TableName | SqlElementType::Identifier => {
                             if current_keyword == Some(SqlSyntaxKind::Update) {
                                 table = n.text(source).to_string();
                             } else if current_keyword == Some(SqlSyntaxKind::Set) {
                                 last_column = n.text(source).to_string();
                             }
                         }
-                        SqlSyntaxKind::ColumnName => last_column = n.text(source).to_string(),
-                        SqlSyntaxKind::Expression => {
+                        SqlElementType::ColumnName => last_column = n.text(source).to_string(),
+                        SqlElementType::Expression => {
                             let expr = Self::translate_expr_node(n, source)?;
                             if current_keyword == Some(SqlSyntaxKind::Set) {
                                 updates.push((last_column.clone(), expr));
@@ -461,20 +468,20 @@ impl SqlParser {
     fn parse_create_node(node: RedNode<SqlLanguage>, source: &SourceText) -> DsResult<SqlStatement> {
         let mut table = String::new();
         let mut is_view = false;
-        let mut columns = Vec::new();
+        let mut columns: Vec<(String, FieldType)> = Vec::new();
         let mut current_keyword = None;
 
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    match n.kind() {
-                        SqlSyntaxKind::TableName => table = n.text(source).to_string(),
-                        SqlSyntaxKind::ColumnDefinition => {
+                    match n.kind::<SqlElementType>() {
+                        SqlElementType::TableName => table = n.text(source).to_string(),
+                        SqlElementType::ColumnDefinition => {
                             let mut col_name = String::new();
                             let mut col_type = FieldType::Text;
                             for c in n.children() {
                                 if let RedTree::Node(cn) = c {
-                                    if cn.kind() == SqlSyntaxKind::ColumnName {
+                                    if cn.kind::<SqlElementType>() == SqlElementType::ColumnName {
                                         col_name = cn.text(source).to_string();
                                     }
                                 } else if let RedTree::Leaf(ct) = c {
@@ -487,14 +494,14 @@ impl SqlParser {
                                     }
                                 }
                             }
-                            columns.push(Field { name: col_name, field_type: col_type, nullable: true, default: None });
+                            columns.push((col_name, col_type));
                         }
-                        SqlSyntaxKind::SelectStatement => {
+                        SqlElementType::SelectStatement => {
                             if is_view {
                                 return Ok(SqlStatement::CreateView { name: table, query: Self::parse_query_node(n, source)? });
                             }
                         }
-                        SqlSyntaxKind::Identifier => {
+                        SqlElementType::Identifier => {
                             if current_keyword == Some(SqlSyntaxKind::Index) {
                                 return Self::parse_create_index_node(node, source);
                             }
@@ -517,7 +524,11 @@ impl SqlParser {
         }
 
         if !columns.is_empty() {
-            Ok(SqlStatement::CreateTable { name: table, schema: Some(DsSchema { fields: columns }) })
+            let mut schema = DsSchema::new(0, &table);
+            for (tag, (name, field_type)) in columns.into_iter().enumerate() {
+                schema.add_field(tag as u32, &name, field_type, true);
+            }
+            Ok(SqlStatement::CreateTable { name: table, schema: Some(schema) })
         } else {
             Ok(SqlStatement::CreateTable { name: table, schema: None })
         }
@@ -532,9 +543,9 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    match n.kind() {
-                        SqlSyntaxKind::TableName => table_name = n.text(source).to_string(),
-                        SqlSyntaxKind::Identifier => {
+                    match n.kind::<SqlElementType>() {
+                        SqlElementType::TableName => table_name = n.text(source).to_string(),
+                        SqlElementType::Identifier => {
                             if index_name.is_empty() {
                                 index_name = n.text(source).to_string();
                             } else {
@@ -561,7 +572,7 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    if n.kind() == SqlSyntaxKind::TableName { table = n.text(source).to_string(); }
+                    if n.kind::<SqlElementType>() == SqlElementType::TableName { table = n.text(source).to_string(); }
                 }
                 RedTree::Leaf(t) => {
                     if t.kind() == SqlSyntaxKind::View { object_type = "VIEW".to_string(); }
@@ -572,7 +583,7 @@ impl SqlParser {
     }
 
     fn translate_expr_node(node: RedNode<SqlLanguage>, source: &SourceText) -> DsResult<Expr> {
-        if node.kind() == SqlSyntaxKind::Expression {
+        if node.kind::<SqlElementType>() == SqlElementType::Expression {
             let parts: Vec<_> = node.children().collect();
             if parts.len() >= 2 {
                 if let Some(t) = parts[0].as_token() {
@@ -643,7 +654,7 @@ impl SqlParser {
                         let mut args = Vec::new();
                         for i in 2..parts.len() - 1 {
                             if let RedTree::Node(n) = &parts[i] {
-                                if n.kind() == SqlSyntaxKind::Expression { args.push(Self::translate_expr_node(n.clone(), source)?); }
+                                if n.kind::<SqlElementType>() == SqlElementType::Expression { args.push(Self::translate_expr_node(n.clone(), source)?); }
                             }
                         }
                         return Ok(Expr::FunctionCall(name, args));
