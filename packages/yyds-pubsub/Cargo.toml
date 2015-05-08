@@ -14,6 +14,6 @@ yyds-types = { workspace = true }
 yykv-types = { workspace = true }
 yykv-wal = { workspace = true }
 yykv-event = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 uuid = { workspace = true }
 tokio = { workspace = true }

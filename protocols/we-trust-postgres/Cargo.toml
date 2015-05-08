@@ -16,7 +16,7 @@ bytes = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 tracing = { workspace = true }
 byteorder = { workspace = true }
 

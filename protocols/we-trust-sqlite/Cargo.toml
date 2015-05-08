@@ -16,7 +16,7 @@ yykv-operators = { workspace = true }
 yykv-executor = { workspace = true }
 tokio = { workspace = true, features = ["fs", "io-util", "net"] }
 tokio-util = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 # serde_json = { workspace = true } # replaced by oak-json
 oak-json = { workspace = true }
 oak-sql = { workspace = true }

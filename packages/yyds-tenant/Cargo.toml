@@ -10,6 +10,6 @@ description = "Multi-tenancy and isolation management for the YYDS ecosystem"
 readme = "readme.md"
 
 [dependencies]
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 uuid = { workspace = true }
 yyds-types = { workspace = true }
