@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 
 use async_trait::async_trait;
+#[cfg(feature = "s3")]
 use we_trust_s3::PutObjectOutput;
 use yykv_operators::OpsGraph;
 use yykv_types::{DsError, DsValue};
@@ -214,16 +215,14 @@ impl YydsGateway {
         }
     }
 
-    /// Handle S3 PutObject requests
+    #[cfg(feature = "s3")]
     pub async fn handle_s3_put_object(
         &self,
         _bucket: &str,
         _key: &str,
         _data: bytes::Bytes,
     ) -> Result<PutObjectOutput> {
-        // Convert S3 PutObject to Ops Graph
         let _graph = OpsGraph::new();
-        // ... mapping logic ...
         Ok(PutObjectOutput {
             e_tag: "placeholder".into(),
             version_id: None,

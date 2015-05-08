@@ -9,12 +9,11 @@ description = "API Gateway for YYDS, handling protocol translation and request r
 yyds-types = { workspace = true }
 yykv-types = { workspace = true }
 yykv-operators = { workspace = true }
-we-trust-s3 = { workspace = true }
+we-trust-s3 = { workspace = true, optional = true }
 we-trust-postgres = { workspace = true }
 we-trust = { workspace = true }
 oak-sql = { workspace = true }
 oak-rbq = { workspace = true }
-oak-json = { workspace = true }
 oak-core = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
@@ -23,3 +22,7 @@ futures = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 async-trait = { workspace = true }
+
+[features]
+default = []
+s3 = ["dep:we-trust-s3"]
