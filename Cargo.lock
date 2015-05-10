@@ -1571,7 +1571,7 @@ dependencies = [
 
 [[package]]
 name = "oak-core"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "serde",
  "smallvec",
@@ -1581,7 +1581,7 @@ dependencies = [
 
 [[package]]
 name = "oak-dsv"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "oak-core",
  "serde",
@@ -1589,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "oak-json"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "oak-core",
  "oak-macros",
@@ -1599,7 +1599,7 @@ dependencies = [
 
 [[package]]
 name = "oak-macros"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1608,7 +1608,7 @@ dependencies = [
 
 [[package]]
 name = "oak-rbq"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "oak-core",
  "serde",
@@ -1616,7 +1616,7 @@ dependencies = [
 
 [[package]]
 name = "oak-sql"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "oak-core",
  "serde",
@@ -1625,7 +1625,7 @@ dependencies = [
 
 [[package]]
 name = "oak-xml"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "oak-core",
  "serde",
@@ -3397,7 +3397,6 @@ dependencies = [
  "bytes",
  "crc32fast",
  "futures",
- "oak-json",
  "serde",
  "sha2",
  "tokio",
@@ -4248,7 +4247,6 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "mio",
- "oak-json",
  "serde",
  "tokio",
  "wasmtime",
@@ -4278,7 +4276,6 @@ dependencies = [
  "bytes",
  "futures",
  "oak-core",
- "oak-json",
  "oak-rbq",
  "oak-sql",
  "tokio",
@@ -4448,7 +4445,6 @@ dependencies = [
  "chrono",
  "crc32fast",
  "hex",
- "oak-json",
  "rust_decimal",
  "serde",
  "uuid",
