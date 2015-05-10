@@ -116,7 +116,7 @@ impl SqlParser {
                 RedTree::Node(n) => {
                     let kind: SqlElementType = n.kind();
                     match kind {
-                        SqlElementType::TableName | SqlElementType::Identifier => table_name = n.text(source).to_string(),
+                        SqlElementType::TableName | SqlElementType::Identifier => table_name = n.text(source).trim().to_string(),
                         SqlElementType::JoinClause => {
                             let mut join_type = JoinType::Inner;
                             let mut joined_table = String::new();
@@ -140,7 +140,7 @@ impl SqlParser {
                                         SqlSyntaxKind::Right => join_type = JoinType::Right,
                                         SqlSyntaxKind::Full => join_type = JoinType::Full,
                                         SqlSyntaxKind::Inner => join_type = JoinType::Inner,
-                                        SqlSyntaxKind::Identifier_ | SqlSyntaxKind::Identifier => joined_table = t.text(source).to_string(),
+                                        SqlSyntaxKind::Identifier_ | SqlSyntaxKind::Identifier => joined_table = t.text(source).trim().to_string(),
                                         _ => {}
                                     }
                                 }
@@ -211,7 +211,7 @@ impl SqlParser {
                                     }
 
                                     if !is_vector_search {
-                                        let alias = n.text(source).to_string();
+                                        let alias = n.text(source).trim().to_string();
                                         
                                         // Handle Aggregates
                                         if let Some(agg_expr) = Self::extract_agg_expr(&expr) {
@@ -365,7 +365,7 @@ impl SqlParser {
             match child {
                 RedTree::Node(n) => {
                     match n.kind::<SqlElementType>() {
-                        SqlElementType::TableName | SqlElementType::Identifier => table = n.text(source).to_string(),
+                        SqlElementType::TableName | SqlElementType::Identifier => table = n.text(source).trim().to_string(),
                         SqlElementType::Expression => {
                             if current_keyword == Some(SqlSyntaxKind::Values) {
                                 let expr = Self::translate_expr_node(n, source)?;
@@ -429,7 +429,7 @@ impl SqlParser {
             match child {
                 RedTree::Node(n) => {
                     match n.kind::<SqlElementType>() {
-                        SqlElementType::TableName | SqlElementType::Identifier => table = n.text(source).to_string(),
+                        SqlElementType::TableName | SqlElementType::Identifier => table = n.text(source).trim().to_string(),
                         SqlElementType::Expression => {
                             if current_keyword == Some(SqlSyntaxKind::Where) {
                                 selection = Some(Self::translate_expr_node(n, source)?);
@@ -462,12 +462,12 @@ impl SqlParser {
                     match n.kind::<SqlElementType>() {
                         SqlElementType::TableName | SqlElementType::Identifier => {
                             if current_keyword == Some(SqlSyntaxKind::Update) {
-                                table = n.text(source).to_string();
+                                table = n.text(source).trim().to_string();
                             } else if current_keyword == Some(SqlSyntaxKind::Set) {
-                                last_column = n.text(source).to_string();
+                                last_column = n.text(source).trim().to_string();
                             }
                         }
-                        SqlElementType::ColumnName => last_column = n.text(source).to_string(),
+                        SqlElementType::ColumnName => last_column = n.text(source).trim().to_string(),
                         SqlElementType::Expression => {
                             let expr = Self::translate_expr_node(n, source)?;
                             if current_keyword == Some(SqlSyntaxKind::Set) {
@@ -500,14 +500,14 @@ impl SqlParser {
             match child {
                 RedTree::Node(n) => {
                     match n.kind::<SqlElementType>() {
-                        SqlElementType::TableName => table = n.text(source).to_string(),
+                        SqlElementType::TableName => table = n.text(source).trim().to_string(),
                         SqlElementType::ColumnDefinition => {
                             let mut col_name = String::new();
                             let mut col_type = FieldType::Text;
                             for c in n.children() {
                                 if let RedTree::Node(cn) = c {
                                     if cn.kind::<SqlElementType>() == SqlElementType::ColumnName {
-                                        col_name = cn.text(source).to_string();
+                                        col_name = cn.text(source).trim().to_string();
                                     }
                                 } else if let RedTree::Leaf(ct) = c {
                                     match ct.text(source).to_uppercase().as_str() {
@@ -569,12 +569,12 @@ impl SqlParser {
             match child {
                 RedTree::Node(n) => {
                     match n.kind::<SqlElementType>() {
-                        SqlElementType::TableName => table_name = n.text(source).to_string(),
+                        SqlElementType::TableName => table_name = n.text(source).trim().to_string(),
                         SqlElementType::Identifier => {
                             if index_name.is_empty() {
-                                index_name = n.text(source).to_string();
+                                index_name = n.text(source).trim().to_string();
                             } else {
-                                columns.push(n.text(source).to_string());
+                                columns.push(n.text(source).trim().to_string());
                             }
                         }
                         _ => {}
@@ -597,7 +597,7 @@ impl SqlParser {
         for child in node.children() {
             match child {
                 RedTree::Node(n) => {
-                    if n.kind::<SqlElementType>() == SqlElementType::TableName { table = n.text(source).to_string(); }
+                    if n.kind::<SqlElementType>() == SqlElementType::TableName { table = n.text(source).trim().to_string(); }
                 }
                 RedTree::Leaf(t) => {
                     if t.kind() == SqlSyntaxKind::View { object_type = "VIEW".to_string(); }
@@ -661,11 +661,11 @@ impl SqlParser {
                             return Ok(Expr::Literal(DsValue::Text(s)));
                         }
                         SqlSyntaxKind::BooleanLiteral | SqlSyntaxKind::True | SqlSyntaxKind::False => {
-                            return Ok(Expr::Literal(DsValue::Bool(text.to_uppercase() == "TRUE")));
+                            return Ok(Expr::Literal(DsValue::Bool(text.trim().to_uppercase() == "TRUE")));
                         }
                         SqlSyntaxKind::NullLiteral | SqlSyntaxKind::Null => return Ok(Expr::Literal(DsValue::Null)),
-                        SqlSyntaxKind::Identifier_ | SqlSyntaxKind::Identifier | SqlSyntaxKind::ColumnName => return Ok(Expr::Column(text.to_string())),
-                        _ => return Ok(Expr::Column(text.to_string())),
+                        SqlSyntaxKind::Identifier_ | SqlSyntaxKind::Identifier | SqlSyntaxKind::ColumnName => return Ok(Expr::Column(text.trim().to_string())),
+                        _ => return Ok(Expr::Column(text.trim().to_string())),
                     }
                 }
             }
