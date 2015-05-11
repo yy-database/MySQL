@@ -213,6 +213,14 @@ mod tests {
     fn test_parse_vector_literal() {
         let sql = "INSERT INTO vectors (v) VALUES ([1.0, 2.0, 3.0])";
         let result = SqlParser::parse_sql(sql);
+        
+        // Debug output
+        if let Err(e) = &result {
+             println!("Parse error: {:?}", e);
+        } else if let Ok(SqlStatement::Insert { value, .. }) = &result {
+             println!("Parsed value: {:?}", value);
+        }
+
         assert!(result.is_ok(), "Failed to parse vector literal: {:?}", result.err());
         
         if let Ok(SqlStatement::Insert { value, .. }) = result {

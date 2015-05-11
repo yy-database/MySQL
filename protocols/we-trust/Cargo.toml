@@ -16,7 +16,7 @@ uuid = { workspace = true }
 bytes = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
 # serde_json = { workspace = true }
 
 sha2 = { workspace = true }
