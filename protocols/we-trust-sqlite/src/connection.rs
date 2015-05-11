@@ -1,10 +1,11 @@
 use crate::executor::SqliteExecutor;
-use crate::reader::NativeReader;
 use crate::transaction::SqliteTransaction;
-use crate::writer::NativeWriter;
 use async_trait::async_trait;
 use std::sync::Arc;
 use yykv_types::{ColumnInfo, DsError, DsResult, DsValue, EnumInfo, SchemaInspector, TableInfo};
+
+/// Limbo connection wrapper
+type LimboConn = limbo::Connection;
 
 #[async_trait]
 impl SchemaInspector for SqliteConnection {
@@ -76,36 +77,35 @@ impl SchemaInspector for SqliteConnection {
 
 type Result<T> = std::result::Result<T, DsError>;
 
+/// SQLite connection using Limbo (pure Rust implementation)
 pub struct SqliteConnection {
-    _reader: Arc<NativeReader>,
-    _writer: Arc<NativeWriter>,
+    conn: Arc<LimboConn>,
     executor: Arc<SqliteExecutor>,
 }
 
 impl SqliteConnection {
+    /// Create a new SQLite connection using Limbo
     pub fn new(
-        reader: Arc<NativeReader>,
-        writer: Arc<NativeWriter>,
+        conn: Arc<LimboConn>,
         executor: Arc<SqliteExecutor>,
     ) -> Self {
         Self {
-            _reader: reader,
-            _writer: writer,
+            conn,
             executor,
         }
     }
 
-    pub async fn execute(&self, sql: &str, _params: &[DsValue]) -> Result<u64> {
-        // For now, SqliteExecutor::execute_query returns Vec<DsValue>
-        // We'll wrap it to return affected rows if possible, or 0 for queries.
-        let results = self.executor.execute_query(sql).await?;
-        Ok(results.len() as u64)
+    /// Execute a SQL statement and return the number of affected rows
+    pub async fn execute(&self, sql: &str, params: &[DsValue]) -> Result<u64> {
+        self.executor.execute(sql, params).await
     }
 
-    pub async fn query(&self, sql: &str, _params: &[DsValue]) -> Result<Vec<DsValue>> {
-        self.executor.execute_query(sql).await
+    /// Execute a SQL query and return the results
+    pub async fn query(&self, sql: &str, params: &[DsValue]) -> Result<Vec<DsValue>> {
+        self.executor.query(sql, params).await
     }
 
+    /// Begin a new transaction
     pub async fn begin_transaction(self) -> Result<SqliteTransaction> {
         Ok(SqliteTransaction::new(self))
     }

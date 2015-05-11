@@ -4,18 +4,8 @@ pub mod adapter;
 pub mod codec;
 pub mod connection;
 pub mod executor;
-pub mod reader;
 pub mod transaction;
 pub mod utils;
-pub mod writer;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PageType {
-    LeafIndex = 0x0a,
-    LeafTable = 0x0d,
-    InteriorIndex = 0x02,
-    InteriorTable = 0x05,
-}
 
 pub use adapter::SqliteAdapter;
 pub use codec::{SqliteCodec, SqliteCommand, SqliteResponse};
@@ -30,7 +20,7 @@ use yykv_types::DsError;
 
 pub type Result<T> = std::result::Result<T, DsError>;
 
-/// 使用 tokio Framed 完全重写的 SQLite 连接处理器
+/// SQLite connection handler using Limbo (pure Rust implementation)
 pub async fn handle_connection(stream: TcpStream) -> Result<()> {
     let mut framed = Framed::new(stream, SqliteCodec);
     info!("New SQLite connection established");
