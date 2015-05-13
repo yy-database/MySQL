@@ -5,6 +5,55 @@ use uuid::Uuid;
 use yykv_types::layout::{DsValueDecoder, DsValueEncoder};
 pub use yykv_types::{DsError, DsValue, Redundancy};
 
+/// 数据库后端类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DatabaseBackend {
+    /// Limbo/SQLite 后端
+    Limbo,
+    /// PostgreSQL 后端
+    Postgres,
+    /// MySQL 后端
+    MySql,
+}
+
+/// 数据库连接结果类型
+pub type DatabaseResult<T> = Result<T, DsError>;
+
+/// 数据库连接 trait
+#[async_trait::async_trait]
+pub trait DatabaseConnection {
+    /// 获取数据库后端类型
+    fn backend(&self) -> DatabaseBackend;
+    
+    /// 执行查询
+    async fn query(&self, sql: &str) -> DatabaseResult<Box<dyn RowIterator>>;
+}
+
+/// 行迭代器 trait
+#[async_trait::async_trait]
+pub trait RowIterator: Send {
+    /// 获取下一行
+    async fn next(&mut self) -> DatabaseResult<Option<Box<dyn Row>>>;
+}
+
+/// 行 trait
+pub trait Row: Send {
+    /// 获取指定索引的字符串值
+    fn get_string(&self, index: usize) -> DatabaseResult<String>;
+    
+    /// 获取指定索引的整数值
+    fn get_i64(&self, index: usize) -> DatabaseResult<i64>;
+    
+    /// 获取指定索引的布尔值
+    fn get_bool(&self, index: usize) -> DatabaseResult<bool>;
+    
+    /// 获取指定索引的可选字符串值
+    fn get_option_string(&self, index: usize) -> DatabaseResult<Option<String>>;
+}
+
+// 导出 schema 模块
+pub mod schema;
+
 use crc32fast::Hasher;
 use futures::{SinkExt, StreamExt};
 use sha2::{Digest, Sha256};
