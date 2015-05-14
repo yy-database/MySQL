@@ -1,6 +1,9 @@
 # Rust
 target/
 
+# Node 
+dist/
+
 # Java/Maven
 target/
 *.class
