@@ -1,10 +1,9 @@
 use bytes::{Buf, BufMut, BytesMut};
 use oak_json::JsonValue;
-use serde::{Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
 use yykv_types::DsError;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct D1Request {
     pub sql: String,
     pub params: Vec<JsonValue>,
@@ -35,7 +34,7 @@ impl D1Request {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct D1Response {
     pub success: bool,
     pub results: Option<JsonValue>,

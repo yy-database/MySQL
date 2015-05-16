@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Default: Theme (纠缠之缘) */
+  --theme-primary: #4a90e2;
+  --theme-primary-rgb: 74, 144, 226;
+  --theme-secondary: #f06292;
+  --theme-secondary-rgb: 240, 98, 146;
+  --theme-purple: #9b59b6;
+  --theme-green: #48c9b0;
+  --theme-orange: #f39c12;
+  --theme-bg: #f5f7fa;
+  --theme-bg-lighter: #ffffff;
+  --theme-bg-subtle: #f0f2f5;
+  --theme-text: #2c3e50;
+  --theme-border: rgba(74, 144, 226, 0.15);
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+}
+
+.dark {
+  --theme-primary: #1b3b5f;
+  --theme-primary-rgb: 27, 59, 95;
+  --theme-secondary: #880e4f;
+  --theme-secondary-rgb: 136, 14, 79;
+  --theme-purple: #4a235a;
+  --theme-green: #0e6251;
+  --theme-orange: #935116;
+  --theme-bg: #0b0e14;
+  --theme-bg-lighter: #161b22;
+  --theme-bg-subtle: #1c2128;
+  --theme-text: #e0e6ed;
+  --theme-border: rgba(155, 89, 182, 0.2);
+  --theme-header-bg: rgba(11, 14, 20, 0.9);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--theme-bg);
+  color: var(--theme-text);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  font-family: 'DM Sans', sans-serif;
+}

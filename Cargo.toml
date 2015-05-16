@@ -1,10 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-    "clients/*",
-    "servers/*",
-    "packages/*",
-    "protocols/*",
+    "backends/distributed/*",
+    "backends/kv-store/*",
+    "backends/protocols/*",
 ]
 
 [workspace.package]
@@ -69,59 +68,60 @@ thiserror = "2.0.18"
 limbo = "0.0.22"
 
 # Protocols
-we-trust = { path = "protocols/we-trust", version = "0.0.0" }
-we-trust-arrow = { path = "protocols/we-trust-arrow", version = "0.0.0" }
-we-trust-d1 = { path = "protocols/we-trust-d1", version = "0.0.0" }
-we-trust-mysql = { path = "protocols/we-trust-mysql", version = "0.0.0" }
-we-trust-otel = { path = "protocols/we-trust-otel", version = "0.0.0" }
-we-trust-postgres = { path = "protocols/we-trust-postgres", version = "0.0.0" }
-we-trust-redis = { path = "protocols/we-trust-redis", version = "0.0.0" }
-we-trust-s3 = { path = "protocols/we-trust-s3", version = "0.0.0" }
-we-trust-sqlite = { path = "protocols/we-trust-sqlite", version = "0.0.0" }
-we-trust-sqlserver = { path = "protocols/we-trust-sqlserver", version = "0.0.0" }
-we-trust-vector = { path = "protocols/we-trust-vector", version = "0.0.0" }
+we-trust = { path = "backends/protocols/we-trust", version = "0.0.0" }
+we-trust-arrow = { path = "backends/protocols/we-trust-arrow", version = "0.0.0" }
+we-trust-d1 = { path = "backends/protocols/we-trust-d1", version = "0.0.0" }
+we-trust-mysql = { path = "backends/protocols/we-trust-mysql", version = "0.0.0" }
+we-trust-otel = { path = "backends/protocols/we-trust-otel", version = "0.0.0" }
+we-trust-postgres = { path = "backends/protocols/we-trust-postgres", version = "0.0.0" }
+we-trust-redis = { path = "backends/protocols/we-trust-redis", version = "0.0.0" }
+we-trust-s3 = { path = "backends/protocols/we-trust-s3", version = "0.0.0" }
+we-trust-sqlite = { path = "backends/protocols/we-trust-sqlite", version = "0.0.0" }
+we-trust-sqlserver = { path = "backends/protocols/we-trust-sqlserver", version = "0.0.0" }
+we-trust-vector = { path = "backends/protocols/we-trust-vector", version = "0.0.0" }
 
 # YYKV Packages
-yykv = { path = "clients/yykv", version = "0.0.0" }
-yykv-odbc = { path = "clients/yykv-odbc", version = "0.0.0" }
-yykv-server = { path = "servers/yykv-server", version = "0.0.0" }
-yykv-types = { path = "packages/yykv-types", version = "0.0.0" }
-yykv-hal = { path = "packages/yykv-hal", version = "0.0.0" }
-yykv-allocator = { path = "packages/yykv-allocator", version = "0.0.0" }
-yykv-io = { path = "packages/yykv-io", version = "0.0.0" }
-yykv-layout = { path = "packages/yykv-layout", version = "0.0.0" }
-yykv-compaction = { path = "packages/yykv-compaction", version = "0.0.0" }
-yykv-scheduler = { path = "packages/yykv-scheduler", version = "0.0.0" }
-yykv-tiering = { path = "packages/yykv-tiering", version = "0.0.0" }
-yykv-policy = { path = "packages/yykv-policy", version = "0.0.0" }
-yykv-udf = { path = "packages/yykv-udf", version = "0.0.0" }
-yykv-compute = { path = "packages/yykv-compute", version = "0.0.0" }
-yykv-stream = { path = "packages/yykv-stream", version = "0.0.0" }
-yykv-operators = { path = "packages/yykv-operators", version = "0.0.0" }
-yykv-executor = { path = "packages/yykv-executor", version = "0.0.0" }
-yykv-index = { path = "packages/yykv-index", version = "0.0.0" }
-yykv-schema = { path = "packages/yykv-schema", version = "0.0.0" }
-yykv-wal = { path = "packages/yykv-wal", version = "0.0.0" }
-yykv-event = { path = "packages/yykv-event", version = "0.0.0" }
-yykv-storage = { path = "packages/yykv-storage", version = "0.0.0" }
+yykv = { path = "backends/kv-store/yykv", version = "0.0.0" }
+yykv-odbc = { path = "backends/kv-store/yykv-odbc", version = "0.0.0" }
+yykv-server = { path = "backends/kv-store/yykv-server", version = "0.0.0" }
+yykv-types = { path = "backends/kv-store/yykv-types", version = "0.0.0" }
+yykv-hal = { path = "backends/kv-store/yykv-hal", version = "0.0.0" }
+yykv-allocator = { path = "backends/kv-store/yykv-allocator", version = "0.0.0" }
+yykv-io = { path = "backends/kv-store/yykv-io", version = "0.0.0" }
+yykv-layout = { path = "backends/kv-store/yykv-layout", version = "0.0.0" }
+yykv-compaction = { path = "backends/kv-store/yykv-compaction", version = "0.0.0" }
+yykv-scheduler = { path = "backends/kv-store/yykv-scheduler", version = "0.0.0" }
+yykv-tiering = { path = "backends/kv-store/yykv-tiering", version = "0.0.0" }
+yykv-policy = { path = "backends/kv-store/yykv-policy", version = "0.0.0" }
+yykv-udf = { path = "backends/kv-store/yykv-udf", version = "0.0.0" }
+yykv-compute = { path = "backends/kv-store/yykv-compute", version = "0.0.0" }
+yykv-stream = { path = "backends/kv-store/yykv-stream", version = "0.0.0" }
+yykv-operators = { path = "backends/kv-store/yykv-operators", version = "0.0.0" }
+yykv-executor = { path = "backends/kv-store/yykv-executor", version = "0.0.0" }
+yykv-index = { path = "backends/kv-store/yykv-index", version = "0.0.0" }
+yykv-schema = { path = "backends/kv-store/yykv-schema", version = "0.0.0" }
+yykv-wal = { path = "backends/kv-store/yykv-wal", version = "0.0.0" }
+yykv-event = { path = "backends/kv-store/yykv-event", version = "0.0.0" }
+yykv-storage = { path = "backends/kv-store/yykv-storage", version = "0.0.0" }
 
 # YYDS Packages
-yyds = { path = "clients/yyds", version = "0.0.0" }
-yyds-odbc = { path = "clients/yyds-odbc", version = "0.0.0" }
-yyds-types = { path = "packages/yyds-types", version = "0.0.0" }
-yyds-ai = { path = "packages/yyds-ai", version = "0.0.0" }
-yyds-billing = { path = "packages/yyds-billing", version = "0.0.0" }
-yyds-cache = { path = "packages/yyds-cache", version = "0.0.0" }
-yyds-compute = { path = "packages/yyds-compute", version = "0.0.0" }
-yyds-consensus = { path = "packages/yyds-consensus", version = "0.0.0" }
-yyds-gateway = { path = "servers/yyds-gateway", version = "0.0.0" }
-yyds-observability = { path = "packages/yyds-observability", version = "0.0.0" }
-yyds-pubsub = { path = "packages/yyds-pubsub", version = "0.0.0" }
-yyds-quota = { path = "packages/yyds-quota", version = "0.0.0" }
-yyds-server = { path = "servers/yyds-server", version = "0.0.0" }
-yyds-task = { path = "packages/yyds-task", version = "0.0.0" }
-yyds-tenant = { path = "packages/yyds-tenant", version = "0.0.0" }
-yyds-loader = { path = "packages/yyds-loader", version = "0.0.0" }
+yyds = { path = "backends/distributed/yyds", version = "0.0.0" }
+yyds-odbc = { path = "backends/distributed/yyds-odbc", version = "0.0.0" }
+yyds-types = { path = "backends/distributed/yyds-types", version = "0.0.0" }
+yyds-ai = { path = "backends/distributed/yyds-ai", version = "0.0.0" }
+yyds-billing = { path = "backends/distributed/yyds-billing", version = "0.0.0" }
+yyds-cache = { path = "backends/distributed/yyds-cache", version = "0.0.0" }
+yyds-compute = { path = "backends/distributed/yyds-compute", version = "0.0.0" }
+yyds-consensus = { path = "backends/distributed/yyds-consensus", version = "0.0.0" }
+yyds-gateway = { path = "backends/distributed/yyds-gateway", version = "0.0.0" }
+yyds-observability = { path = "backends/distributed/yyds-observability", version = "0.0.0" }
+yyds-pubsub = { path = "backends/distributed/yyds-pubsub", version = "0.0.0" }
+yyds-quota = { path = "backends/distributed/yyds-quota", version = "0.0.0" }
+yyds-server = { path = "backends/distributed/yyds-server", version = "0.0.0" }
+yyds-task = { path = "backends/distributed/yyds-task", version = "0.0.0" }
+yyds-tenant = { path = "backends/distributed/yyds-tenant", version = "0.0.0" }
+yyds-loader = { path = "backends/distributed/yyds-loader", version = "0.0.0" }
+yyds-tools = { path = "backends/distributed/yyds-tools", version = "0.0.0" }
 
 # Oak parsers
 oak-sql = { path = "../oaks/examples/oak-sql", version = "0.0.7" }

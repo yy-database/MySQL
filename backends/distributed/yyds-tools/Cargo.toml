@@ -28,10 +28,11 @@ yykv-io = { workspace = true }
 yykv-layout = { workspace = true }
 indicatif = { workspace = true }
 console = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 rand = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
 tokio-stream = { workspace = true }
 dialoguer = "0.12"
+uuid = { workspace = true }

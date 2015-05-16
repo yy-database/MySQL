@@ -54,18 +54,18 @@ No longer just traditional WAL (Write-Ahead Log). In YYKV, every write is a subs
 
 | Module | Core Features | Use Cases |
 | :--- | :--- | :--- |
-| **[yykv-io](file:///e:/yydb/yykv/packages/yykv-io)** | Async Aligned IO, DMA Memory Management | Extreme low-latency R/W |
-| **[yykv-event](file:///e:/yydb/yykv/packages/yykv-event)** | WAE Architecture, SDR Redundancy Control | Data consistency & real-time subscription |
-| **[yykv-compute](file:///e:/yydb/yykv/packages/yykv-compute)** | SIMD Vector Acceleration, Predicate Pushdown | AI retrieval & big data filtering |
-| **[yykv-layout](file:///e:/yydb/yykv/packages/yykv-layout)** | Variable-length Data Org, CRC32C Checksum | Physical storage reliability |
-| **[yykv-allocator](file:///e:/yydb/yykv/packages/yykv-allocator)** | Media-aware Allocation, Defragmentation | Efficient bare-disk space utilization |
+| **[yykv-io](file:///e:/yydb/yykv/backends/kv-store/yykv-io)** | Async Aligned IO, DMA Memory Management | Extreme low-latency R/W |
+| **[yykv-event](file:///e:/yydb/yykv/backends/kv-store/yykv-event)** | WAE Architecture, SDR Redundancy Control | Data consistency & real-time subscription |
+| **[yykv-compute](file:///e:/yydb/yykv/backends/kv-store/yykv-compute)** | SIMD Vector Acceleration, Predicate Pushdown | AI retrieval & big data filtering |
+| **[yykv-layout](file:///e:/yydb/yykv/backends/kv-store/yykv-layout)** | Variable-length Data Org, CRC32C Checksum | Physical storage reliability |
+| **[yykv-allocator](file:///e:/yydb/yykv/backends/kv-store/yykv-allocator)** | Media-aware Allocation, Defragmentation | Efficient bare-disk space utilization |
 
 ## 4. Access & Protocols
 
-YYKV provides multi-modal access capabilities through the [we-trust](file:///e:/yydb/yykv/protocols/we-trust) protocol series:
-- **Redis**: [we-trust-redis](file:///e:/yydb/yykv/protocols/we-trust-redis) provides RESP3 compatibility.
-- **SQLite**: [we-trust-sqlite](file:///e:/yydb/yykv/protocols/we-trust-sqlite) provides local embedded SQL access.
-- **Postgres**: [we-trust-postgres](file:///e:/yydb/yykv/protocols/we-trust-postgres) compatible with PG wire protocol.
+YYKV provides multi-modal access capabilities through the [we-trust](file:///e:/yydb/yykv/backends/protocols/we-trust) protocol series:
+- **Redis**: [we-trust-redis](file:///e:/yydb/yykv/backends/protocols/we-trust-redis) provides RESP3 compatibility.
+- **SQLite**: [we-trust-sqlite](file:///e:/yydb/yykv/backends/protocols/we-trust-sqlite) provides local embedded SQL access.
+- **Postgres**: [we-trust-postgres](file:///e:/yydb/yykv/backends/protocols/we-trust-postgres) compatible with PG wire protocol.
 
 ## 5. Development & Benchmarking
 
