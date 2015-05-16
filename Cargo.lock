@@ -1781,6 +1781,8 @@ version = "0.0.7"
 dependencies = [
  "oak-core",
  "oak-macros",
+ "serde",
+ "serde_json",
  "triomphe",
 ]
 
@@ -4595,6 +4597,8 @@ dependencies = [
  "we-trust-postgres",
  "we-trust-s3",
  "yyds-types",
+ "yykv",
+ "yykv-executor",
  "yykv-operators",
  "yykv-types",
 ]
