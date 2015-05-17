@@ -3,6 +3,7 @@ use crate::rbq::type_system::RbqErrorHandler;
 use yykv_operators::OpsGraph;
 use yykv_types::DsResult;
 use oak_rbq::{parse, ast::{RbqItem, RbqRoot}};
+use tracing;
 use uuid::Uuid;
 
 pub struct RbqParser;
@@ -30,35 +31,35 @@ impl RbqParser {
             match item {
                 RbqItem::Namespace(ns) => {
                     // Handle namespace definition
-                    println!("Processing namespace: {:?}", ns.path);
+                    tracing::debug!("Processing namespace: {:?}", ns.path);
                 }
                 RbqItem::Struct(s) => {
                     // Handle struct definition
-                    println!("Processing struct: {:?}", s.name);
+                    tracing::debug!("Processing struct: {:?}", s.name);
                 }
                 RbqItem::Enum(e) => {
                     // Handle enum definition
-                    println!("Processing enum: {:?}", e.name);
+                    tracing::debug!("Processing enum: {:?}", e.name);
                 }
                 RbqItem::Union(u) => {
                     // Handle union definition
-                    println!("Processing union: {:?}", u.name);
+                    tracing::debug!("Processing union: {:?}", u.name);
                 }
                 RbqItem::Trait(t) => {
                     // Handle trait definition
-                    println!("Processing trait: {:?}", t.name);
+                    tracing::debug!("Processing trait: {:?}", t.name);
                 }
                 RbqItem::Micro(m) => {
                     // Handle micro definition
-                    println!("Processing micro: {:?}", m.name);
+                    tracing::debug!("Processing micro: {:?}", m.name);
                 }
                 RbqItem::Import(i) => {
                     // Handle import definition
-                    println!("Processing import: {:?}", i.path);
+                    tracing::debug!("Processing import: {:?}", i.path);
                 }
                 RbqItem::TypeAlias(ta) => {
                     // Handle type alias definition
-                    println!("Processing type alias: {:?}", ta.name);
+                    tracing::debug!("Processing type alias: {:?}", ta.name);
                 }
             }
         }

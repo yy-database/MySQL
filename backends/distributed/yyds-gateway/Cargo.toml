@@ -36,3 +36,11 @@ path = "test_join.rs"
 [[bin]]
 name = "test_sql_parser"
 path = "test_sql_parser.rs"
+
+[[bin]]
+name = "test_rbq_parser"
+path = "test_rbq_parser.rs"
+
+[[bin]]
+name = "test_rbq_executor"
+path = "test_rbq_executor.rs"
