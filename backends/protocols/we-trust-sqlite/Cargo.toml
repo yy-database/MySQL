@@ -32,4 +32,4 @@ futures = { workspace = true }
 async-trait = { workspace = true }
 
 # Pure Rust SQLite implementation
-limbo = "0.0.22"
+limbo = { workspace = true }

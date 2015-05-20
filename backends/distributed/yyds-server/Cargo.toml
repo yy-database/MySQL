@@ -3,6 +3,7 @@ name = "yyds-server"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
 description = "Main server process for YYDS, handling client connections and request orchestration"
 
 [dependencies]
