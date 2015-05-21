@@ -1,0 +1,39 @@
+{
+    "name": "@yydb/mysql",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "MySQL classic-protocol primitives for a `.yyds` / `.yykv` backed server",
+    "license": "MPL-2.0",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "lib",
+        "readme.md"
+    ],
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "typecheck": "tsc --noEmit -p tsconfig.json"
+    },
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "optionalDependencies": {
+        "@yydb/mysql-darwin-arm64": "0.0.0",
+        "@yydb/mysql-darwin-x64": "0.0.0",
+        "@yydb/mysql-linux-x64": "0.0.0",
+        "@yydb/mysql-unknown-wasm32": "0.0.0",
+        "@yydb/mysql-win32-x64": "0.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "24.10.1",
+        "typescript": "5.9.3"
+    }
+}

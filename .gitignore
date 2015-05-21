@@ -1,38 +1,41 @@
+# OS
+.DS_Store/
+thumbs.db
+time-travel.*
+
+# IDE
+.vscode/
+.vs/
+.idea/
+*.iml
+
 # Rust
 target/
+Cargo.lock
+**/*.rs.bk
 
-# Node 
+# Local dependency overrides (CI resolves pinned git revisions only)
+.cargo/config.toml
+
+# Node
 node_modules/
 dist/
+*.tgz
+projects/mysql.ts/platforms/*/lib/
+projects/mysql.ts/homepage/node_modules/
 
-# Java/Maven
-target/
-*.class
-*.jar
-*.war
-*.ear
+# Python
+projects/mysql.py/packages/mysql/.venv/
+projects/mysql.py/packages/mysql/build/
+projects/mysql.py/packages/mysql/mysql/*.pyd
+projects/mysql.py/packages/mysql/mysql/*.so
+projects/mysql.py/packages/mysql/mysql/*.dll
+**/__pycache__/
+**/*.pyc
+*.egg-info/
 
-# IDEs
-.idea/
-.vscode/
-*.iml
-.settings/
-.classpath
-.project
-.factorypath
-
-# Rust
-.cargo/config.toml
-Cargo.lock
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Temp files
-*.swp
-*.swo
-*.db
-*.db-wal
-*.db-shm
-*.log
+# Runtime data
+data/
+*.yykv
+*.yyds
+.tmp/

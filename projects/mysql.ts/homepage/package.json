@@ -1,0 +1,8 @@
+{
+    "name": "@yydb/mysql-homepage",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Landing page for @yydb/mysql",
+    "license": "MPL-2.0",
+    "type": "module"
+}

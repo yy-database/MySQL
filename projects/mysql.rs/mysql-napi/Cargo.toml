@@ -1,0 +1,25 @@
+[package]
+name = "mysql-napi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Node-API bindings for the MySQL classic-protocol primitives"
+readme = "readme.md"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+name = "mysql_napi"
+
+[dependencies]
+mysql-core = { path = "../mysql-core" }
+napi = { workspace = true }
+napi-derive = { workspace = true }
+
+[build-dependencies]
+napi-build = { workspace = true }
+
+[package.metadata.napi]
+name = "mysql"

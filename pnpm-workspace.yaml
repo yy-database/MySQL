@@ -1,0 +1,5 @@
+packages:
+  - "projects/mysql.ts/packages/*"
+  - "projects/mysql.ts/platforms/*"
+  - "projects/mysql.ts/examples"
+  - "projects/mysql.ts/homepage"

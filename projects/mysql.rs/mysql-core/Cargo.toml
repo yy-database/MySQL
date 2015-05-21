@@ -1,0 +1,17 @@
+[package]
+name = "mysql-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "MySQL classic-protocol primitives shared by the Node-API, PyO3 and WASM bindings"
+readme = "readme.md"
+publish = false
+
+[lib]
+name = "mysql_core"
+crate-type = ["rlib"]
+
+[dependencies]
+database-protocol-mysql = { workspace = true }

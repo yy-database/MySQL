@@ -1,0 +1,18 @@
+[package]
+name = "mysql-pyo3"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "PyO3 bindings for the MySQL classic-protocol primitives"
+readme = "readme.md"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+name = "mysql_pyo3"
+
+[dependencies]
+mysql-core = { path = "../mysql-core" }
+pyo3 = { workspace = true }

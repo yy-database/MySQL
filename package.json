@@ -1,13 +1,24 @@
 {
+    "name": "mysql-workspace",
+    "version": "0.0.0",
     "private": true,
+    "description": "Workspace for the MySQL classic-protocol product",
+    "license": "MPL-2.0",
     "type": "module",
     "scripts": {
-        "check": "cargo cry",
-        "regenerate": "$env:REGENERATE_TESTS=1; cargo test --release --all-features",
-        "test": "cargo test --release",
-        "fmt": "cargo fmt --all",
-        "p": "cargo workspace publish --resume",
-        "u": "cargo upgrade --incompatible"
+        "check": "cargo check --manifest-path projects/mysql.rs/Cargo.toml --workspace --all-targets",
+        "build:napi": "node scripts/build-napi.mjs",
+        "build:ts": "tsc -p projects/mysql.ts/packages/mysql/tsconfig.json",
+        "fmt": "cargo fmt --manifest-path projects/mysql.rs/Cargo.toml --all",
+        "fmt:check": "cargo fmt --manifest-path projects/mysql.rs/Cargo.toml --all --check",
+        "test:rust": "cargo test --manifest-path projects/mysql.rs/Cargo.toml --workspace",
+        "typecheck": "tsc --noEmit"
     },
-    "packageManager": "pnpm@10.18.3"
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "24.10.1",
+        "typescript": "5.9.3"
+    }
 }

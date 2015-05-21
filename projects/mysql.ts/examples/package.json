@@ -1,0 +1,11 @@
+{
+    "name": "@yydb/mysql-examples",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Runnable samples for @yydb/mysql",
+    "license": "MPL-2.0",
+    "type": "module",
+    "dependencies": {
+        "@yydb/mysql": "workspace:*"
+    }
+}
