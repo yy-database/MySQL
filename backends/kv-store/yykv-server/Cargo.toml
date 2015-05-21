@@ -4,6 +4,7 @@ version.workspace = true
 authors.workspace = true
 edition.workspace = true
 description = "Server process for YYKV"
+license.workspace = true
 
 [dependencies]
 tokio = { workspace = true }

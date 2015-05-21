@@ -23,6 +23,7 @@ target/
 
 # Rust
 .cargo/config.toml
+Cargo.lock
 
 # OS
 .DS_Store
