@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.0.0"
 edition = "2024"
 authors = ["YY Team"]
 license = "MPL-2.0"
@@ -65,19 +65,23 @@ opentelemetry-otlp = "0.31.0"
 thiserror = "2.0.18"
 # Pure Rust SQLite implementation
 limbo = "0.0.22"
+# Async utilities
+async-stream = "0.3.0"
+dialoguer = "0.12.0"
+
 
 # Protocols
-we-trust = { path = "backends/protocols/we-trust" }
-we-trust-arrow = { path = "backends/protocols/we-trust-arrow" }
-we-trust-d1 = { path = "backends/protocols/we-trust-d1" }
-we-trust-mysql = { path = "backends/protocols/we-trust-mysql" }
-we-trust-otel = { path = "backends/protocols/we-trust-otel" }
-we-trust-postgres = { path = "backends/protocols/we-trust-postgres" }
-we-trust-redis = { path = "backends/protocols/we-trust-redis" }
-we-trust-s3 = { path = "backends/protocols/we-trust-s3" }
-we-trust-sqlite = { path = "backends/protocols/we-trust-sqlite" }
-we-trust-sqlserver = { path = "backends/protocols/we-trust-sqlserver" }
-we-trust-vector = { path = "backends/protocols/we-trust-vector" }
+we-trust = { path = "backends/protocols/we-trust", version = "0.0.0" }
+we-trust-arrow = { path = "backends/protocols/we-trust-arrow", version = "0.0.0" }
+we-trust-d1 = { path = "backends/protocols/we-trust-d1", version = "0.0.0" }
+we-trust-mysql = { path = "backends/protocols/we-trust-mysql", version = "0.0.0" }
+we-trust-otel = { path = "backends/protocols/we-trust-otel", version = "0.0.0" }
+we-trust-postgres = { path = "backends/protocols/we-trust-postgres", version = "0.0.0" }
+we-trust-redis = { path = "backends/protocols/we-trust-redis", version = "0.0.0" }
+we-trust-s3 = { path = "backends/protocols/we-trust-s3", version = "0.0.0" }
+we-trust-sqlite = { path = "backends/protocols/we-trust-sqlite", version = "0.0.0" }
+we-trust-sqlserver = { path = "backends/protocols/we-trust-sqlserver", version = "0.0.0" }
+we-trust-vector = { path = "backends/protocols/we-trust-vector", version = "0.0.0" }
 
 # YYKV Packages
 yykv = { path = "backends/kv-store/yykv", version = "0.0.0" }
@@ -131,6 +135,3 @@ oak-toml = { version = "0.0.8", git = "https://github.com/ygg-lang/oaks.git", br
 oak-xml = { version = "0.0.8", git = "https://github.com/ygg-lang/oaks.git", branch = "dev" }
 oak-dsv = { version = "0.0.8", git = "https://github.com/ygg-lang/oaks.git", branch = "dev" }
 
-# Async utilities
-async-stream = "0.3"
-dialoguer = "0.12"
