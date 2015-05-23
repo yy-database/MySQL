@@ -1,0 +1,39 @@
+name: Check TypeScript
+
+# pnpm install, TypeScript build and native binding smoke.
+# Python: check-python.yml. Rust workspace: check-rust.yml.
+# Publish: publish-npm.yml on v* tags.
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev, master]
+  workflow_call:
+
+jobs:
+  typescript:
+    name: pnpm packages
+    runs-on: ubuntu-latest
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2026-07-20
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: projects/mysql.rs
+      - name: Install workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Build TypeScript
+        run: pnpm run build:ts
+      - name: Build the native binding
+        run: node scripts/build-napi.mjs
+      - name: Typecheck the workspace
+        run: pnpm run typecheck

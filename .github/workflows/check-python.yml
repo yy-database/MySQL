@@ -1,0 +1,47 @@
+name: Check Python
+
+# Wheel build plus a clean virtualenv import smoke for `yydb-mysql`.
+# TypeScript: check-typescript.yml. Rust workspace: check-rust.yml.
+# Publish: publish-npm.yml on v* tags.
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+    branches: [dev, master]
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  python:
+    name: mysql-pyo3 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          toolchain: nightly-2026-07-20
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: projects/mysql.rs
+      - name: Install the wheel build tool
+        run: python -m pip install --quiet "maturin>=1.7,<2.0"
+      - name: Build the wheel
+        run: maturin build --release --out dist-wheels
+        working-directory: projects/mysql.py/packages/mysql
+      - name: Install the wheel and smoke the import
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install dist-wheels/*.whl
+          python -c "from mysql import decode_packet, encode_packet, max_packet_payload; framed = encode_packet(0, b'SELECT 1'); print(max_packet_payload(), decode_packet(framed))"
+        working-directory: projects/mysql.py/packages/mysql
