@@ -1,23 +1,22 @@
 {
     "name": "@yydb/mysql-darwin-arm64",
     "version": "0.0.0",
-    "private": true,
-    "description": "Native binding for @yydb/mysql on darwin arm64",
     "license": "MPL-2.0",
-    "type": "module",
-    "main": "./index.js",
-    "exports": {
-        ".": "./index.js"
-    },
-    "os": [
-        "darwin"
-    ],
-    "cpu": [
-        "arm64"
-    ],
+    "description": "Native binding for @yydb/mysql on macOS arm64",
+    "os": ["darwin"],
+    "cpu": ["arm64"],
+    "main": "mysql.darwin-arm64.node",
     "files": [
-        "index.js",
-        "lib",
+        "mysql.darwin-arm64.node",
         "readme.md"
-    ]
+    ],
+
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/yy-database/MySQL.git",
+        "directory": "projects/mysql.ts/platforms/mysql-darwin-arm64"
+    }
 }

@@ -1,7 +1,6 @@
 {
     "name": "@yydb/mysql",
     "version": "0.0.0",
-    "private": true,
     "type": "module",
     "description": "MySQL classic-protocol primitives for a `.yyds` / `.yykv` backed server",
     "license": "MPL-2.0",
@@ -15,7 +14,6 @@
     },
     "files": [
         "dist",
-        "lib",
         "readme.md"
     ],
     "scripts": {
@@ -31,6 +29,11 @@
         "@yydb/mysql-linux-x64": "0.0.0",
         "@yydb/mysql-unknown-wasm32": "0.0.0",
         "@yydb/mysql-win32-x64": "0.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/yy-database/MySQL.git",
+        "directory": "projects/mysql.ts/packages/mysql"
     },
     "devDependencies": {
         "@types/node": "24.10.1",

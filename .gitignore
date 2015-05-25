@@ -21,8 +21,15 @@ Cargo.lock
 node_modules/
 dist/
 *.tgz
-projects/mysql.ts/platforms/*/lib/
+projects/mysql.ts/platforms/*/*.node
 projects/mysql.ts/homepage/node_modules/
+
+# Local npm 2FA (never commit)
+.env.placeholder.local
+.env*.local
+
+# Nifty local cache
+.cache/
 
 # Python
 projects/mysql.py/packages/mysql/.venv/

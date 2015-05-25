@@ -1,6 +1,13 @@
+// Resolves the platform addon through the optional dependency, or a sibling
+// platform package directory on a plain checkout. `package.json#main` owns the
+// `.node` filename — callers never concatenate it.
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export type PlatformKey = 'win32-x64' | 'linux-x64' | 'darwin-x64' | 'darwin-arm64';
 
@@ -31,24 +38,19 @@ export function platformKey(platform = process.platform, arch = process.arch): P
     return null;
 }
 
-/** Native binding filename inside each `@yydb/mysql-<platform>` package `lib/`. */
-export function nativeBindingName(key: PlatformKey): string {
-    switch (key) {
-        case 'win32-x64':
-            return 'mysql-win32-x64-msvc.node';
-        case 'linux-x64':
-            return 'mysql-linux-x64-gnu.node';
-        case 'darwin-x64':
-            return 'mysql-darwin-x64.node';
-        case 'darwin-arm64':
-            return 'mysql-darwin-arm64.node';
-    }
-}
-
 /** Loads the platform binding for the running process. */
 export function loadNative(): MysqlNative {
     const key = platformKey();
     if (!key) throw new Error(`MySQL native binding is unavailable for ${process.platform}-${process.arch}`);
-    const loaded: { default?: MysqlNative } | MysqlNative = require(`@yydb/mysql-${key}`);
-    return ('default' in loaded && loaded.default ? loaded.default : loaded) as MysqlNative;
+    const platformPackage = `@yydb/mysql-${key}`;
+    try {
+        return require(platformPackage) as MysqlNative;
+    } catch (error) {
+        const repo = resolve(packageRoot, '..', '..', '..', '..');
+        const local = join(repo, 'projects', 'mysql.ts', 'platforms', `mysql-${key}`);
+        if (existsSync(join(local, 'package.json'))) return require(local) as MysqlNative;
+        throw new Error(
+            `cannot resolve ${platformPackage}: install the matching platform package (${(error as Error).message})`,
+        );
+    }
 }

@@ -1,23 +1,22 @@
 {
     "name": "@yydb/mysql-linux-x64",
     "version": "0.0.0",
-    "private": true,
-    "description": "Native binding for @yydb/mysql on linux x64",
     "license": "MPL-2.0",
-    "type": "module",
-    "main": "./index.js",
-    "exports": {
-        ".": "./index.js"
-    },
-    "os": [
-        "linux"
-    ],
-    "cpu": [
-        "x64"
-    ],
+    "description": "Native binding for @yydb/mysql on Linux x64",
+    "os": ["linux"],
+    "cpu": ["x64"],
+    "main": "mysql.linux-x64.node",
     "files": [
-        "index.js",
-        "lib",
+        "mysql.linux-x64.node",
         "readme.md"
-    ]
+    ],
+
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/yy-database/MySQL.git",
+        "directory": "projects/mysql.ts/platforms/mysql-linux-x64"
+    }
 }

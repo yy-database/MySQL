@@ -1,23 +1,20 @@
 {
     "name": "@yydb/mysql-unknown-wasm32",
     "version": "0.0.0",
-    "private": true,
-    "description": "Browser WebAssembly binding for @yydb/mysql",
     "license": "MPL-2.0",
-    "type": "module",
-    "main": "./index.js",
-    "types": "./index.d.ts",
-    "exports": {
-        ".": {
-            "types": "./index.d.ts",
-            "import": "./index.js"
-        },
-        "./wasm": "./lib/mysql_wasm_bg.wasm"
-    },
+    "description": "WASM binding for @yydb/mysql",
+    "main": "mysql.unknown-wasm32.node",
     "files": [
-        "index.js",
-        "index.d.ts",
-        "lib",
+        "mysql.unknown-wasm32.node",
         "readme.md"
-    ]
+    ],
+
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/yy-database/MySQL.git",
+        "directory": "projects/mysql.ts/platforms/mysql-unknown-wasm32"
+    }
 }

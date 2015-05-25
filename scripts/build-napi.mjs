@@ -1,33 +1,39 @@
+// Builds `mysql-napi` and drops the addon into the matching platform package.
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { copyFileSync, existsSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const rustWorkspace = join(repositoryRoot, 'projects', 'mysql.rs');
-const release = process.argv.includes('--release');
-const profile = release ? 'release' : 'debug';
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const crateDir = join(repo, 'projects', 'mysql.rs');
+const platform = `${process.platform}-${process.arch}`;
+const packageDir = join(repo, 'projects', 'mysql.ts', 'platforms', `mysql-${platform}`);
+const nodeName = `mysql.${platform}.node`;
 
-const platforms = {
-    'win32-x64': { package: 'mysql-win32-x64', file: 'mysql-win32-x64-msvc.node', artifact: 'mysql_napi.dll' },
-    'linux-x64': { package: 'mysql-linux-x64', file: 'mysql-linux-x64-gnu.node', artifact: 'libmysql_napi.so' },
-    'darwin-x64': { package: 'mysql-darwin-x64', file: 'mysql-darwin-x64.node', artifact: 'libmysql_napi.dylib' },
-    'darwin-arm64': { package: 'mysql-darwin-arm64', file: 'mysql-darwin-arm64.node', artifact: 'libmysql_napi.dylib' },
-};
+const artifact = {
+    win32: { name: 'mysql_napi.dll' },
+    darwin: { name: 'libmysql_napi.dylib' },
+    linux: { name: 'libmysql_napi.so' },
+}[process.platform];
 
-const key = `${process.platform}-${process.arch}`;
-const platform = platforms[key];
-if (!platform) {
-    throw new Error(`no MySQL platform package for ${key}`);
+if (!artifact) {
+    throw new Error(`unsupported platform ${process.platform}`);
 }
 
-execFileSync('cargo', ['build', '--manifest-path', join(rustWorkspace, 'Cargo.toml'), '-p', 'mysql-napi', ...(release ? ['--release'] : [])], {
-    cwd: rustWorkspace,
-    stdio: 'inherit',
-});
+const release = process.argv.includes('--release');
+execFileSync(
+    'cargo',
+    ['build', '-p', 'mysql-napi', ...(release ? ['--release'] : [])],
+    { cwd: crateDir, stdio: 'inherit' },
+);
 
-const targetDirectory = process.env.CARGO_TARGET_DIR ?? join(rustWorkspace, 'target');
-const destination = join(repositoryRoot, 'projects', 'mysql.ts', 'platforms', platform.package, 'lib');
-mkdirSync(destination, { recursive: true });
-copyFileSync(join(targetDirectory, profile, platform.artifact), join(destination, platform.file));
-console.log(`copied ${platform.file} into ${platform.package}/lib`);
+const profile = release ? 'release' : 'debug';
+const targetDirectory = resolve(crateDir, process.env.CARGO_TARGET_DIR ?? 'target');
+const source = join(targetDirectory, profile, artifact.name);
+if (!existsSync(source)) {
+    throw new Error(`missing build artifact ${source}`);
+}
+
+const dest = join(packageDir, nodeName);
+copyFileSync(source, dest);
+console.log(`napi addon -> ${dest}`);
