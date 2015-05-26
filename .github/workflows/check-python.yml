@@ -42,6 +42,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pip install dist-wheels/*.whl
+          python -m pip install projects/mysql.py/packages/mysql/dist-wheels/*.whl
           python -c "from mysql import decode_packet, encode_packet, max_packet_payload; framed = encode_packet(0, b'SELECT 1'); print(max_packet_payload(), decode_packet(framed))"
-        working-directory: projects/mysql.py/packages/mysql
