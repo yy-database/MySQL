@@ -35,5 +35,7 @@ jobs:
         run: pnpm run build:ts
       - name: Build the native binding
         run: node scripts/build-napi.mjs
+      - name: Smoke the native roundtrip
+        run: node projects/mysql.ts/examples/roundtrip.ts
       - name: Typecheck the workspace
         run: pnpm run typecheck
