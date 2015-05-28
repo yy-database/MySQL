@@ -33,6 +33,12 @@ pub fn max_packet_payload() -> u32 {
     mysql_core::max_packet_payload() as u32
 }
 
+/// Protocol version announced in the initial handshake.
+#[wasm_bindgen]
+pub fn protocol_version() -> u8 {
+    mysql_core::PROTOCOL_VERSION
+}
+
 /// Frames one payload with the classic 4-byte header.
 #[wasm_bindgen]
 pub fn encode_packet(sequence: u8, payload: &[u8]) -> Result<Vec<u8>, JsValue> {

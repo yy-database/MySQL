@@ -23,6 +23,8 @@ export interface DecodedPacket {
 export interface MysqlNative {
     /** Largest payload one classic packet may carry. */
     maxPacketPayload(): number;
+    /** Protocol version announced in the initial handshake. */
+    protocolVersion(): number;
     /** Frames one payload with the classic 4-byte header. */
     encodePacket(sequence: number, payload: Buffer): Buffer;
     /** Decodes the first complete packet, or `null` when the input is incomplete. */
