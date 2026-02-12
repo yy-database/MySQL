@@ -1,0 +1,18 @@
+[package]
+name = "yykv-operators"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Core query operators and data transformation logic for YYKV"
+
+[dependencies]
+yykv-types.workspace = true
+serde.workspace = true
+oak-sql.workspace = true
+oak-core.workspace = true
+
+bytes.workspace = true
+uuid.workspace = true

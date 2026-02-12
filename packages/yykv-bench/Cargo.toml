@@ -1,0 +1,16 @@
+[package]
+name = "yykv-bench"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Benchmarks for yykv storage engine"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv.workspace = true
+yykv-types.workspace = true
+tokio.workspace = true
+serde.workspace = true
+criterion = "0.5"

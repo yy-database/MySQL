@@ -1,0 +1,27 @@
+[package]
+name = "we-trust-postgres"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "PostgreSQL compatibility layer for We-Trust, supporting the wire protocol and SQL dialect"
+categories = ["database-implementations", "network-programming"]
+keywords = ["postgres", "we-trust", "database", "protocol"]
+
+[dependencies]
+yykv-types = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+
+serde = { workspace = true }
+tracing = { workspace = true }
+byteorder = { workspace = true }
+
+futures = { workspace = true }
+chrono = { workspace = true }
+md5 = "0.7"
+hex = { workspace = true }
+async-trait = { workspace = true }

@@ -1,0 +1,18 @@
+[package]
+name = "yykv-index"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Indexing service for YYKV using Tantivy for full-text search"
+
+[dependencies]
+yykv-types.workspace = true
+yykv-event.workspace = true
+serde.workspace = true
+
+async-trait.workspace = true
+uuid.workspace = true
+tokio.workspace = true

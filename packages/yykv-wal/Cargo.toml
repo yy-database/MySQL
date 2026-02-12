@@ -1,0 +1,18 @@
+[package]
+name = "yykv-wal"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Write-Ahead Log (WAL) implementation for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+bincode.workspace = true
+yykv-types.workspace = true
+    bytes.workspace = true
+tracing.workspace = true
+

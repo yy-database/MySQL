@@ -1,0 +1,22 @@
+[package]
+name = "yykv-udf"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "User-defined functions (UDF) engine for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv-types.workspace = true
+wasmtime = { version = "18.0", default-features = false, features = ["component-model", "async", "cranelift", "runtime"] }
+wasmtime-wasi = { version = "18.0" }
+wit-bindgen = "0.17"
+async-trait.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+serde.workspace = true
+
+
+bytes.workspace = true

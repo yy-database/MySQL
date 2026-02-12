@@ -1,0 +1,14 @@
+[package]
+name = "yykv-allocator"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Memory and storage allocator for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv-types.workspace = true
+yykv-hal.workspace = true
+

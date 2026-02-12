@@ -1,0 +1,17 @@
+[package]
+name = "yykv-layout"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Physical data layout and serialization for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv-types.workspace = true
+bytes.workspace = true
+crc32fast.workspace = true
+
+serde.workspace = true
+bincode.workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "yykv-profile"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Profiling and performance analysis tools for yykv"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+yykv.workspace = true
+yykv-types.workspace = true
+yykv-hal.workspace = true
+yykv-io.workspace = true
+yykv-layout.workspace = true
+clap.workspace = true
+serde.workspace = true
+
+tokio.workspace = true
+indicatif.workspace = true
+console.workspace = true
+rand.workspace = true

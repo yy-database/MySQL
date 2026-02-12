@@ -1,15 +1,132 @@
 [workspace]
-resolver = "2"
-members = ["projects/*"]
-default-members = [
-    "projects/sub_projects",
+resolver = "3"
+members = [
+    "packages/yykv-types",
+    "packages/yykv",
+    "packages/yykv-profile",
+    "packages/yykv-bench",
+    "packages/yykv-udf",
+    "packages/yykv-scheduler",
+    "packages/yykv-tiering",
+    "packages/yykv-hal",
+    "packages/yykv-compaction",
+    "packages/yykv-layout",
+    "packages/yykv-allocator",
+    "packages/yykv-io",
+    "packages/yykv-policy",
+    "packages/yykv-compute",
+    "packages/yykv-stream",
+    "packages/yykv-wal",
+    "packages/yykv-operators",
+    "packages/yykv-executor",
+    "packages/yykv-schema",
+    "packages/yykv-event",
+    "packages/yykv-index",
+    "packages/yykv-storage",
+    "protocols/we-trust",
+    "protocols/we-trust-arrow",
+    "protocols/we-trust-d1",
+    "protocols/we-trust-mysql",
+    "protocols/we-trust-otel",
+    "protocols/we-trust-postgres",
+    "protocols/we-trust-redis",
+    "protocols/we-trust-s3",
+    "protocols/we-trust-sqlite",
+    "protocols/we-trust-sqlserver",
+    "protocols/we-trust-vector"
 ]
-exclude = [
-    "projects/.DS_Store",
-]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+authors = ["YY Team"]
+license = "MPL-2.0"
+repository = "https://github.com/yydb/yykv"
+homepage = "https://yydb.io"
+
 
 [workspace.dependencies]
+# Main Package
+yykv = { path = "packages/yykv", version = "0.0.0" }
 
-[profile.release]
-lto = true
-panic = "abort"
+# Workspace Internal Packages
+yykv-types = { path = "packages/yykv-types", version = "0.0.0" }
+yykv-hal = { path = "packages/yykv-hal", version = "0.0.0" }
+yykv-allocator = { path = "packages/yykv-allocator", version = "0.0.0" }
+yykv-io = { path = "packages/yykv-io", version = "0.0.0" }
+yykv-layout = { path = "packages/yykv-layout", version = "0.0.0" }
+yykv-compaction = { path = "packages/yykv-compaction", version = "0.0.0" }
+yykv-scheduler = { path = "packages/yykv-scheduler", version = "0.0.0" }
+yykv-tiering = { path = "packages/yykv-tiering", version = "0.0.0" }
+yykv-policy = { path = "packages/yykv-policy", version = "0.0.0" }
+yykv-udf = { path = "packages/yykv-udf", version = "0.0.0" }
+yykv-compute = { path = "packages/yykv-compute", version = "0.0.0" }
+yykv-stream = { path = "packages/yykv-stream", version = "0.0.0" }
+yykv-wal = { path = "packages/yykv-wal", version = "0.0.0" }
+yykv-operators = { path = "packages/yykv-operators", version = "0.0.0" }
+yykv-executor = { path = "packages/yykv-executor", version = "0.0.0" }
+yykv-index = { path = "packages/yykv-index", version = "0.0.0" }
+yykv-schema = { path = "packages/yykv-schema", version = "0.0.0" }
+yykv-event = { path = "packages/yykv-event", version = "0.0.0" }
+yykv-storage = { path = "packages/yykv-storage", version = "0.0.0" }
+
+# Protocols
+we-trust = { path = "protocols/we-trust", version = "0.0.0" }
+we-trust-arrow = { path = "protocols/we-trust-arrow", version = "0.0.0" }
+we-trust-d1 = { path = "protocols/we-trust-d1", version = "0.0.0" }
+we-trust-mysql = { path = "protocols/we-trust-mysql", version = "0.0.0" }
+we-trust-otel = { path = "protocols/we-trust-otel", version = "0.0.0" }
+we-trust-postgres = { path = "protocols/we-trust-postgres", version = "0.0.0" }
+we-trust-redis = { path = "protocols/we-trust-redis", version = "0.0.0" }
+we-trust-s3 = { path = "protocols/we-trust-s3", version = "0.0.0" }
+we-trust-sqlite = { path = "protocols/we-trust-sqlite", version = "0.0.0" }
+we-trust-sqlserver = { path = "protocols/we-trust-sqlserver", version = "0.0.0" }
+we-trust-vector = { path = "protocols/we-trust-vector", version = "0.0.0" }
+
+# External projects for Local
+# oak-sql = { path = "../oaks/examples/oak-sql" }
+# oak-json = { path = "../oaks/examples/oak-json" }
+# oak-toml = { path = "../oaks/examples/oak-toml" }
+# oak-core = { path = "../oaks/projects/oak-core" }
+# oak-xml = { path = "../oaks/examples/oak-xml" }
+
+# External projects for CI
+oak-sql = "0.0.3"
+oak-json = "0.0.3"
+oak-core = "0.0.3"
+oak-toml = "0.0.3"
+oak-xml = "0.0.3"
+
+# External Dependencies
+bytes = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+crc32fast = "1.3"
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "net", "time", "sync", "io-util", "fs"] }
+tokio-stream = "0.1"
+clap = { version = "4.0", features = ["derive"] }
+indicatif = "0.17"
+console = "0.15"
+rand = "0.8"
+async-trait = "0.1"
+thiserror = "2.0"
+uuid = { version = "1.0", features = ["v4", "v7", "serde"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+sha2 = "0.10"
+chrono = { version = "=0.4.38", features = ["serde"] }
+parking_lot = { version = "0.12" }
+byteorder = "1.5"
+http = "1.0"
+hmac = "0.12"
+hex = "0.4"
+lru = "0.12"
+tempfile = { version = "3.8" }
+resp = "1.0.3"
+rust_decimal = "1.0"
+windows = { version = "0.52", features = ["Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System_IO", "Win32_System_Ioctl", "Win32_Security"] }
+libc = "0.2"
+
+# Benchmark Dependencies
