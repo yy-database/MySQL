@@ -1,9 +1,13 @@
 [package]
 name = "yyds"
 version.workspace = true
-edition.workspace = true
 authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "High-performance distributed middleware framework, unifying database, cache, and storage"
+readme = "readme.md"
 
 [dependencies]
 # Core dependencies for client

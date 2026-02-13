@@ -9,7 +9,7 @@ pub struct RedisAdapter;
 
 impl RedisAdapter {
     pub async fn connect(_url: &str) -> Result<RedisConnection> {
-        let service = Arc::new(RedisService::new()?);
+        let service = Arc::new(crate::RedisService::new().await?);
         Ok(RedisConnection::new(service))
     }
 }

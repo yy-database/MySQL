@@ -3,7 +3,11 @@ name = "yyds-quota"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Resource quota and rate limiting service for YYDS tenants"
+readme = "readme.md"
 
 [dependencies]
 serde = { workspace = true }
