@@ -1,6 +1,0 @@
-[package]
-name = "yykv-bench"
-version = "0.0.0"
-edition = "2021"
-
-[dependencies]

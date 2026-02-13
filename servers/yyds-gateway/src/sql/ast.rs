@@ -1,6 +1,5 @@
 use yykv_operators::OpsGraph;
-use uuid::Uuid;
-use yykv_types::{DsResult, DsValue, YYSchema as DsSchema};
+use yykv_types::{DsValue, YYSchema as DsSchema};
 
 // Re-defining SqlStatement here as an intermediate representation inside Gateway
 // before converting to OpsGraph or executing directly (for DDL).
