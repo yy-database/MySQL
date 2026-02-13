@@ -7,14 +7,6 @@ use yykv_hal::Hal;
 use yykv_io::WindowsHal;
 use yykv_types::{DsError, DsResult};
 
-#[derive(Parser)]
-#[command(name = "yykv-profile")]
-#[command(about = "YYKV Performance Profiling and Layout Visualization Tool", long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
 #[derive(Subcommand, Debug, Clone)]
 pub enum ProfileCommands {
     /// Benchmark a physical device or file

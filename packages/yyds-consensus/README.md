@@ -1,14 +1,14 @@
-# yyds-consensus
+# Distributed Consensus Layer
 
-YYDS 分布式一致性层。
+`yyds-consensus` provides the distributed consensus layer for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **Raft 协议实现**: 提供 Leader 选举、日志复制及安全性保证。
-- **可插拔适配器**: 通过 `ConsensusAdapter` 特征，支持在不同共识协议间切换。
-- **WAL 集成**: 直接与 `yyds-wal` 结合，确保数据在集群内的强一致性同步。
-- **多副本管理**: 根据 SDR 级别动态调整日志确认策略。
+- **Raft Protocol Implementation**: Provides Leader election, log replication, and safety guarantees.
+- **Pluggable Adapters**: Supports switching between different consensus protocols via the `ConsensusAdapter` trait.
+- **WAL Integration**: Directly integrates with `yyds-wal` to ensure strong consistency synchronization of data within the cluster.
+- **Multi-Replica Management**: Dynamically adjusts log acknowledgement strategies based on SDR levels.
 
-## 状态机
+## State Machine
 
-- `RaftAdapter`: 实现标准 Raft 逻辑的适配器，管理节点状态转移与心跳同步。
+- `RaftAdapter`: Adapter implementing standard Raft logic, managing node state transitions and heartbeat synchronization.

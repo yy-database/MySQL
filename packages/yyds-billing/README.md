@@ -1,9 +1,9 @@
-# yyds-billing
+# Multi-Tenant Billing and Audit System
 
-YYDS 多租户计费与资源审计系统。
+`yyds-billing` is the multi-tenant billing and resource auditing system for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **资源计量**: 精确统计租户对存储 (Storage)、计算 (CPU/Memory) 及网络 (IO) 的消耗。
-- **计费策略**: 支持基于配额的预付费与按量后付费模式。
-- **审计日志**: 记录详尽的资源使用轨迹，支持生成租户账单。
+- **Resource Metering**: Precisely tracks tenant consumption of Storage, Compute (CPU/Memory), and Network (IO).
+- **Billing Policies**: Supports both quota-based pre-payment and usage-based post-payment models.
+- **Audit Logging**: Records detailed resource usage trails and supports generating tenant invoices.
