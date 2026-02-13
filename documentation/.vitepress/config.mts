@@ -62,7 +62,8 @@ export default defineConfig({
             text: '指南',
             items: [
               { text: '介绍', link: '/zh-hans/guide/' },
-              { text: '架构设计', link: '/zh-hans/guide/architecture' }
+              { text: '架构设计', link: '/zh-hans/guide/architecture' },
+              { text: '调度系统', link: '/zh-hans/guide/scheduler' }
             ]
           },
           {
