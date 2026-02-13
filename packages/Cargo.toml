@@ -1,0 +1,15 @@
+[package]
+name = "yyds-ai"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "AI and machine learning integration for YYDS, supporting vector embeddings and inference"
+
+[dependencies]
+yyds-types.workspace = true
+tokio.workspace = true
+serde.workspace = true
+
+
+# Placeholder for ONNX/TFLite runtime
+# ort = "1.16" 

@@ -1,0 +1,52 @@
+[package]
+name = "yyds"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "High-performance distributed middleware framework, unifying database, cache, and storage"
+
+[dependencies]
+# Ecosystem packages
+yyds-types = { workspace = true }
+yyds-consensus = { workspace = true }
+yyds-compute = { workspace = true }
+yyds-ai = { workspace = true }
+yyds-task = { workspace = true }
+yyds-gateway = { workspace = true }
+yyds-observability = { workspace = true }
+yyds-storage = { workspace = true }
+yyds-tenant = { workspace = true }
+yyds-billing = { workspace = true }
+yyds-quota = { workspace = true }
+yyds-pubsub = { workspace = true }
+yyds-cache = { workspace = true }
+
+# yykv components
+yykv-wal = { workspace = true }
+yykv-index = { workspace = true }
+yykv-operators = { workspace = true }
+yykv-executor = { workspace = true }
+yykv-schema = { workspace = true }
+
+# Protocols
+we-trust = { workspace = true }
+we-trust-postgres = { workspace = true }
+we-trust-s3 = { workspace = true }
+we-trust-otel = { workspace = true }
+we-trust-arrow = { workspace = true }
+we-trust-mysql = { workspace = true }
+we-trust-vector = { workspace = true }
+
+# External dependencies
+tokio.workspace = true
+clap.workspace = true
+serde.workspace = true
+# serde_json.workspace = true # replaced by oak-json
+oak-json.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "yyds"
+path = "src/bin/main.rs"
