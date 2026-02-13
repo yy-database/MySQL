@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 pub mod adapter;
 pub mod codec;
 pub mod connection;

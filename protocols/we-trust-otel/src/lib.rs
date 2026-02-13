@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use futures::StreamExt;
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;

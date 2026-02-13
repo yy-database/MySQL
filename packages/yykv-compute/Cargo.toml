@@ -17,4 +17,4 @@ serde.workspace = true
 tokio.workspace = true
 async-trait.workspace = true
 tracing.workspace = true
-simd-json = { version = "0.13", optional = true }
+simd-json = { workspace = true, optional = true }
