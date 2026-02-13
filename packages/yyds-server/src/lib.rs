@@ -146,8 +146,7 @@ impl WaePipeline {
 
 const BILLING_FILE: &str = "persistence/billing_data.json";
 
-#[tokio::main]
-async fn main() -> std::result::Result<(), YYError> {
+pub async fn run() -> std::result::Result<(), YYError> {
     tracing_subscriber::fmt::init();
     
     // Ensure persistence directory exists
