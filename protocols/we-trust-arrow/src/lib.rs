@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use std::pin::Pin;

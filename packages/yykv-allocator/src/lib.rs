@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use yykv_hal::DeviceInfo;
 use yykv_types::{MediumType, PageId};
 

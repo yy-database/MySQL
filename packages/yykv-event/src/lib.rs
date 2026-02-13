@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bytes::{BufMut, Bytes, BytesMut};
 use chrono::{DateTime, Utc};
 use crc32fast::Hasher;

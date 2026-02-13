@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use uuid::Uuid;
 use yykv_types::layout::{DsValueEncoder, YYValueDecoder};

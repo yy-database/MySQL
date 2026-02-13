@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use yykv_types::{DsError, DsSchema, DsValue};
 
 pub struct SchemaEngine;

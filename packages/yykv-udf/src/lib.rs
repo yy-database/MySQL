@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use async_trait::async_trait;
 use tracing::info;
 use wasmtime::{

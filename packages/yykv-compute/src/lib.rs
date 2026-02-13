@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use async_trait::async_trait;
 use tracing::debug;
 use yykv_layout::LayoutManager;

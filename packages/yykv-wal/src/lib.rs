@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use serde::{Deserialize, Serialize};
 use std::io::SeekFrom;
 use std::path::PathBuf;
