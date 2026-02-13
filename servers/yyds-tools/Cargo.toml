@@ -20,5 +20,11 @@ yyds = { workspace = true }
 yykv = { workspace = true }
 yyds-server = { workspace = true }
 yykv-server = { workspace = true }
-yykv-bench = { workspace = true }
-yykv-profile = { workspace = true }
+yykv-types = { workspace = true }
+yykv-hal = { workspace = true }
+yykv-io = { workspace = true }
+yykv-layout = { workspace = true }
+indicatif = { workspace = true }
+console = { workspace = true }
+rand = { workspace = true }
+tracing = { workspace = true }

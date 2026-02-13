@@ -1,9 +1,9 @@
-# yyds-tenant
+# Multi-Tenant Metadata Management Center
 
-YYDS 多租户元数据管理中心。
+`yyds-tenant` is the multi-tenant metadata management center for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **身份标识**: 管理租户的唯一标识 (`Uuid`)、API Key 及安全凭证。
-- **元数据存储**: 维护租户的基本信息、所属 SDR 策略及命名空间。
-- **租户隔离**: 为上层组件提供租户上下文，确保数据与请求在逻辑上的完全隔离。
+- **Identity Identification**: Manages unique tenant identifiers (`Uuid`), API keys, and security credentials.
+- **Metadata Storage**: Maintains basic tenant information, associated SDR policies, and namespaces.
+- **Tenant Isolation**: Provides tenant context for upper-level components, ensuring complete logical isolation of data and requests.

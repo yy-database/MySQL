@@ -1,9 +1,9 @@
-# yyds-quota
+# Resource Quota and Flow Control System
 
-YYDS 资源配额与流控系统。
+`yyds-quota` is the resource quota and flow control system for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **多维配额**: 支持对租户的 QPS、存储容量、计算单元等多个维度进行配额限制。
-- **实时流控**: 毫秒级的请求令牌桶/漏桶算法实现，确保系统稳定性。
-- **动态调整**: 支持在不重启服务的情况下动态调整租户配额。
+- **Multi-Dimensional Quotas**: Supports quota limits for tenants across multiple dimensions, including QPS, storage capacity, and compute units.
+- **Real-Time Flow Control**: Millisecond-level implementation of request token bucket/leaky bucket algorithms to ensure system stability.
+- **Dynamic Adjustment**: Supports dynamic adjustment of tenant quotas without restarting services.

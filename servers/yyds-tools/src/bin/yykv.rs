@@ -19,7 +19,7 @@ enum Commands {
     /// Performance profiling and analysis
     Profile {
         #[command(subcommand)]
-        command: yykv_profile::ProfileCommands,
+        command: yyds_tools::profile::ProfileCommands,
     },
     /// Inspect storage file
     Inspect {
@@ -37,13 +37,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("yykv version 0.1.0");
         }
         Commands::Bench => {
-            yykv_bench::run().await?;
+            yyds_tools::bench::run().await?;
         }
         Commands::Server => {
             yykv_server::run().await?;
         }
         Commands::Profile { command } => {
-            yykv_profile::run(command.clone()).await.map_err(|e| e.to_string())?;
+            yyds_tools::profile::run(command.clone()).await.map_err(|e| e.to_string())?;
         }
         Commands::Inspect { path } => {
             println!("Inspecting storage file: {}", path);

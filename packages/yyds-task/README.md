@@ -1,9 +1,9 @@
-# yyds-task
+# Background Task Scheduling and Management System
 
-YYDS 后台任务调度与管理系统。
+`yyds-task` is the background task scheduling and management system for the YYDS ecosystem.
 
-## 功能特性
+## Features
 
-- **异步任务**: 处理系统中非即时完成的操作，如大规模数据迁移、索引重建等。
-- **定时调度**: 负责定时的计费汇总、过期数据清理及系统健康检查。
-- **状态监控**: 提供任务生命周期管理，支持任务重试、挂起与进度追踪。
+- **Asynchronous Tasks**: Handles operations in the system that are not completed instantly, such as large-scale data migration and index rebuilding.
+- **Scheduled Scheduling**: Responsible for periodic billing aggregation, expired data cleanup, and system health checks.
+- **Status Monitoring**: Provides task lifecycle management, supporting task retry, suspension, and progress tracking.

@@ -1,14 +1,14 @@
-# yyds-server
+# YYKV Storage Server
 
-YYDS 分布式数据库服务器主程序。
+The standalone storage server program for the YYKV storage engine.
 
-## 功能特性
+## Features
 
-- **集成化核心**: 整合了存储引擎 (`yykv`)、计算引擎 (`yyds-compute`)、共识协议 (`yyds-consensus`) 及执行器 (`yyds-executor`)。
-- **多租户支持**: 深度集成 `yyds-tenant`、`yyds-billing` 和 `yyds-quota`，实现租户隔离与资源计费。
-- **Trust 协议接入**: 原生支持高性能的 Trust 二进制通信协议。
-- **状态管理**: 统一管理全局租户元数据、配额及存储句柄。
+- **Core Storage**: Provides direct access to the underlying `yykv` storage kernel.
+- **High Performance**: Optimized for low-latency IO operations and high throughput.
+- **Trust Protocol**: Supports the Trust binary protocol for efficient data communication.
+- **Minimalist Design**: Lightweight server process focused on storage operations.
 
-## 运行
+## Running
 
-通过 `cargo run -p yyds-server` 启动服务器。默认监听 127.0.0.1:8888。
+Start the server via `cargo run -p yykv-server`. It listens on `127.0.0.1:8889` by default.
