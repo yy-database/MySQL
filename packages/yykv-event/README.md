@@ -1,46 +1,46 @@
 # yykv-event (WAE: Write-Ahead Event)
 
-`yykv-event` 是 YYKV 存算一体化架构的核心，实现了 **WAE (写入即事件)** 机制。它不仅负责数据的持久化日志记录 (WAL)，更将每一次变更抽象为可实时订阅的事件流，支撑起“近数据计算” (Near-Data Computing) 的业务模型。
+`yykv-event` is the core of YYKV's integrated storage-compute architecture, implementing the **WAE (Write-Ahead Event)** mechanism. It is responsible for not only persistent logging (WAL) but also abstracting every change into a real-time subscribable event stream, supporting the "Near-Data Computing" business model.
 
-## 核心原语
+## Core Primitives
 
-### 1. WalEvent (逻辑事件)
-代表一次业务层面的变更，包含：
-- **租户 ID (Tenant ID)**: 实现物理级的多租户数据隔离。
-- **SDR 级别 (Redundancy)**: 软件定义冗余，决定该事件的持久化策略。
-- **操作类型 (OpType)**: Insert, Update, Delete。
+### 1. WalEvent (Logical Event)
+Represents a business-level change, containing:
+- **Tenant ID**: Implements physical-level multi-tenant data isolation.
+- **SDR Level (Redundancy)**: Software-defined redundancy, determining the persistence strategy for the event.
+- **Operation Type**: Insert, Update, Delete.
 
-### 2. WalEntry (物理条目)
-经过高效二进制序列化后的磁盘布局：
-| 字段 | 大小 | 说明 |
+### 2. WalEntry (Physical Entry)
+The binary serialized disk layout:
+| Field | Size | Description |
 | :--- | :--- | :--- |
-| Magic | 2B | 固定为 `0xYY` |
-| Version | 1B | 协议版本 |
-| SDR | 1B | 软件定义冗余等级 |
-| RequestID | 16B | 全球唯一请求 ID (Uuid v7) |
-| Checksum | 4B | 基于 CRC32C 的全条目校验 |
+| Magic | 2B | Fixed as `0xYY` |
+| Version | 1B | Protocol version |
+| SDR | 1B | Software-defined redundancy level |
+| RequestID | 16B | Globally unique request ID (Uuid v7) |
+| Checksum | 4B | CRC32C-based full-entry checksum |
 
-## 关键技术点
+## Key Technical Points
 
-### ⚡ 写入即事件 (WAE)
-传统的 WAL 仅用于崩溃恢复。`yykv-event` 通过 `broadcast` 通道将写入操作实时推送给订阅者（如 `yykv-executor` 中的 WAE Worker），使得计算逻辑可以在数据落盘的同时完成预处理。
+### ⚡ Write-Ahead Event (WAE)
+Traditional WAL is only used for crash recovery. `yykv-event` pushes write operations in real-time to subscribers (like WAE Workers in `yykv-executor`) via a `broadcast` channel, enabling compute logic to complete preprocessing while data is being flushed to disk.
 
-### 🛡️ 软件定义冗余 (SDR)
-支持在单次写入请求中指定冗余策略：
-- `Single`: 追求极致性能，异步刷盘。
-- `Quorum`: 确保多数派节点确认。
-- `Strong`: 严格同步刷盘，最高可靠性。
+### 🛡️ Software-Defined Redundancy (SDR)
+Supports specifying redundancy policies per write request:
+- `Single`: Pursues extreme performance with asynchronous flushing.
+- `Quorum`: Ensures confirmation from a majority of nodes.
+- `Strong`: Strict synchronous flushing for maximum reliability.
 
-### 🧩 高效序列化
-利用 `yykv-types` 中的 `DsValueEncoder` 实现零拷贝友好的二进制转换，配合 `bytes` 库管理内存池，减少 GC 压力。
+### 🧩 Efficient Serialization
+Utilizes `DsValueEncoder` from `yykv-types` for zero-copy-friendly binary conversion, combined with the `bytes` library for memory pool management to reduce GC pressure.
 
-## 使用示例
+## Usage Example
 
 ```rust
 let wal = WalManager::new(1024);
 let mut rx = wal.subscribe();
 
-// 写入数据并自动触发事件分发
+// Write data and automatically trigger event distribution
 wal.write(
     tenant_id,
     "users".into(),
@@ -49,12 +49,12 @@ wal.write(
     DsValue::Text("yykv-data".into()),
 ).await?;
 
-// 订阅者实时处理
+// Subscriber handles events in real-time
 if let Ok(event) = rx.recv().await {
     println!("Received event for table: {}", event.table);
 }
 ```
 
-## 性能指标 (Target)
-- **写入吞吐**: > 100k events/sec (Single Thread, NVMe)
-- **分发延迟**: < 500μs (from write to subscriber)
+## Performance Targets
+- **Write Throughput**: > 100k events/sec (Single Thread, NVMe)
+- **Distribution Latency**: < 500μs (from write to subscriber)

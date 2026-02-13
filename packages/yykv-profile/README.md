@@ -1,30 +1,30 @@
 # yykv-profile (Performance Profiling & Diagnostics)
 
-`yykv-profile` 是 YYKV 的运行时性能分析与诊断工具包。它通过非侵入式的采样技术，帮助开发者精准定位存储引擎在裸硬件运行时的性能瓶颈。
+`yykv-profile` is a runtime performance analysis and diagnostics toolkit for YYKV. It uses non-intrusive sampling techniques to help developers precisely locate performance bottlenecks in the storage engine during bare-metal operation.
 
-## 核心功能
+## Core Features
 
-### 🔥 CPU 火焰图 (CPU Profiling)
-- **采样分析**: 统计各组件（如 `yykv-compute`, `yykv-io`）在 IO 密集型负载下的 CPU 占用。
-- **热点定位**: 自动生成火焰图，直观展示函数调用栈的耗时占比。
+### 🔥 CPU Profiling
+- **Sampling Analysis**: Statistics on CPU usage of various components (e.g., `yykv-compute`, `yykv-io`) under IO-intensive loads.
+- **Hotspot Location**: Automatically generates flame graphs to visually show time consumption percentages of function call stacks.
 
-### 🧠 内存分布画像 (Memory Analysis)
-- **堆分配监控**: 追踪 `yykv-allocator` 管理的物理页面缓冲与上层引擎的临时对象分配。
-- **内存泄漏检测**: 识别长时间未释放的 `AlignedBuffer` 或异步任务。
+### 🧠 Memory Analysis
+- **Heap Allocation Monitoring**: Tracks physical page buffers managed by `yykv-allocator` and temporary object allocations from the upper-level engine.
+- **Memory Leak Detection**: Identifies `AlignedBuffer` or asynchronous tasks that have not been released for a long time.
 
-### 📊 IO 延迟分布 (Latency Histograms)
-- **P99 追踪**: 实时统计从 `yykv-scheduler` 发起请求到硬件 DMA 完成的亚毫秒级延迟分布。
+### 📊 IO Latency Distribution
+- **P99 Tracking**: Real-time statistics of sub-millisecond latency distributions from `yykv-scheduler` request initiation to hardware DMA completion.
 
-## 使用方法
+## Usage
 
 ```bash
-# 运行性能剖析并生成火焰图
+# Run performance profiling and generate a flame graph
 cargo run -p yykv-profile -- --duration 60 --output flamegraph.svg
 
-# 监控特定租户的资源占用
+# Monitor resource usage for a specific tenant
 cargo run -p yykv-profile -- --tenant <UUID> --mode metrics
 ```
 
-## 技术集成
-- **pprof-rs**: 底层基于采样技术，对在线业务性能影响极小。
-- **tracing**: 集成 Rust 的 `tracing` 生态，支持跨包的事件关联。
+## Technical Integration
+- **pprof-rs**: Based on sampling technology with minimal impact on online business performance.
+- **tracing**: Integrates with the Rust `tracing` ecosystem, supporting event correlation across packages.

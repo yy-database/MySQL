@@ -1,35 +1,35 @@
 # we-trust-s3 (S3 Object Storage Adapter)
 
-`we-trust-s3` 是 YYKV 的对象存储适配层。它通过模拟标准 Amazon S3 RESTful API，使得现有的云原生应用与工具（如 `aws-cli`, `rclone`）能够将 YYKV 作为高性能的对象存储后端使用。
+`we-trust-s3` is the object storage adaptation layer for YYKV. By simulating the standard Amazon S3 RESTful API, it allows existing cloud-native applications and tools (such as `aws-cli`, `rclone`) to use YYKV as a high-performance object storage backend.
 
-## 核心功能
+## Core Features
 
-### 📦 S3 API 完整适配
-- **对象操作**: 支持 `PutObject`, `GetObject`, `DeleteObject`, `HeadObject`。
-- **桶管理**: 支持 `CreateBucket`, `ListBuckets`, `DeleteBucket`。
-- **分片上传 (Multipart Upload)**: 支持大文件的并行上传与合并。
+### 📦 Full S3 API Adaptation
+- **Object Operations**: Supports `PutObject`, `GetObject`, `DeleteObject`, `HeadObject`.
+- **Bucket Management**: Supports `CreateBucket`, `ListBuckets`, `DeleteBucket`.
+- **Multipart Upload**: Supports parallel uploading and merging of large files.
 
-### 🗺️ 物理映射机制
-- **Bucket to Tenant**: 将 S3 的 Bucket 映射为 YYKV 的独立租户空间。
-- **Object to Pages**: 利用 YYKV 的变长布局（`yykv-layout`），将对象数据高效地分散存储在物理页面中。
+### 🗺️ Physical Mapping Mechanism
+- **Bucket to Tenant**: Maps S3 Buckets to independent YYKV tenant spaces.
+- **Object to Pages**: Utilizes YYKV's variable-length layout (`yykv-layout`) to efficiently distribute and store object data in physical pages.
 
-### 🛡️ 认证与授权
-- **V4 签名支持**: 实现了 AWS Signature Version 4 校验算法。
-- **访问控制**: 集成 YYKV 的多租户权限体系。
+### 🛡️ Authentication & Authorization
+- **V4 Signature Support**: Implements the AWS Signature Version 4 verification algorithm.
+- **Access Control**: Integrates with YYKV's multi-tenant permission system.
 
-## 核心组件
+## Core Components
 
-- `S3Auth`: 负责处理复杂的 S3 V4 签名验证逻辑。
-- `ObjectStorageAdapter`: 将 HTTP REST 请求转换为 YYKV 的存算算子。
-- `Models`: 定义符合 S3 规范的 XML 响应结构。
+- `S3Auth`: Responsible for handling complex S3 V4 signature verification logic.
+- `ObjectStorageAdapter`: Converts HTTP REST requests into YYKV storage-compute operators.
+- `Models`: Defines XML response structures compliant with S3 specifications.
 
-## 使用示例
+## Usage Example
 
 ```bash
-# 使用 AWS CLI 访问 YYKV S3
+# Access YYKV S3 using AWS CLI
 aws --endpoint-url http://localhost:8080 s3 cp myfile.txt s3://mybucket/
 ```
 
-## 技术优势
-- **存算一体**: 允许直接在 S3 对象上运行 `yykv-compute` 算子（如对存储在 S3 中的 CSV/Parquet 进行过滤）。
-- **极速响应**: 绕过标准文件系统，利用 Direct IO 实现极低的对象读写延迟。
+## Technical Advantages
+- **Integrated Storage & Compute**: Allows running `yykv-compute` operators directly on S3 objects (e.g., filtering CSV/Parquet stored in S3).
+- **Extreme Response Speed**: Bypasses the standard file system, utilizing Direct IO to achieve ultra-low latency for object R/W.

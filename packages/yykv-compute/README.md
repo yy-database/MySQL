@@ -1,30 +1,30 @@
 # yykv-compute (Near-Data Computing Engine)
 
-`yykv-compute` 是 YYKV 存储引擎的算子下推（Pushdown）与计算内核。它允许计算逻辑直接在数据所在的存储节点上运行，最大限度地减少了跨总线的数据搬运，是实现“存算一体化”架构的核心。
+`yykv-compute` is the operator pushdown and compute kernel of the YYKV storage engine. It allows computation logic to run directly on the storage nodes where data resides, minimizing data movement across the bus and serving as the core of the "Integrated Storage & Compute" architecture.
 
-## 核心设计
+## Core Design
 
-### ⚡ 算子下推 (Pushdown)
-在传统的数据库架构中，数据需要从存储层加载到计算层进行过滤，这会产生巨大的网络与 IO 开销。`yykv-compute` 实现了：
-- **谓词下推**: 在扫描物理页面的过程中直接执行过滤（Filter）。
-- **投影下推**: 仅从存储层读取必要的列数据（Project）。
-- **聚合下推**: 在存储节点本地完成 `Count`, `Sum`, `Min/Max` 等预聚合操作。
+### ⚡ Operator Pushdown
+In traditional database architectures, data needs to be loaded from the storage layer to the compute layer for filtering, which incurs massive network and IO overhead. `yykv-compute` implements:
+- **Predicate Pushdown**: Executes filters directly during physical page scanning.
+- **Projection Pushdown**: Reads only necessary column data from the storage layer.
+- **Aggregation Pushdown**: Completes pre-aggregation operations like `Count`, `Sum`, `Min/Max` locally on the storage node.
 
-### 🏹 多模态计算支持
-- **向量运算**: 内置高性能向量相似度计算，支持 `L2` (欧式距离)、`Dot Product` (点积) 和 `Cosine` (余弦相似度)。
-- **插槽式架构**: 提供 `ComputeOperator` 特征，允许第三方通过 `yykv-udf` 扩展自定义算子。
+### 🏹 Multi-Modal Computing Support
+- **Vector Operations**: Built-in high-performance vector similarity computation, supporting `L2` (Euclidean distance), `Dot Product`, and `Cosine` similarity.
+- **Pluggable Architecture**: Provides the `ComputeOperator` trait, allowing third parties to extend custom operators via `yykv-udf`.
 
-### 🧩 零拷贝执行
-- 针对二进制页面布局（`yykv-layout`）优化的流式处理引擎。
-- 在大多数情况下，计算算子直接作用于 `AlignedBuffer`，避免了不必要的数据反序列化。
+### 🧩 Zero-Copy Execution
+- Stream processing engine optimized for binary page layout (`yykv-layout`).
+- In most cases, compute operators act directly on `AlignedBuffer`, avoiding unnecessary data deserialization.
 
-## 核心组件
+## Core Components
 
-- `ComputeEngine`: 调度中心，负责接收下推任务并在原始数据上并行执行。
-- `VectorCompute`: 专门针对高维向量数据优化的数学计算库。
-- `OperatorRegistry`: 算子注册中心，管理系统预置与用户自定义的计算算子。
+- `ComputeEngine`: The scheduling center, responsible for receiving pushdown tasks and executing them in parallel on raw data.
+- `VectorCompute`: A mathematical library specifically optimized for high-dimensional vector data.
+- `OperatorRegistry`: Manages system-preset and user-defined compute operators.
 
-## 使用示例
+## Usage Example
 
 ```rust
 let engine = ComputeEngine::new();
@@ -34,10 +34,10 @@ let operator = VectorSearchOperator {
     top_k: 10,
 };
 
-// 直接在原始物理页面上执行向量检索，仅返回满足 Top-K 的结果
+// Execute vector retrieval directly on raw physical pages, returning only Top-K results
 let result = engine.pushdown(&operator, raw_page_data).await?;
 ```
 
-## 技术优势
-- **极速 IO**: 配合 `yykv-io` 的 Direct IO，数据从磁盘 DMA 到内存后立即参与计算。
-- **高并发**: 支持利用多核 CPU 对不同存储页面进行并行计算处理。
+## Technical Advantages
+- **Extreme IO**: Coupled with `yykv-io` Direct IO, data is computed immediately after DMA from disk to memory.
+- **High Concurrency**: Supports parallel computing on different storage pages using multi-core CPUs.

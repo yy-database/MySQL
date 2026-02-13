@@ -1,35 +1,35 @@
 # we-trust-postgres (PostgreSQL Wire Protocol Adapter)
 
-`we-trust-postgres` 是 YYKV 存储引擎的 PostgreSQL 协议兼容层。它实现了 PostgreSQL 的有线协议（Wire Protocol），使得开发者可以使用现有的 Postgres 驱动、ORM 框架及管理工具直接访问 YYKV 的高性能存算一体化能力。
+`we-trust-postgres` is the PostgreSQL protocol compatibility layer for the YYKV storage engine. It implements the PostgreSQL wire protocol, allowing developers to directly access YYKV's high-performance integrated storage-compute capabilities using existing Postgres drivers, ORM frameworks, and management tools.
 
-## 核心功能
+## Core Features
 
-### 🔌 原生协议支持 (Wire Protocol)
-- **二进制传输**: 完整实现前端/后端交互的消息格式（如 `StartupMessage`, `Query`, `DataRow`, `CommandComplete`）。
-- **认证集成**: 支持常用的 Postgres 认证机制。
-- **SSL 支持**: 支持加密连接，确保数据传输安全。
+### 🔌 Native Protocol Support (Wire Protocol)
+- **Binary Transmission**: Fully implements the message formats for front-end/back-end interaction (e.g., `StartupMessage`, `Query`, `DataRow`, `CommandComplete`).
+- **Authentication Integration**: Supports common Postgres authentication mechanisms.
+- **SSL Support**: Supports encrypted connections to ensure data transmission security.
 
-### 📊 类型与算子映射
-- **双向转换**: 在 Postgres 数据类型与 YYKV 的 `DsValue` 之间建立高性能映射。
-- **SQL 翻译**: 将接收到的 SQL 语句转化为 YYKV 的逻辑执行计划（OpsGraph）。
+### 📊 Type & Operator Mapping
+- **Bidirectional Conversion**: Establishes high-performance mapping between Postgres data types and YYKV's `DsValue`.
+- **SQL Translation**: Translates received SQL statements into YYKV logical execution plans (OpsGraph).
 
-### ⚡ 事务透明
-- 映射 Postgres 的事务命令（`BEGIN`, `COMMIT`, `ROLLBACK`）到 YYKV 的底层事务控制器，确保 ACID 特性。
+### ⚡ Transaction Transparency
+- Maps Postgres transaction commands (`BEGIN`, `COMMIT`, `ROLLBACK`) to YYKV's underlying transaction controller, ensuring ACID properties.
 
-## 核心组件
+## Core Components
 
-- `PgCodec`: 基于 `tokio-util` 实现的非阻塞 Postgres 消息编解码器。
-- `PostgresAdapter`: 负责处理客户端连接生命周期与请求路由。
-- `PostgresTransaction`: 维护与底层引擎对应的事务上下文。
+- `PgCodec`: A non-blocking Postgres message codec implemented based on `tokio-util`.
+- `PostgresAdapter`: Manages client connection lifecycle and request routing.
+- `PostgresTransaction`: Maintains transaction context corresponding to the underlying engine.
 
-## 使用示例
+## Usage Example
 
 ```bash
-# 使用标准 psql 客户端连接 YYKV
+# Connect to YYKV using the standard psql client
 psql -h 127.0.0.1 -p 5432 -U yykv_user -d my_database
 ```
 
-## 技术架构
+## Technical Architecture
 
 ```mermaid
 sequenceDiagram
