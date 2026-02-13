@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 use yykv_event::WalManager;
-use yykv_types::{DsResult, DsValue as YYValue};
+use yyds_types::{DsResult, DsValue};
 
 /// Search Index Manager
 pub struct SearchIndexManager {
@@ -49,7 +49,7 @@ impl SearchIndexManager {
         while let Ok(event) = receiver.recv().await {
             // Only index tables marked for full-text search or specific system tables
             if (event.table.starts_with("search:") || event.table == "sys:docs")
-                && let YYValue::Text(content) = event.data
+                && let DsValue::Text(content) = event.data
             {
                 let _ = self
                     .index_document(event.id, event.tenant_id, content)

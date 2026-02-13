@@ -2,7 +2,7 @@
 
 use bytes::{BufMut, Bytes, BytesMut};
 use crc32fast::Hasher;
-use yykv_types::DsValue;
+use yyds_types::DsValue;
 
 pub const HEADER_SIZE: usize = 32;
 pub const MAGIC: [u8; 2] = *b"YY";
@@ -357,7 +357,7 @@ impl LayoutManager {
             }
             ValueType::Raw => {
                 let mut data = Bytes::copy_from_slice(payload);
-                yykv_types::layout::YYValueDecoder::decode(&mut data).ok()
+                yyds_types::layout::DsValueDecoder::decode(&mut data).ok()
             }
         }
     }

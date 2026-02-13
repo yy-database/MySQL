@@ -11,7 +11,7 @@ pub use uuid::Uuid;
 mod errors;
 pub mod layout;
 
-pub use errors::{DsError, DsErrorKind, DsResult};
+pub use errors::{DsError, DsErrorKind, DsResult, YYError};
 
 /// Page ID type.
 pub type PageId = u64;

@@ -3,7 +3,7 @@ name = "yyds-types"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-description = "Common type system for the yyds ecosystem, providing YYValue and zero-copy data layout"
+description = "Common type system for the yyds ecosystem, providing DsValue and zero-copy data layout"
 publish = false
 
 [dependencies]
