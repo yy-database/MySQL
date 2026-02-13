@@ -14,4 +14,3 @@ bytes.workspace = true
 crc32fast.workspace = true
 
 serde.workspace = true
-bincode.workspace = true
