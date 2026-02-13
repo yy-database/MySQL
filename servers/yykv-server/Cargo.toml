@@ -1,0 +1,11 @@
+[package]
+name = "yykv-server"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Server process for YYKV"
+
+[dependencies]
+tokio = { workspace = true }
+tracing = { workspace = true }
+yykv = { workspace = true }
