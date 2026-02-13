@@ -4124,6 +4124,7 @@ dependencies = [
 name = "yyds"
 version = "0.0.0"
 dependencies = [
+ "bytes",
  "clap",
  "oak-json",
  "serde",
