@@ -4399,6 +4399,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "yykv-bench"
+version = "0.0.0"
+
+[[package]]
 name = "yykv-compaction"
 version = "0.0.0"
 dependencies = [
@@ -4495,6 +4499,17 @@ dependencies = [
  "crc32fast",
  "serde",
  "yykv-types",
+]
+
+[[package]]
+name = "yykv-odbc"
+version = "0.0.0"
+dependencies = [
+ "odbc-sys",
+ "rust_decimal",
+ "tokio",
+ "we-trust",
+ "yyds-types",
 ]
 
 [[package]]
