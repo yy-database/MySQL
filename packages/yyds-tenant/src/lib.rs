@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use yyds_types::{Redundancy, YYError, InternalId};
+use yyds_types::{Redundancy, DsError, DsResult, InternalId};
 use std::collections::HashMap;
 
 /// Tenant metadata in the YYDS SaaS ecosystem.
@@ -46,14 +46,14 @@ impl TenantManager {
         name: String, 
         tier: Redundancy, 
         secret_key: Vec<u8>
-    ) -> Result<(), YYError> {
+    ) -> DsResult<()> {
         if self.tenants_by_uuid.contains_key(&uuid) {
-            return Err(YYError::internal(format!("Tenant with UUID {} already exists", uuid)));
+            return Err(DsError::internal(format!("Tenant with UUID {} already exists", uuid)));
         }
         
         let internal_id = InternalId::new(region_id, shard_id, sequence);
         if self.tenants_by_id.contains_key(&internal_id.0) {
-            return Err(YYError::internal(format!("Tenant with internal ID {} already exists", internal_id.0)));
+            return Err(DsError::internal(format!("Tenant with internal ID {} already exists", internal_id.0)));
         }
 
         let tenant = Tenant {

@@ -6,9 +6,8 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use yyds_types::{YYValue, YYError};
-use yykv_event::{WalManager, OpType};
-use yykv_types::Redundancy;
+use yyds_types::{DsValue, DsError, DsResult, Redundancy};
+use yykv_wal::{WalManager, OpType};
 
 /// Task status in the queue.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -26,7 +25,7 @@ pub struct Task {
     pub id: Uuid,
     pub tenant_id: Uuid,
     pub name: String,
-    pub payload: YYValue,
+    pub payload: DsValue,
     pub status: TaskStatus,
     pub created_at: DateTime<Utc>,
     pub retry_count: u32,
@@ -47,7 +46,7 @@ impl TaskManager {
     }
 
     /// Submit a new task to the queue.
-    pub async fn submit(&self, tenant_id: Uuid, name: String, payload: YYValue) -> Result<Uuid, YYError> {
+    pub async fn submit(&self, tenant_id: Uuid, name: String, payload: DsValue) -> DsResult<Uuid> {
         let id = Uuid::now_v7();
         let task = Task {
             id,
@@ -66,7 +65,7 @@ impl TaskManager {
             OpType::Insert,
             Redundancy::TRUTH, // Tasks are critical, use high redundancy
             payload
-        ).await.map_err(|e| YYError::internal(e.to_string()))?;
+        ).await.map_err(|e| DsError::internal(e.to_string()))?;
 
         // 2. Add to local memory for immediate processing if this is the leader
         let mut tasks = self.tasks.write().await;
@@ -76,7 +75,7 @@ impl TaskManager {
     }
 
     /// Schedule a task for future execution.
-    pub async fn schedule(&self, tenant_id: Uuid, name: String, payload: YYValue, when: DateTime<Utc>) -> Result<Uuid, YYError> {
+    pub async fn schedule(&self, tenant_id: Uuid, name: String, payload: DsValue, when: DateTime<Utc>) -> DsResult<Uuid> {
         let id = Uuid::now_v7();
         let task = Task {
             id,
@@ -95,7 +94,7 @@ impl TaskManager {
             OpType::Insert,
             Redundancy::TRUTH,
             payload
-        ).await.map_err(|e| YYError::internal(e.to_string()))?;
+        ).await.map_err(|e| DsError::internal(e.to_string()))?;
 
         // 2. Add to local memory
         let mut tasks = self.tasks.write().await;

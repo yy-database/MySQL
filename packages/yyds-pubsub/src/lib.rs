@@ -1,9 +1,8 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use yyds_types::{YYValue, YYError};
-use yykv_event::{WalManager, OpType};
-use yykv_types::Redundancy;
+use yyds_types::{DsValue, DsError, DsResult, Redundancy};
+use yykv_wal::{WalManager, OpType};
 use uuid::Uuid;
 use tokio::sync::broadcast;
 use std::sync::Arc;
@@ -13,7 +12,7 @@ use std::sync::Arc;
 pub struct Message {
     pub id: Uuid,
     pub topic: String,
-    pub payload: YYValue,
+    pub payload: DsValue,
     pub tenant_id: Uuid,
 }
 
@@ -33,7 +32,7 @@ impl PubSubManager {
     }
 
     /// Publish a message to a topic
-    pub async fn publish(&self, topic: String, tenant_id: Uuid, payload: YYValue) -> Result<Uuid, YYError> {
+    pub async fn publish(&self, topic: String, tenant_id: Uuid, payload: DsValue) -> DsResult<Uuid> {
         let id = Uuid::now_v7();
         let msg = Message {
             id,
@@ -50,7 +49,7 @@ impl PubSubManager {
             OpType::Insert,
             Redundancy::SINGLE, // Pub/Sub might not need high redundancy by default
             payload
-        ).await.map_err(|e| YYError::internal(e.to_string()))?;
+        ).await.map_err(|e| DsError::internal(e.to_string()))?;
 
         // 2. Broadcast to local subscribers
         let topics = self.topics.read().await;
