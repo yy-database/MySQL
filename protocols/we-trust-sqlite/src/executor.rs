@@ -11,19 +11,19 @@ use yykv_types::{DsError, DsValue};
 
 type Result<T> = std::result::Result<T, DsError>;
 
-/// Wrapper to make YYValue hashable and comparable
+/// Wrapper to make DsValue hashable and comparable
 #[derive(Debug, Clone)]
-struct HashableYYValue(DsValue);
+struct HashableDsValue(DsValue);
 
-impl PartialEq for HashableYYValue {
+impl PartialEq for HashableDsValue {
     fn eq(&self, other: &Self) -> bool {
         self.0.partial_cmp(&other.0) == Some(Ordering::Equal)
     }
 }
 
-impl Eq for HashableYYValue {}
+impl Eq for HashableDsValue {}
 
-impl std::hash::Hash for HashableYYValue {
+impl std::hash::Hash for HashableDsValue {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match &self.0 {
             DsValue::Null => 0.hash(state),

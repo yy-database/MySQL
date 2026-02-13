@@ -44,6 +44,7 @@ yykv-operators = { path = "packages/yykv-operators", version = "0.0.0" }
 yykv-executor = { path = "packages/yykv-executor", version = "0.0.0" }
 yykv-index = { path = "packages/yykv-index", version = "0.0.0" }
 yykv-schema = { path = "packages/yykv-schema", version = "0.0.0" }
+yykv-wal = { path = "packages/yykv-wal", version = "0.0.0" }
 yykv-event = { path = "packages/yykv-event", version = "0.0.0" }
 yykv-storage = { path = "packages/yykv-storage", version = "0.0.0" }
 

@@ -4,9 +4,9 @@ use async_trait::async_trait;
 use tracing::info;
 use wasmtime::{
     Config, Engine,
-    component::{Linker, ResourceTable},
+    component::Linker,
 };
-use wasmtime_wasi::{WasiCtx, WasiView, WasiCtxBuilder};
+use wasmtime_wasi::{WasiCtx, WasiView, WasiCtxBuilder, ResourceTable};
 use yykv_types::{DsError, DsResult, DsValue};
 
 #[async_trait]

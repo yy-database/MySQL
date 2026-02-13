@@ -15,6 +15,9 @@ pub use yyds_types::{
     ForeignKeyInfo, EnumInfo, SchemaInspector,
 };
 
+/// Alias for DsSchema.
+pub type Schema = DsSchema;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct YYKVConfig {
     pub data_dir: String,

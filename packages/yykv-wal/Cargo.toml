@@ -12,6 +12,9 @@ homepage.workspace = true
 tokio.workspace = true
 serde.workspace = true
 yykv-types.workspace = true
-    bytes.workspace = true
+bytes.workspace = true
 tracing.workspace = true
+chrono = { workspace = true }
+uuid = { workspace = true }
+async-trait = { workspace = true }
 
