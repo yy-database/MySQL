@@ -105,7 +105,7 @@ yyds-gateway = { path = "packages/yyds-gateway", version = "0.0.0" }
 yyds-observability = { path = "packages/yyds-observability", version = "0.0.0" }
 yyds-pubsub = { path = "packages/yyds-pubsub", version = "0.0.0" }
 yyds-quota = { path = "packages/yyds-quota", version = "0.0.0" }
-yyds-server = { path = "packages/yyds-server", version = "0.0.0" } # This path is now handled by workspace member override if relative, but since we define workspace deps with path, we must update it
+yyds-server = { path = "servers/yyds-server", version = "0.0.0" }
 yyds-storage = { path = "packages/yyds-storage", version = "0.0.0" }
 yyds-task = { path = "packages/yyds-task", version = "0.0.0" }
 yyds-tenant = { path = "packages/yyds-tenant", version = "0.0.0" }

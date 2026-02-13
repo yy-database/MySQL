@@ -65,7 +65,10 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Server { addr } => {
             println!("Starting yyds server on {}...", addr);
-            // In a real implementation, this would call yyds_server::run(addr).await
+            if let Err(e) = yyds_server::run().await {
+                eprintln!("Server error: {:?}", e);
+                std::process::exit(1);
+            }
         }
         Commands::Tenant { subcommand } => match subcommand {
             TenantCommands::Register { name, sdr } => {

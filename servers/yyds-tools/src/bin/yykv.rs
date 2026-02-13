@@ -14,6 +14,8 @@ enum Commands {
     Version,
     /// Run benchmark
     Bench,
+    /// Run yykv server
+    Server,
     /// Inspect storage file
     Inspect {
         #[arg(short, long)]
@@ -32,6 +34,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         Commands::Bench => {
             println!("Running benchmark...");
             // TODO: Call yykv_bench::run()
+        }
+        Commands::Server => {
+            yykv_server::run().await?;
         }
         Commands::Inspect { path } => {
             println!("Inspecting storage file: {}", path);

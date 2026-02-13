@@ -5,14 +5,6 @@ authors.workspace = true
 edition.workspace = true
 description = "Main server process for YYDS, handling client connections and request orchestration"
 
-[[bin]]
-name = "test-client"
-path = "src/test_client.rs"
-
-[[bin]]
-name = "pg-test-client"
-path = "src/pg_test_client.rs"
-
 [dependencies]
 tokio = { workspace = true }
 tokio-util = { workspace = true }
