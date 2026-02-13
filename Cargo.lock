@@ -4509,6 +4509,7 @@ dependencies = [
  "bytes",
  "crc32fast",
  "serde",
+ "yyds-types",
  "yykv-types",
 ]
 
