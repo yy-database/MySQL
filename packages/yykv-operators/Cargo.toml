@@ -10,6 +10,7 @@ description = "Core query operators and data transformation logic for YYKV"
 
 [dependencies]
 yykv-types.workspace = true
+yykv-schema.workspace = true
 serde.workspace = true
 
 bytes.workspace = true

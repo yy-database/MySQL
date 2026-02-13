@@ -7,7 +7,6 @@ description = "Common type system for the yyds ecosystem, providing YYValue and 
 publish = false
 
 [dependencies]
-yykv-types = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }

@@ -338,7 +338,8 @@ impl YyValueCodec {
 
     pub fn decode(mut data: BytesMut) -> Result<(DsValue, TrustHeader), DsError> {
         let header = TrustHeader::decode(&mut data)?;
-        let value = YYValueDecoder::decode(&data.freeze())?;
+        let mut payload = data.freeze();
+        let value = YYValueDecoder::decode(&mut payload)?;
         Ok((value, header))
     }
 }
@@ -444,13 +445,13 @@ impl WeTrustClient {
             return Ok(None);
         }
 
-        let data = resp.payload;
+        let mut data = resp.payload;
         if data.is_empty() {
             return Ok(None);
         }
 
         // Use YYValueDecoder to decode the value from the response
-        let val = YYValueDecoder::decode(&data)?;
+        let val = YYValueDecoder::decode(&mut data)?;
         Ok(Some(val))
     }
 
@@ -473,7 +474,8 @@ impl WeTrustClient {
                 String::from_utf8_lossy(&resp.payload).to_string(),
             ));
         }
-        let value = YYValueDecoder::decode(&resp.payload)?;
+        let mut data = resp.payload;
+        let value = YYValueDecoder::decode(&mut data)?;
         Ok(value)
     }
 

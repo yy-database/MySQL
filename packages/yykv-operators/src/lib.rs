@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yykv_types::{DsValue, ToValue, FromValue, DsResult, DsError};
 
-
+pub mod sql;
 
 impl ToValue for OpsGraph {
     fn to_value(&self) -> DsValue {
