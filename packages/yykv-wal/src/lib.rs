@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
 use yykv_types::{DsValue, DsResult, Redundancy, DsError, Uuid};
 use bytes::{BytesMut, Buf, BufMut, Bytes};
-use yykv_types::layout::{DsValueEncoder, YYValueDecoder};
+use yykv_types::layout::{DsValueEncoder, DsValueDecoder};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,7 +98,7 @@ impl WalEntry {
                 let key = String::from_utf8(buf.split_to(key_len).to_vec())
                     .map_err(|e| DsError::serialization(e.to_string()))?;
 
-                let value = YYValueDecoder::decode(&mut buf)?;
+                let value = DsValueDecoder::decode(&mut buf)?;
                 let sdr = Redundancy::from_u8(buf.get_u8());
                 let op_type = match buf.get_u8() {
                     0 => OpType::Insert,

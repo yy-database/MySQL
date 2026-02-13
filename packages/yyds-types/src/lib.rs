@@ -443,16 +443,3 @@ pub trait FromValue: Sized {
     /// Convert from DsValue.
     fn from_value(v: DsValue) -> DsResult<Self>;
 }
-
-/// Specialized result type for YYDS.
-pub type Result<T> = std::result::Result<T, YYError>;
-/// YYDS error type.
-pub type YYError = DsError;
-/// YYDS error kind.
-pub type YYErrorKind = DsErrorKind;
-/// YYDS value type.
-pub type YYValue = DsValue;
-/// YYDS schema type.
-pub type YYSchema = DsSchema;
-/// YYDS file type.
-pub type YyFile = DsFile;

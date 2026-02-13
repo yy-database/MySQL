@@ -1,5 +1,5 @@
 use yyds_consensus::*;
-use yykv_types::{YYValue, Redundancy};
+use yyds_types::{DsValue, Redundancy};
 use yykv_event::{WalEvent, OpType};
 use uuid::Uuid;
 use chrono::Utc;
@@ -26,7 +26,7 @@ async fn test_raft_propose_and_step() {
         table: "test".into(),
         op_type: OpType::Insert,
         sdr_level: Redundancy::SINGLE,
-        data: YYValue::Int(100),
+        data: DsValue::Int(100),
     };
 
     // Propose a change
