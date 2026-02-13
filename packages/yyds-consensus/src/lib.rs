@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use yyds_types::YYError;

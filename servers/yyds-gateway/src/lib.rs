@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use async_trait::async_trait;
 use yykv_types::{DsValue, DsError};
 use we_trust_s3::{PutObjectOutput};

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use opentelemetry::global;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use tracing_subscriber::prelude::*;

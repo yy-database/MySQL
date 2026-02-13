@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use tracing::{info, error};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};

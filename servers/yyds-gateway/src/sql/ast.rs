@@ -28,7 +28,7 @@ pub enum SqlStatement {
     },
     Update {
         table: String,
-        assignments: Vec<(String, yykv_operators::Expr)>,
+        updates: Vec<(String, yykv_operators::Expr)>,
         selection: Option<yykv_operators::Expr>,
     },
     CreateView {

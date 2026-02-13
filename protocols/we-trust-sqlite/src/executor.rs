@@ -173,7 +173,7 @@ impl SqliteExecutor {
             }
             SqlStatement::Update {
                 table,
-                assignments,
+                updates,
                 selection,
             } => {
                 let schemas = self.reader.get_schemas().await?;
@@ -208,7 +208,7 @@ impl SqliteExecutor {
 
                     if should_update {
                         let mut new_values = row.values.clone();
-                        for (col_name, expr) in &assignments {
+                        for (col_name, expr) in &updates {
                             if let Some(idx) = columns.iter().position(|c| c == col_name) {
                                 new_values[idx] =
                                     expr.evaluate(&dict_val).map_err(DsError::query)?;
@@ -296,12 +296,12 @@ impl SqliteExecutor {
                     results = projected_results;
                 }
                 OperatorNode::Aggregate(op) => {
-                    let mut groups: HashMap<Vec<HashableYYValue>, Vec<DsValue>> = HashMap::new();
+                    let mut groups: HashMap<Vec<HashableDsValue>, Vec<DsValue>> = HashMap::new();
 
                     for val in results {
                         let mut group_key = Vec::new();
                         for expr in &op.group_by {
-                            group_key.push(HashableYYValue(
+                            group_key.push(HashableDsValue(
                                 expr.evaluate(&val).map_err(DsError::query)?,
                             ));
                         }
