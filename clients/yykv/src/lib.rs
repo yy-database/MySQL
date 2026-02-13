@@ -1,15 +1,78 @@
 #![warn(missing_docs)]
 
-use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tracing::info;
+use yykv_types::{DsError, DsResult, DsValue, Redundancy};
+
+#[cfg(feature = "engine")]
+use std::collections::HashMap;
+#[cfg(feature = "engine")]
+use std::path::PathBuf;
+#[cfg(feature = "engine")]
+use tokio::sync::RwLock;
+#[cfg(feature = "engine")]
 pub use yykv_compute::{ComputeEngine, ComputeOperator, VectorMetric, VectorSearchOperator};
+#[cfg(feature = "engine")]
 use yykv_tiering::TieredStorage;
-use yykv_types::{DsError, DsResult, DsValue, PageId, Redundancy, StorageConfig};
+#[cfg(feature = "engine")]
+use yykv_types::{PageId, StorageConfig};
+#[cfg(feature = "engine")]
 use yykv_wal::{WalEntry, WalManager};
 
+/// YYKV Client: A lightweight client for the YYKV storage engine.
+pub struct Client {
+    inner: we_trust::WeTrustClient,
+}
+
+impl Client {
+    /// Connect to a YYKV server.
+    pub async fn connect(
+        addr: &str,
+        tenant_id: uuid::Uuid,
+        secret_key: &[u8],
+    ) -> DsResult<Self> {
+        let addr = addr.parse().map_err(|e| DsError::internal(format!("Invalid address: {}", e)))?;
+        let inner = we_trust::WeTrustClient::connect(addr, tenant_id, secret_key.to_vec())
+            .await
+            .map_err(|e| DsError::internal(format!("Connection failed: {:?}", e)))?;
+        Ok(Self { inner })
+    }
+
+    /// Get a value by key.
+    pub async fn get(&mut self, key: &str) -> DsResult<Option<DsValue>> {
+        let resp = self.inner.send_request(we_trust::MessageType::Get, bytes::Bytes::from(key.to_string()))
+            .await
+            .map_err(|e| DsError::internal(format!("Get failed: {:?}", e)))?;
+        
+        if resp.header.msg_type == we_trust::MessageType::Error as u8 {
+            return Err(DsError::protocol("Server returned error"));
+        }
+
+        if resp.payload.is_empty() {
+            Ok(None)
+        } else {
+            let value = yykv_types::layout::YYValueDecoder::decode(&resp.payload)
+                .map_err(|e| DsError::internal(format!("Decoding failed: {}", e)))?;
+            Ok(Some(value))
+        }
+    }
+
+    /// Put a value by key.
+    pub async fn put(&mut self, key: &str, value: DsValue, sdr: Redundancy) -> DsResult<()> {
+        let mut payload = bytes::BytesMut::new();
+        yykv_types::layout::DsValueEncoder::encode_to_buf(&value, &mut payload)
+            .map_err(|e| DsError::internal(format!("Encoding failed: {}", e)))?;
+        
+        // In a real implementation, we might need to send both key and value.
+        // For now, let's assume a simple format or use a more complex message.
+        self.inner.send_request(we_trust::MessageType::Put, payload.freeze())
+            .await
+            .map_err(|e| DsError::internal(format!("Put failed: {:?}", e)))?;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "engine")]
 /// YYKV Engine: The high-level entry point for the storage engine.
 /// It integrates I/O scheduling, tiered storage, and physical layout management.
 pub struct YyKv {
@@ -20,6 +83,7 @@ pub struct YyKv {
     compute: Arc<ComputeEngine>,
 }
 
+#[cfg(feature = "engine")]
 impl YyKv {
     pub async fn new(config: StorageConfig) -> DsResult<Self> {
         info!(
