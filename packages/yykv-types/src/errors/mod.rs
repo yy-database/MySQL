@@ -295,15 +295,6 @@ impl From<std::io::Error> for DsError {
     }
 }
 
-impl From<bincode::Error> for DsError {
-    fn from(e: bincode::Error) -> Self {
-        DsErrorKind::Serialization {
-            format: "bincode".into(),
-            details: e.to_string(),
-        }
-        .into()
-    }
-}
 
 impl From<std::num::ParseIntError> for DsError {
     fn from(e: std::num::ParseIntError) -> Self {

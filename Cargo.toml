@@ -84,18 +84,18 @@ we-trust-sqlserver = { path = "protocols/we-trust-sqlserver", version = "0.0.0" 
 we-trust-vector = { path = "protocols/we-trust-vector", version = "0.0.0" }
 
 # External projects for Local
-# oak-sql = { path = "../oaks/examples/oak-sql" }
-# oak-json = { path = "../oaks/examples/oak-json" }
-# oak-toml = { path = "../oaks/examples/oak-toml" }
-# oak-core = { path = "../oaks/projects/oak-core" }
-# oak-xml = { path = "../oaks/examples/oak-xml" }
+oak-sql = { path = "../oaks/examples/oak-sql" }
+oak-json = { path = "../oaks/examples/oak-json" }
+oak-toml = { path = "../oaks/examples/oak-toml" }
+oak-core = { path = "../oaks/projects/oak-core" }
+oak-xml = { path = "../oaks/examples/oak-xml" }
 
 # External projects for CI
-oak-sql = "0.0.3"
-oak-json = "0.0.3"
-oak-core = "0.0.3"
-oak-toml = "0.0.3"
-oak-xml = "0.0.3"
+# oak-sql = "0.0.3"
+# oak-json = "0.0.3"
+# oak-core = "0.0.3"
+# oak-toml = "0.0.3"
+# oak-xml = "0.0.3"
 
 # External Dependencies
 bytes = { version = "1.0.0", features = ["serde"] }

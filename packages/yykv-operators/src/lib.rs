@@ -2,9 +2,32 @@
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use yykv_types::DsValue;
+use yykv_types::{DsValue, ToValue, FromValue, DsResult, DsError};
 
 pub mod sql;
+
+impl ToValue for OpsGraph {
+    fn to_value(&self) -> DsValue {
+        // Serialize via serde_json to a string, then wrap in DsValue::Text
+        // This is a pragmatic choice to avoid manual AST serialization while removing bincode.
+        // The binary format is effectively JSON-in-DsValue.
+        match serde_json::to_string(self) {
+            Ok(s) => DsValue::Ext("OpsGraph".to_string(), s.into_bytes()),
+            Err(_) => DsValue::Null,
+        }
+    }
+}
+
+impl FromValue for OpsGraph {
+    fn from_value(v: DsValue) -> DsResult<Self> {
+        match v {
+            DsValue::Ext(t, b) if t == "OpsGraph" => {
+                serde_json::from_slice(&b).map_err(|e| DsError::serialization(e.to_string()))
+            }
+            _ => Err(DsError::type_err("OpsGraph (Ext)", format!("{:?}", v))),
+        }
+    }
+}
 
 /// 算子图 IR
 #[derive(Debug, Clone, Serialize, Deserialize)]

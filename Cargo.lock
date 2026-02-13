@@ -3747,7 +3747,6 @@ dependencies = [
 name = "yykv-layout"
 version = "0.0.0"
 dependencies = [
- "bincode",
  "bytes",
  "crc32fast",
  "serde",
@@ -3762,6 +3761,7 @@ dependencies = [
  "oak-core",
  "oak-sql",
  "serde",
+ "serde_json",
  "uuid",
  "yykv-types",
 ]
@@ -3858,7 +3858,6 @@ name = "yykv-types"
 version = "0.0.0"
 dependencies = [
  "async-trait",
- "bincode",
  "bytes",
  "chrono",
  "crc32fast",
@@ -3887,7 +3886,6 @@ dependencies = [
 name = "yykv-wal"
 version = "0.0.0"
 dependencies = [
- "bincode",
  "bytes",
  "serde",
  "tokio",
