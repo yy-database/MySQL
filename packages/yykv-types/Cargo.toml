@@ -9,7 +9,6 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
-yyds-types = { workspace = true }
 serde = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }

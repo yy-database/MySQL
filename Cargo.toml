@@ -21,6 +21,7 @@ homepage = "https://yydb.io"
 yykv = { path = "clients/yykv", version = "0.0.0" }
 yyds = { path = "clients/yyds", version = "0.0.0" }
 yyds-odbc = { path = "clients/yyds-odbc", version = "0.0.0" }
+yykv-odbc = { path = "clients/yykv-odbc", version = "0.0.0" }
 
 # Servers
 
