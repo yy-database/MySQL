@@ -1,20 +1,20 @@
-# Architecture
+# Architecture Design
 
-## Storage Architecture Diagram
+## 1. Storage Architecture Diagram
 
-YYKV is structured as follows:
+The YYKV architecture is divided into the following layers:
 
 - **Execution Pushdown Layer**: `yykv-udf`, `yykv-compute`, `yykv-stream`.
 - **Storage Management**: `yykv-scheduler`, `yykv-tiering`, `yykv-compaction`.
 - **Hardware Abstraction & Layout**: `yykv-layout`, `yykv-allocator`, `yykv-io`, `yykv-hal`.
 
-## Package Responsibilities
+## 2. Package Responsibility Description
 
 | Package | Responsibility |
 | :--- | :--- |
-| `yykv-hal` | Hardware Abstraction Layer. Handles OS-level I/O interfaces. |
-| `yykv-io` | Async I/O Engine. Implements Direct I/O and zero-copy. |
-| `yykv-allocator` | Raw Space Allocator. Manages sectors and blocks on raw disks. |
-| `yykv-layout` | Physical Layout. Defines data arrangement on disk. |
-| `yykv-compaction` | Data Merging & GC. Handles multi-level merging. |
-| `yykv-udf` | User Defined Functions. Sandbox execution of UDFs. |
+| `yykv-hal` | **Hardware Abstraction Layer**. Handles low-level I/O interfaces across different operating systems (e.g., Windows `ReadFile` vs. Linux `io_uring`). |
+| `yykv-io` | **Async I/O Engine**. Implements Direct I/O, aligned buffer management, and zero-copy reading. |
+| `yykv-allocator` | **Raw Space Allocator**. Manages sectors and blocks on raw disks, supporting space reclamation and defragmentation. |
+| `yykv-layout` | **Physical Layout**. Defines how data is arranged on disk (e.g., variable-length key-values, index page layout). |
+| `yykv-compaction` | **Data Merging & GC**. Responsible for background multi-level data merging and garbage collection. |
+| `yykv-udf` | **User Defined Functions**. Supports execution of sandboxed UDF code directly at the storage layer. |

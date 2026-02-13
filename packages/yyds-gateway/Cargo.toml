@@ -1,0 +1,24 @@
+[package]
+name = "yyds-gateway"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "API Gateway for YYDS, handling protocol translation and request routing"
+
+[dependencies]
+yyds-types = { workspace = true }
+yykv-types = { workspace = true }
+yykv-operators = { workspace = true }
+we-trust-s3 = { workspace = true }
+we-trust-postgres = { workspace = true }
+oak-sql = { path = "../oaks/examples/oak-sql" }
+oak-rbq = { path = "../oaks/examples/oak-rbq" }
+oak-json = { path = "../oaks/examples/oak-json" }
+oak-core = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+async-trait = { workspace = true }

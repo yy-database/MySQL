@@ -1,36 +1,36 @@
-# yykv-schema (Multi-Modal Metadata Management)
+# Multi-Modal Metadata Management
 
-`yykv-schema` 负责 YYKV 存储引擎的元数据定义与模式管理。它不仅支持传统的关系型表结构，还统一管理文档、向量及时序数据模式，确保数据的结构化访问与完整性。
+**yykv-schema** is responsible for the metadata definition and schema management of the YYKV storage engine. It not only supports traditional relational table structures but also uniformly manages document, vector, and time-series data schemas, ensuring structured access and data integrity.
 
-## 核心功能
+## 1. Core Features
 
-### 📑 多模态模式定义
-- **关系型表**: 定义字段名、数据类型（`DsValue`）、主键及约束。
-- **向量空间**: 定义向量维度、距离度量（L2, Cosine）及索引参数。
-- **文档模式**: 支持灵活的 JSON-like 文档结构定义。
+### 📑 Multi-Modal Schema Definition
+- **Relational Tables**: Defines field names, data types (`DsValue`), primary keys, and constraints.
+- **Vector Spaces**: Defines vector dimensions, distance metrics (L2, Cosine), and indexing parameters.
+- **Document Schemas**: Supports flexible JSON-like document structure definitions.
 
-### 🔄 在线 Schema 演进
-- **版本控制**: 每个 Schema 都有其对应的版本号。
-- **平滑迁移**: 支持在线添加字段、修改约束，尽量减少对现有 IO 的阻塞。
+### 🔄 Online Schema Evolution
+- **Version Control**: Each schema has its corresponding version number.
+- **Smooth Migration**: Supports online field addition and constraint modification, minimizing blockage to existing I/O operations.
 
-### 🛡️ 数据校验与安全
-- **写入前校验**: 在数据进入 `yykv-event` (WAE) 流程前，强制进行类型检查与非空约束验证。
-- **多租户命名空间**: 每个租户拥有完全独立的元数据命名空间，逻辑上彼此不可见。
+### 🛡️ Data Validation and Security
+- **Pre-write Validation**: Before data enters the `yykv-event` (WAE) flow, mandatory type checks and non-null constraint validations are performed.
+- **Multi-tenant Namespace**: Each tenant has a completely independent metadata namespace, logically invisible to each other.
 
-## 核心组件
+## 2. Core Components
 
-- `SchemaManager`: 负责元数据的持久化存储与内存缓存。
-- `TableSchema`: 单个表的详细结构定义。
-- `ColumnDefinition`: 字段属性定义。
+- `SchemaManager`: Responsible for persistent storage and in-memory caching of metadata.
+- `TableSchema`: Detailed structure definition for a single table.
+- `ColumnDefinition`: Field attribute definition.
 
-## 使用示例
+## 3. Usage Example
 
 ```rust
 use yykv_schema::{SchemaManager, TableSchema, ColumnDefinition};
 
 let mut manager = SchemaManager::new();
 
-// 定义一个新表
+// Define a new table
 let user_table = TableSchema::new("users")
     .add_column(ColumnDefinition::new("id", DsType::Int64).primary_key())
     .add_column(ColumnDefinition::new("bio", DsType::Text));

@@ -1,0 +1,14 @@
+[package]
+name = "yyds-consensus"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "Distributed consensus implementation for YYDS based on Raft or Paxos"
+
+[dependencies]
+yyds-types = { workspace = true }
+yykv-event = { workspace = true }
+serde = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }

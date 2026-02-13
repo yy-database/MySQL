@@ -1,0 +1,20 @@
+[package]
+name = "yyds-tools"
+version = "0.1.0"
+edition = "2024"
+authors = ["YY Team"]
+publish = false
+
+[[bin]]
+name = "yyds"
+path = "src/bin/yyds.rs"
+
+[[bin]]
+name = "yykv"
+path = "src/bin/yykv.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+yyds = { path = "../../clients/yyds" }
+yykv = { path = "../../clients/yykv" }

@@ -1,39 +1,39 @@
-# yykv-udf (Wasm-based User Defined Functions)
+# User-Defined Functions (UDF)
 
-`yykv-udf` 为 YYKV 存储引擎提供了沙箱化的用户自定义函数执行环境。通过将计算逻辑下推（Pushdown）到存储层，在扫描数据页时直接执行 Wasm 字节码，极大地减少了数据在系统总线上的传输开销。
+**yykv-udf** provides a sandboxed execution environment for user-defined functions within the YYKV storage engine. By pushing computation logic down to the storage layer and executing Wasm bytecode directly during storage page scanning, it significantly reduces the overhead of data transfer across the system bus.
 
-## 核心技术
+## 1. Core Technologies
 
-### 🧩 Wasmtime 运行时
-集成高性能的 `wasmtime` 引擎，利用 JIT 编译技术提供接近原生的执行性能，同时确保计算逻辑与存储内核的严格物理隔离。
+### 🧩 Wasmtime Runtime
+Integrates the high-performance `wasmtime` engine, utilizing JIT compilation technology to provide near-native execution performance while ensuring strict physical isolation between the computation logic and the storage kernel.
 
-### 🏗️ 组件模型 (Component Model)
-基于 WebAssembly 组件模型定义存储侧执行的计算合约。
-- **WIT 定义**: 在 `wit/udf.wit` 中定义标准化的输入（数据页、过滤参数）与输出（处理结果、过滤位图）协议。
-- **存算一体**: 允许 UDF 直接访问存储页的二进制内存布局。
+### 🏗️ Component Model
+Defines computational contracts executed on the storage side based on the WebAssembly Component Model.
+- **WIT Definition**: Standardized input (data pages, filtering parameters) and output (processing results, filtering bitmaps) protocols are defined in `wit/udf.wit`.
+- **Integrated Storage & Compute**: Allows UDFs to directly access the binary memory layout of storage pages.
 
-### 🛡️ 资源管理与安全
-- **WASI 集成**: 仅开放必要的 WASI 能力，严格限制 UDF 对文件系统和网络的访问。
-- **计算配额**: 支持对每个 UDF 的执行时间（Gas）和内存使用量进行限制，防止恶意或死循环代码拖垮存储节点。
+### 🛡️ Resource Management and Security
+- **WASI Integration**: Only necessary WASI capabilities are exposed, strictly limiting UDF access to the file system and network.
+- **Compute Quotas**: Supports limits on execution time (Gas) and memory usage for each UDF, preventing malicious or infinite loop code from overloading storage nodes.
 
-## 使用场景
+## 2. Use Cases
 
-- **谓词过滤**: 在扫描海量 KV 数据时，使用自定义的业务逻辑进行过滤。
-- **数据转换**: 在数据读出存储引擎前进行脱敏、格式转换或简单聚合。
-- **AI 推理下推**: 将小型量化模型编译为 Wasm，在存储节点直接进行特征提取或简单的分类计算。
+- **Predicate Filtering**: Use custom business logic for filtering when scanning massive amounts of KV data.
+- **Data Transformation**: Perform data masking, format conversion, or simple aggregation before data is read out of the storage engine.
+- **AI Inference Pushdown**: Compile small quantized models into Wasm to perform feature extraction or simple classification calculations directly on storage nodes.
 
-## 核心 API
+## 3. Core APIs
 
-- `UdfRuntime`: 管理 Wasm 实例的创建、缓存与调度。
-- `UdfState`: 维护 WASI 上下文与资源表。
+- `UdfRuntime`: Manages the creation, caching, and scheduling of Wasm instances.
+- `UdfState`: Maintains the WASI context and resource table.
 
-## 示例代码 (Rust Host Side)
+## 4. Example Code (Rust Host Side)
 
 ```rust
 use yykv_udf::UdfRuntime;
 
 let runtime = UdfRuntime::new()?;
-// 1. 加载 Wasm 模块
-// 2. 准备执行上下文
-// 3. 在扫描循环中调用 UDF
+// 1. Load Wasm module
+// 2. Prepare execution context
+// 3. Call UDF within the scanning loop
 ```
