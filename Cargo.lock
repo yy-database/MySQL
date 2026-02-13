@@ -4350,13 +4350,15 @@ dependencies = [
 name = "yyds-types"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "chrono",
  "crc32fast",
  "hex",
  "oak-json",
+ "rust_decimal",
  "serde",
- "yykv-types",
+ "uuid",
 ]
 
 [[package]]
@@ -4602,6 +4604,7 @@ dependencies = [
  "rust_decimal",
  "serde",
  "uuid",
+ "yyds-types",
 ]
 
 [[package]]
