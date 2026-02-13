@@ -1,4 +1,5 @@
-use opentelemetry::{global, sdk::propagation::TraceContextPropagator};
+use opentelemetry::global;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
 use tracing_subscriber::prelude::*;
 
 /// YYDS Observability Engine
