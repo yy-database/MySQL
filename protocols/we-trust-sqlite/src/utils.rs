@@ -225,7 +225,7 @@ pub fn encode_varint(mut value: u64) -> Vec<u8> {
     res
 }
 
-/// 将 YYValue 列表编码为 SQLite Record 格式
+/// 将 DsValue 列表编码为 SQLite Record 格式
 pub fn encode_record(values: &[DsValue]) -> Vec<u8> {
     let mut header = Vec::new();
     let mut body = Vec::new();

@@ -29,13 +29,13 @@ fn test_trust_header_signature() {
 }
 
 #[test]
-fn test_yyvalue_codec_basic() -> Result<(), DsError> {
+fn test_dsvalue_codec_basic() -> Result<(), DsError> {
     let tenant_id = Uuid::new_v4();
     let value = DsValue::Int(42);
-    let encoded = YyValueCodec::encode(&value, tenant_id, Redundancy::SINGLE)?;
+    let encoded = DsValueCodec::encode(&value, tenant_id, Redundancy::SINGLE)?;
 
     let data = BytesMut::from(&encoded[..]);
-    let (decoded, header) = YyValueCodec::decode(data)?;
+    let (decoded, header) = DsValueCodec::decode(data)?;
 
     assert_eq!(decoded, value);
     assert_eq!(header.tenant_id, tenant_id);
@@ -43,17 +43,17 @@ fn test_yyvalue_codec_basic() -> Result<(), DsError> {
 }
 
 #[test]
-fn test_yyvalue_codec_complex() -> Result<(), DsError> {
+fn test_dsvalue_codec_complex() -> Result<(), DsError> {
     let tenant_id = Uuid::new_v4();
     let mut dict = std::collections::BTreeMap::new();
     dict.insert("key1".to_string(), DsValue::Text("hello".into()));
     dict.insert("key2".to_string(), DsValue::Bool(true));
     let value = DsValue::Dict(dict);
 
-    let encoded = YyValueCodec::encode(&value, tenant_id, Redundancy::TRUTH)?;
+    let encoded = DsValueCodec::encode(&value, tenant_id, Redundancy::TRUTH)?;
 
     let data = BytesMut::from(&encoded[..]);
-    let (decoded, header) = YyValueCodec::decode(data)?;
+    let (decoded, header) = DsValueCodec::decode(data)?;
 
     assert_eq!(decoded, value);
     assert_eq!(header.tenant_id, tenant_id);
@@ -62,11 +62,11 @@ fn test_yyvalue_codec_complex() -> Result<(), DsError> {
 }
 
 #[test]
-fn test_yyvalue_codec_zero_copy_logic() -> Result<(), DsError> {
+fn test_dsvalue_codec_zero_copy_logic() -> Result<(), DsError> {
     let tenant_id = Uuid::new_v4();
     let value = DsValue::Text("zero-copy-test".repeat(100));
 
-    let encoded = YyValueCodec::encode(&value, tenant_id, Redundancy::SINGLE)?;
+    let encoded = DsValueCodec::encode(&value, tenant_id, Redundancy::SINGLE)?;
 
     // The first TrustHeader::SIZE bytes should be the header
     assert!(encoded.len() > TrustHeader::SIZE);
@@ -75,9 +75,9 @@ fn test_yyvalue_codec_zero_copy_logic() -> Result<(), DsError> {
     let header = TrustHeader::decode(&mut header_bytes).unwrap();
     assert_eq!(header.tenant_id, tenant_id);
 
-    // The rest should be the encoded YYValue
+    // The rest should be the encoded DsValue
     let payload = encoded.slice(TrustHeader::SIZE..);
-    let decoded_value = DsValueDecoder::decode(&payload)?;
+    let decoded_value = DsValueDecoder::decode(&mut payload.into())?;
     assert_eq!(decoded_value, value);
 
     Ok(())

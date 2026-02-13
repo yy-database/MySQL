@@ -23,6 +23,7 @@ pub enum OpType {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum WalEntry {
     Put {
+        id: Uuid,
         tenant_id: Uuid,
         table: String,
         key: String,
@@ -32,6 +33,7 @@ pub enum WalEntry {
         timestamp: DateTime<Utc>,
     },
     Delete {
+        id: Uuid,
         tenant_id: Uuid,
         table: String,
         key: String,
@@ -40,11 +42,61 @@ pub enum WalEntry {
 }
 
 impl WalEntry {
+    pub fn id(&self) -> Uuid {
+        match self {
+            WalEntry::Put { id, .. } => *id,
+            WalEntry::Delete { id, .. } => *id,
+        }
+    }
+
+    pub fn table(&self) -> &str {
+        match self {
+            WalEntry::Put { table, .. } => table,
+            WalEntry::Delete { table, .. } => table,
+        }
+    }
+
+    pub fn tenant_id(&self) -> Uuid {
+        match self {
+            WalEntry::Put { tenant_id, .. } => *tenant_id,
+            WalEntry::Delete { tenant_id, .. } => *tenant_id,
+        }
+    }
+
+    pub fn key(&self) -> &str {
+        match self {
+            WalEntry::Put { key, .. } => key,
+            WalEntry::Delete { key, .. } => key,
+        }
+    }
+
+    pub fn op_type(&self) -> OpType {
+        match self {
+            WalEntry::Put { op_type, .. } => *op_type,
+            WalEntry::Delete { .. } => OpType::Delete,
+        }
+    }
+
+    pub fn value(&self) -> Option<&DsValue> {
+        match self {
+            WalEntry::Put { value, .. } => Some(value),
+            WalEntry::Delete { .. } => None,
+        }
+    }
+
+    pub fn timestamp(&self) -> DateTime<Utc> {
+        match self {
+            WalEntry::Put { timestamp, .. } => *timestamp,
+            WalEntry::Delete { timestamp, .. } => *timestamp,
+        }
+    }
+
     pub fn encode(&self) -> DsResult<Bytes> {
         let mut buf = BytesMut::new();
         match self {
-            WalEntry::Put { tenant_id, table, key, value, sdr, op_type, timestamp } => {
+            WalEntry::Put { id, tenant_id, table, key, value, sdr, op_type, timestamp } => {
                 buf.put_u8(1); // Type: Put
+                buf.put_slice(id.as_bytes());
                 buf.put_slice(tenant_id.as_bytes());
                 
                 let table_bytes = table.as_bytes();
@@ -60,8 +112,9 @@ impl WalEntry {
                 buf.put_u8(*op_type as u8);
                 buf.put_i64(timestamp.timestamp_nanos_opt().unwrap_or(0));
             }
-            WalEntry::Delete { tenant_id, table, key, timestamp } => {
+            WalEntry::Delete { id, tenant_id, table, key, timestamp } => {
                 buf.put_u8(2); // Type: Delete
+                buf.put_slice(id.as_bytes());
                 buf.put_slice(tenant_id.as_bytes());
 
                 let table_bytes = table.as_bytes();
@@ -86,6 +139,10 @@ impl WalEntry {
         let type_id = buf.get_u8();
         match type_id {
             1 => { // Put
+                let mut id_bytes = [0u8; 16];
+                buf.copy_to_slice(&mut id_bytes);
+                let id = Uuid::from_bytes(id_bytes);
+
                 let mut uuid_bytes = [0u8; 16];
                 buf.copy_to_slice(&mut uuid_bytes);
                 let tenant_id = Uuid::from_bytes(uuid_bytes);
@@ -98,19 +155,28 @@ impl WalEntry {
                 let key = String::from_utf8(buf.split_to(key_len).to_vec())
                     .map_err(|e| DsError::serialization(e.to_string()))?;
 
-                let value = DsValueDecoder::decode(&mut buf)?;
-                let sdr = Redundancy::from_u8(buf.get_u8());
-                let op_type = match buf.get_u8() {
+                let value = DsValueDecoder::decode(&mut buf)
+                    .map_err(|e| DsError::serialization(format!("{:?}", e)))?;
+                
+                let sdr = Redundancy(buf.get_u8());
+                let op_type_u8 = buf.get_u8();
+                let op_type = match op_type_u8 {
                     0 => OpType::Insert,
                     1 => OpType::Update,
                     2 => OpType::Delete,
                     _ => OpType::Insert,
                 };
-                let timestamp = DateTime::<Utc>::from_timestamp_nanos(buf.get_i64());
+                
+                let ts_nanos = buf.get_i64();
+                let timestamp = DateTime::<Utc>::from_timestamp_nanos(ts_nanos);
 
-                Ok(WalEntry::Put { tenant_id, table, key, value, sdr, op_type, timestamp })
+                Ok(WalEntry::Put { id, tenant_id, table, key, value, sdr, op_type, timestamp })
             }
             2 => { // Delete
+                let mut id_bytes = [0u8; 16];
+                buf.copy_to_slice(&mut id_bytes);
+                let id = Uuid::from_bytes(id_bytes);
+
                 let mut uuid_bytes = [0u8; 16];
                 buf.copy_to_slice(&mut uuid_bytes);
                 let tenant_id = Uuid::from_bytes(uuid_bytes);
@@ -122,36 +188,13 @@ impl WalEntry {
                 let key_len = buf.get_u32() as usize;
                 let key = String::from_utf8(buf.split_to(key_len).to_vec())
                     .map_err(|e| DsError::serialization(e.to_string()))?;
-                
-                let timestamp = DateTime::<Utc>::from_timestamp_nanos(buf.get_i64());
 
-                Ok(WalEntry::Delete { tenant_id, table, key, timestamp })
+                let ts_nanos = buf.get_i64();
+                let timestamp = DateTime::<Utc>::from_timestamp_nanos(ts_nanos);
+
+                Ok(WalEntry::Delete { id, tenant_id, table, key, timestamp })
             }
             _ => Err(DsError::serialization(format!("Unknown WalEntry type: {}", type_id))),
-        }
-    }
-
-    /// Get the table name.
-    pub fn table(&self) -> &str {
-        match self {
-            WalEntry::Put { table, .. } => table,
-            WalEntry::Delete { table, .. } => table,
-        }
-    }
-
-    /// Get the tenant ID.
-    pub fn tenant_id(&self) -> Uuid {
-        match self {
-            WalEntry::Put { tenant_id, .. } => *tenant_id,
-            WalEntry::Delete { tenant_id, .. } => *tenant_id,
-        }
-    }
-
-    /// Get the key.
-    pub fn key(&self) -> &str {
-        match self {
-            WalEntry::Put { key, .. } => key,
-            WalEntry::Delete { key, .. } => key,
         }
     }
 }
@@ -190,17 +233,35 @@ impl WalManager {
         &self,
         tenant_id: Uuid,
         table: String,
+        key: String,
         op_type: OpType,
         sdr_level: Redundancy,
         data: DsValue,
     ) -> DsResult<()> {
         let entry = WalEntry::Put {
+            id: Uuid::new_v4(),
             tenant_id,
             table,
-            key: "".to_string(), // TODO: key should be passed if needed
+            key,
             value: data,
             sdr: sdr_level,
             op_type,
+            timestamp: Utc::now(),
+        };
+        self.append(entry).await
+    }
+
+    pub async fn delete(
+        &self,
+        tenant_id: Uuid,
+        table: String,
+        key: String,
+    ) -> DsResult<()> {
+        let entry = WalEntry::Delete {
+            id: Uuid::new_v4(),
+            tenant_id,
+            table,
+            key,
             timestamp: Utc::now(),
         };
         self.append(entry).await

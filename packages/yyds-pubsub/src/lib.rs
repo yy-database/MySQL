@@ -46,6 +46,7 @@ impl PubSubManager {
         self.wal_manager.write(
             tenant_id,
             format!("pubsub:{}", topic),
+            id.to_string(),
             OpType::Insert,
             Redundancy::SINGLE, // Pub/Sub might not need high redundancy by default
             payload

@@ -319,9 +319,6 @@ pub trait SchemaInspector: Send + Sync {
 }
 
 /// Core data unit.
-pub type YYValue = DsValue;
-
-/// Core data unit.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DsValue {
     /// Null.

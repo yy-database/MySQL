@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 use async_trait::async_trait;
-use yykv_event::WalManager;
+use yykv_wal::WalManager;
 use yykv_operators::{OperatorNode, OpsGraph};
 use yykv_types::layout::DsValueEncoder;
 use yykv_types::{DsError, DsResult, DsValue};
@@ -50,12 +50,14 @@ impl WaeWorker {
         tokio::spawn(async move {
             while let Ok(event) = rx.recv().await {
                 // Multi-tenancy and table filtering
-                if event.tenant_id == tenant_id
-                    && event.table == table_filter
-                    && let Ok(data_bytes) = DsValueEncoder::encode(&event.data)
-                    && let Ok(processed) = compute.call(&udf_name, data_bytes.to_vec()).await
-                {
-                    let _ = tx.send(processed).await;
+                if event.tenant_id() == tenant_id && event.table() == table_filter {
+                    if let Some(data) = event.value() {
+                        if let Ok(data_bytes) = DsValueEncoder::encode(data) {
+                            if let Ok(processed) = compute.call(&udf_name, data_bytes.to_vec()).await {
+                                let _ = tx.send(processed).await;
+                            }
+                        }
+                    }
                 }
             }
         });

@@ -7,7 +7,7 @@ use uuid::Uuid;
 use yykv_types::{DsError, DsValue, Redundancy};
 
 type Result<T> = std::result::Result<T, DsError>;
-use yykv_event::{OpType, WalManager};
+use yykv_wal::{OpType, WalManager};
 
 pub mod adapter;
 pub mod connection;

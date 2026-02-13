@@ -12,7 +12,7 @@ description = "Query execution engine for YYKV, coordinating distributed tasks a
 yykv-types.workspace = true
 yykv-operators.workspace = true
 yykv-compute.workspace = true
-yykv-event.workspace = true
+yykv-wal.workspace = true
 async-trait.workspace = true
 
 uuid.workspace = true

@@ -5,9 +5,6 @@ use std::path::PathBuf;
 
 pub type DsResult<T> = Result<T, DsError>;
 
-/// Alias for DsError for backward compatibility.
-pub type YYError = DsError;
-
 /// The primary error type for YYDS/YYKV.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DsError {

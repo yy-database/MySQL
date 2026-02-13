@@ -62,6 +62,7 @@ impl TaskManager {
         self.wal_manager.write(
             tenant_id,
             "sys:tasks".to_string(),
+            id.to_string(),
             OpType::Insert,
             Redundancy::TRUTH, // Tasks are critical, use high redundancy
             payload
@@ -91,6 +92,7 @@ impl TaskManager {
         self.wal_manager.write(
             tenant_id,
             "sys:tasks".to_string(),
+            id.to_string(),
             OpType::Insert,
             Redundancy::TRUTH,
             payload

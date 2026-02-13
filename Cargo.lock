@@ -3425,10 +3425,10 @@ dependencies = [
  "tracing",
  "uuid",
  "yykv-compute",
- "yykv-event",
  "yykv-executor",
  "yykv-operators",
  "yykv-types",
+ "yykv-wal",
 ]
 
 [[package]]
@@ -4462,9 +4462,9 @@ dependencies = [
  "tokio",
  "uuid",
  "yykv-compute",
- "yykv-event",
  "yykv-operators",
  "yykv-types",
+ "yykv-wal",
 ]
 
 [[package]]
@@ -4486,8 +4486,8 @@ dependencies = [
  "tokio",
  "uuid",
  "yyds-types",
- "yykv-event",
  "yykv-types",
+ "yykv-wal",
 ]
 
 [[package]]
