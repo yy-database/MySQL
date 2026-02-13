@@ -1,44 +1,29 @@
-# we-trust-sqlite (SQLite Compatibility Layer)
+# SQLite Compatibility Protocol
 
-`we-trust-sqlite` is the SQLite compatibility layer for YYKV. It enables YYKV to provide services as a "single-file database" while maintaining deep compatibility with standard SQLite file formats (B-Tree Page) and SQL syntax. It is a key component for smooth upgrades from embedded databases to high-performance tiered storage.
+**we-trust-sqlite** is one of the most complex and powerful compatibility modules in YYKV. It not only supports network access for SQLite but also implements direct read and write conversion for the SQLite database file format (B-tree, WAL) at the storage layer.
 
-## Core Design
+## 1. Core Architecture: Bidirectional Mapping
 
-### 📁 Native File Compatibility
-- **B-Tree Mapping**: Capable of directly reading and writing `.db` files that comply with standard SQLite page formats.
-- **Page Adaptation**: Establishes bidirectional mapping between SQLite's B-Tree page model and YYKV's physical layout, supporting standard Page Cache mechanisms.
+The SQLite module employs "Storage Format Emulation" technology:
+- **Reader**: Directly parses SQLite's B-tree page layout, Schema definitions, and WAL (Write-Ahead Log) logs.
+- **Writer**: Reconstructs YYKV operator graph execution results into Pager pages that comply with the SQLite specification.
+- **Executor**: Maps SQLite's SQL commands to YYKV's `MessageType::KQL`, achieving a "Virtual SQLite" experience in a distributed environment.
 
-### ⌨️ SQL Execution Engine
-- **Syntax Support**: Integrates `sqlparser` to parse standard SQL statements.
-- **Operator Conversion**: Translates SQL query plans into high-performance YYKV operator graphs (`OpsGraph`) for execution in the storage layer.
+## 2. Key Components
 
-### 🔒 Concurrency & Transactions
-- **ACID Features**: Implements SQLite-style shared/exclusive locking mechanisms to ensure transaction isolation.
-- **WAL Mode Support**: Utilizes YYKV's `yykv-event` (WAE) mechanism to simulate SQLite's Write-Ahead Log.
+| Component | Function Description |
+| :--- | :--- |
+| `B-tree Engine` | Emulates SQLite's single-file index structure, supporting logical Table and Index mapping. |
+| `Pager` | Page management module, responsible for converting YYKV's distributed pages into SQLite's fixed-size pages (default 4096 bytes). |
+| `WAL Handler` | Implements a SQLite-compatible write-ahead logging mechanism, supporting multi-process concurrent reads. |
+| `Schema Translator` | Converts SQLite's dynamic type system into YYKV's `YYValue` strong type system. |
 
-## Core Components
+## 3. Performance Optimization: Seamless Migration
 
-- `SqliteAdapter`: Responsible for compiling SQL statements to `OpsGraph` and encapsulating result sets.
-- `Pager`: A page manager optimized for asynchronous IO environments, supporting LRU cache policies.
-- `BTree`: The core index structure, compatible with SQLite's physical page layout.
+- **Hot/Cold Data Separation**: Existing `.sqlite` files can be directly mounted, and YYKV will automatically extract hot data into memory.
+- **Distributed SQLite**: Through YYKV's sharding mechanism, originally single-machine SQLite databases gain horizontal scalability.
 
-## Technical Architecture
+## 4. Usage
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant SqliteAdapter
-    participant OpsGraph
-    participant YYKV_Executor
-    
-    Client->>SqliteAdapter: EXECUTE "SELECT * FROM users"
-    SqliteAdapter->>OpsGraph: Parse & Build IR
-    OpsGraph->>YYKV_Executor: Submit Physical Plan
-    YYKV_Executor->>SqliteAdapter: RowStream
-    SqliteAdapter-->>Client: Result Set
-```
-
-## Use Cases
-- **Embedded Upgrade**: Applications that need a local database but seek higher IO performance or multi-tenant isolation.
-- **Hybrid Retrieval**: Running YYKV's unique vector similarity search on standard SQLite tables.
-- **Cloud-Native Expansion**: Seamlessly migrating existing SQLite data to YYKV-driven cloud tiered storage.
+- **Edge Computing**: Suitable for using the SQLite interface on edge nodes (e.g., IoT devices) while maintaining synchronization with the YYKV main cluster in the background.
+- **Driver Compatibility**: Fully compatible with `rusqlite`, `sqlite3` CLI, and SQLite drivers for various programming languages.

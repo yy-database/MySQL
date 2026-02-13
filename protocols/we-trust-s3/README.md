@@ -1,35 +1,37 @@
-# we-trust-s3 (S3 Object Storage Adapter)
+# S3 Compatibility Protocol
 
-`we-trust-s3` is the object storage adaptation layer for YYKV. By simulating the standard Amazon S3 RESTful API, it allows existing cloud-native applications and tools (such as `aws-cli`, `rclone`) to use YYKV as a high-performance object storage backend.
+**we-trust-s3** implements an Amazon S3-compatible object storage interface, allowing YYKV to serve as a storage backend for massive unstructured data.
 
-## Core Features
+## 1. Architectural Implementation
 
-### 📦 Full S3 API Adaptation
-- **Object Operations**: Supports `PutObject`, `GetObject`, `DeleteObject`, `HeadObject`.
-- **Bucket Management**: Supports `CreateBucket`, `ListBuckets`, `DeleteBucket`.
-- **Multipart Upload**: Supports parallel uploading and merging of large files.
+Unlike traditional file systems, YYKV builds the S3 protocol layer directly on top of the **HAL (Hardware Abstraction Layer)**:
+- **RESTful Interface**: Provides standard S3 APIs via HTTP/HTTPS.
+- **Virtual Buckets**: Maps the S3 `Bucket` concept to YYKV's tenant-level logical namespaces.
+- **Object Mapping**: `Key` is mapped to the storage engine's keys, and `Body` utilizes `yykv-io`'s Direct I/O for large-block continuous writes.
 
-### 🗺️ Physical Mapping Mechanism
-- **Bucket to Tenant**: Maps S3 Buckets to independent YYKV tenant spaces.
-- **Object to Pages**: Utilizes YYKV's variable-length layout (`yykv-layout`) to efficiently distribute and store object data in physical pages.
+## 2. Supported APIs
 
-### 🛡️ Authentication & Authorization
-- **V4 Signature Support**: Implements the AWS Signature Version 4 verification algorithm.
-- **Access Control**: Integrates with YYKV's multi-tenant permission system.
+- **Service Operations**: `ListBuckets`
+- **Bucket Operations**: `GetBucket (List Objects)`, `HeadBucket`
+- **Object Operations**:
+  - `PutObject`: Supports Multipart Upload optimization.
+  - `GetObject`: Supports Range requests, enabling physical-level offset reads.
+  - `DeleteObject`: Atomic deletion.
+  - `HeadObject`: Retrieves metadata.
 
-## Core Components
+## 3. Storage Optimization: Large Object Slicing
 
-- `S3Auth`: Responsible for handling complex S3 V4 signature verification logic.
-- `ObjectStorageAdapter`: Converts HTTP REST requests into YYKV storage-compute operators.
-- `Models`: Defines XML response structures compliant with S3 specifications.
+For S3 scenarios, YYKV employs specific storage strategies:
+- **Automatic Sharding**: Objects larger than 4MB are automatically sliced into multiple physical Pages.
+- **Hybrid Storage**: Object metadata is stored in high-performance SSDs (Blaze tier), while object body data automatically migrates between SSDs and high-capacity HDDs based on access frequency.
 
-## Usage Example
+## 4. Security & Authentication
 
-```bash
-# Access YYKV S3 using AWS CLI
-aws --endpoint-url http://localhost:8080 s3 cp myfile.txt s3://mybucket/
-```
+Compatible with the standard S3 V4 signature algorithm (`AWS4-HMAC-SHA256`):
+- Clients sign requests using `AccessKey` and `SecretKey`.
+- YYKV's internal authentication module verifies signatures and associates them with the corresponding `TenantID`.
 
-## Technical Advantages
-- **Integrated Storage & Compute**: Allows running `yykv-compute` operators directly on S3 objects (e.g., filtering CSV/Parquet stored in S3).
-- **Extreme Response Speed**: Bypasses the standard file system, utilizing Direct IO to achieve ultra-low latency for object R/W.
+## 5. Use Cases
+
+- **Cloud-Native Backup**: Directly sync backup data to YYKV using `aws-cli` or `rclone`.
+- **Multi-Modal Applications**: The same tenant can operate structured metadata under `we-trust-postgres` while storing associated large media files under `we-trust-s3`.

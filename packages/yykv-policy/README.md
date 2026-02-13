@@ -1,9 +1,9 @@
 # yykv-policy
 
-YYKV 存储策略管理器。
+YYKV Storage Policy Manager.
 
-## 功能特性
+## Features
 
-- **分层规则**: 定义数据在不同存储介质（如从 SSD 迁移到 HDD）的触发条件。
-- **冗余策略**: 配合 SDR 级别决定数据的副本分布。
-- **动态配置**: 支持根据系统负载动态调整存储分配策略。
+- **Tiering Rules**: Defines trigger conditions for data migration across different storage media (e.g., from SSD to HDD).
+- **Redundancy Strategy**: Works with SDR levels to determine data replica distribution.
+- **Dynamic Configuration**: Supports dynamic adjustment of storage allocation policies based on system load.

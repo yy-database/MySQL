@@ -1,30 +1,36 @@
-# we-trust-vector (Vector Search Extension)
+# Vector Protocol
 
-`we-trust-vector` 是 We-Trust 协议的向量搜索（Vector Search）扩展模块。它定义了在客户端与 YYKV 存储引擎之间高效传输向量数据、相似度检索指令及高维特征结果的协议规范。
+**we-trust-vector** is a dedicated protocol extension designed for the AI era, specifically for handling the storage and retrieval of high-dimensional vectors (Vector Search).
 
-## 核心功能
+## 1. Protocol Features
 
-### 🏹 向量检索指令下推
-- **相似度度量**: 在协议层直接支持 `L2` (欧氏距离), `Cosine` (余弦相似度) 和 `InnerProduct` (内积) 等度量标准的表达。
-- **Top-K 查询**: 优化了针对大规模向量集合返回最相似结果集的二进制消息格式。
+Unlike traditional KV protocols, the Vector protocol supports the following at the message level:
+- **Dimension Definition**: Specify vector dimensions (e.g., 768, 1536) during write operations.
+- **Distance Metrics**: Supports specifying `L2` (Euclidean distance), `Cosine` (Cosine similarity), or `IP` (Inner Product) in query messages.
+- **Top-K Queries**: A dedicated instruction set for quickly returning the K most similar results.
 
-### 📦 高效向量序列化
-- **浮点数组压缩**: 针对 `f32` 和 `f16` 向量数组进行了内存对齐与序列化优化。
-- **批量传输**: 支持在一个协议包中传输多个查询向量，减少网络往返开销。
+## 2. Data Encoding
 
-### 🧩 混合检索支持
-允许在同一个 We-Trust 请求中结合 SQL 过滤条件与向量相似度搜索，实现真正的“多模态”查询协议。
+Vector data is transmitted using a compact binary floating-point array format:
+- **`f32` Arrays**: Standard precision.
+- **`f16` / `Int8` Quantization**: Supports data quantization and compression at the protocol layer, saving 50% - 75% of network bandwidth.
 
-## 核心组件
+## 3. Search Operator Mapping
 
-- `VectorQuery`: 定义向量搜索请求的结构化表示。
-- `VectorResult`: 包含相似度得分与元数据的返回结果集。
-- `VectorCodec`: 专为高维向量数据设计的编解码器。
+Vector instructions map directly to YYKV's underlying vector indices (such as HNSW or IVF-Flat):
+- `MessageType::Query` carries the vector payload.
+- Storage nodes utilize the vector acceleration module in `yykv-compute` for parallel retrieval.
 
-## 使用示例
+## 4. Use Cases
+
+- **RAG (Retrieval-Augmented Generation)**: Provides real-time, efficient knowledge base retrieval for Large Language Models.
+- **Image/Video Search**: Stores feature vectors and enables fast reverse image/video search.
+- **Recommendation Systems**: Real-time personalized recommendations based on user behavior vectors.
+
+## Programming Interface (Pseudo-code)
 
 ```rust
-// 伪代码：发起向量搜索
+// Pseudo-code: Initiating a vector search
 let query_vector = vec![0.1, 0.2, 0.3, ...];
 let request = VectorQuery::new("face_embeddings")
     .vector(query_vector)
@@ -33,7 +39,3 @@ let request = VectorQuery::new("face_embeddings")
 
 let results = conn.vector_search(request).await?;
 ```
-
-## 技术优势
-- **亚毫秒级协议延迟**: 针对向量搜索的短平快特性优化的二进制协议栈。
-- **端到端向量化**: 配合 `yykv-index` 的 HNSW 或 IVF 索引，实现从协议到存储引擎的全链路向量化处理。
