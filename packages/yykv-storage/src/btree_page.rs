@@ -1,8 +1,8 @@
 use crate::codec::Codec;
 use crate::page::{PAGE_SIZE, Page, PageId};
 use bytes::BytesMut;
-use tokio::sync::RwLock;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use yykv_types::{DsError, DsResult, DsValue};
 
 pub const BTREE_HEADER_SIZE: usize = 10;
@@ -142,7 +142,12 @@ impl BTreePage {
         Ok(left)
     }
 
-    pub async fn insert_leaf_cell(&self, index: u16, key: &DsValue, value: &DsValue) -> DsResult<()> {
+    pub async fn insert_leaf_cell(
+        &self,
+        index: u16,
+        key: &DsValue,
+        value: &DsValue,
+    ) -> DsResult<()> {
         let mut key_buf = BytesMut::new();
         Codec::encode_value(key, &mut key_buf);
         let mut val_buf = BytesMut::new();

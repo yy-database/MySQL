@@ -5,9 +5,7 @@ use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 use tracing::{debug, info};
-use yykv_types::{
-    ColumnInfo, DsError, DsResult, DsValue, EnumInfo, SchemaInspector, TableInfo,
-};
+use yykv_types::{ColumnInfo, DsError, DsResult, DsValue, EnumInfo, SchemaInspector, TableInfo};
 
 #[async_trait::async_trait]
 impl SchemaInspector for PostgresConnection {
