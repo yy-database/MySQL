@@ -5,7 +5,7 @@
 The YYKV architecture is divided into the following layers:
 
 - **Execution Pushdown Layer**: `yykv-udf`, `yykv-compute`, `yykv-stream`.
-- **Storage Management**: `yykv-scheduler`, `yykv-tiering`, `yykv-compaction`.
+- **Scheduling & Management Layer**: `yykv-scheduler`, `yyds-task`, `yykv-tiering`, `yykv-compaction`. See [Scheduling System](file:///e:/yydb/yykv/documentation/en-us/guide/scheduler/index.md).
 - **Hardware Abstraction & Layout**: `yykv-layout`, `yykv-allocator`, `yykv-io`, `yykv-hal`.
 
 ## 2. Package Responsibility Description

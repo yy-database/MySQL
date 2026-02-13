@@ -27,4 +27,4 @@ YYKV 并不是一个独立的终端数据库，但它是 **YYDB** 能够成功�
 
 1. **绕过文件系统 (Bypass FS)**：通过 `yykv-hal` 和 `yykv-allocator` 直接管理磁盘块，消除文件系统的元数据锁与日志冗余。
 2. **算子下推插槽 (Pushdown Slots)**：在存储层内置 `yykv-compute`，支持在读取数据时直接进行过滤 (Filter) 与投影 (Project)，极大减少总线数据传输。
-3. **I/O 调度优先级 (I/O Priority)**：`yykv-scheduler` 支持根据租户优先级和请求类型（如 WAL 写入 vs 背景 Compaction）进行细粒度的 I/O 调度。
+3. **I/O 调度优先级 (I/O Priority)**：`yykv-scheduler` 支持根据租户优先级和请求类型（如 WAL 写入 vs 背景 Compaction）进行细粒度的 I/O 调度。详见 [调度系统](file:///e:/yydb/yykv/documentation/zh-hans/guide/scheduler/index.md)。

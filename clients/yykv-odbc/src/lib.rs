@@ -162,7 +162,7 @@ pub unsafe extern "C" fn SQLExecDirect(
 
     if let Some(ref mut client) = conn_obj.client {
         let result: Result<Vec<Vec<YYValue>>, yyds_types::DsError> = conn_obj.runtime.block_on(async {
-            client.send_query(&query).await
+            client.send_query(query.as_ref()).await
         });
 
         match result {
@@ -180,7 +180,7 @@ pub unsafe extern "C" fn SQLExecDirect(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn SQLFetch(statement_handle: HStmt) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -203,7 +203,7 @@ pub unsafe extern "C" fn SQLGetData(
     buffer_length: Integer,
     str_len_or_ind_ptr: *mut Integer,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -255,7 +255,7 @@ pub unsafe extern "C" fn SQLNumResultCols(
     statement_handle: HStmt,
     column_count_ptr: *mut SmallInt,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -282,7 +282,7 @@ pub unsafe extern "C" fn SQLDescribeCol(
     decimal_digits_ptr: *mut SmallInt,
     nullable_ptr: *mut SmallInt,
 ) -> SqlReturn {
-    let stmt = statement_handle as *mut std::ffi::c_void as *mut Stmt;
+    let stmt = statement_handle.0 as *mut Stmt;
     if stmt.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }
@@ -318,7 +318,7 @@ pub unsafe extern "C" fn SQLDescribeCol(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn SQLDisconnect(connection_handle: HDbc) -> SqlReturn {
-    let conn = connection_handle as *mut std::ffi::c_void as *mut Conn;
+    let conn = connection_handle.0 as *mut Conn;
     if conn.is_null() {
         return SqlReturn::INVALID_HANDLE;
     }

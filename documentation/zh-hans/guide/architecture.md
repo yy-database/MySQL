@@ -5,7 +5,7 @@
 YYKV 的架构分为以下几个层次：
 
 - **算子下推层**: `yykv-udf`, `yykv-compute`, `yykv-stream`。
-- **存储管理**: `yykv-scheduler`, `yykv-tiering`, `yykv-compaction`。
+- **调度与管理层**: `yykv-scheduler`, `yyds-task`, `yykv-tiering`, `yykv-compaction`。 详见 [调度系统](file:///e:/yydb/yykv/documentation/zh-hans/guide/scheduler/index.md)。
 - **硬件抽象与布局**: `yykv-layout`, `yykv-allocator`, `yykv-io`, `yykv-hal`。
 
 ## 子包职责说明
