@@ -24,7 +24,6 @@ yykv-allocator = { workspace = true, optional = true }
 yykv-layout = { workspace = true, optional = true }
 yykv-scheduler = { workspace = true, optional = true }
 yykv-tiering = { workspace = true, optional = true }
-yykv-wal = { workspace = true, optional = true }
 yykv-compute = { workspace = true, optional = true }
 async-trait = { workspace = true, optional = true }
 
@@ -36,7 +35,6 @@ engine = [
     "yykv-layout",
     "yykv-scheduler",
     "yykv-tiering",
-    "yykv-wal",
     "yykv-compute",
     "async-trait"
 ]

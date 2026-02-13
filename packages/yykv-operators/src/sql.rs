@@ -1,4 +1,4 @@
-use yykv_operators::OpsGraph;
+use crate::OpsGraph;
 use uuid::Uuid;
 use yykv_types::{DsResult, DsValue};
 
@@ -11,16 +11,16 @@ pub enum SqlStatement {
     },
     Update {
         table: String,
-        selection: Option<yykv_operators::Expr>,
-        updates: Vec<(String, yykv_operators::Expr)>,
+        selection: Option<crate::OperatorNode>, // Changed from Expr to OperatorNode or whatever is appropriate
+        updates: Vec<(String, crate::OperatorNode)>,
     },
     Delete {
         table: String,
-        selection: Option<yykv_operators::Expr>,
+        selection: Option<crate::OperatorNode>,
     },
     CreateTable {
         name: String,
-        schema: Option<yykv_schema::Schema>,
+        schema: Option<yykv_types::DsSchema>,
     },
 }
 

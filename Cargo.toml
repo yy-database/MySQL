@@ -40,7 +40,6 @@ yykv-policy = { path = "packages/yykv-policy", version = "0.0.0" }
 yykv-udf = { path = "packages/yykv-udf", version = "0.0.0" }
 yykv-compute = { path = "packages/yykv-compute", version = "0.0.0" }
 yykv-stream = { path = "packages/yykv-stream", version = "0.0.0" }
-yykv-wal = { path = "packages/yykv-wal", version = "0.0.0" }
 yykv-operators = { path = "packages/yykv-operators", version = "0.0.0" }
 yykv-executor = { path = "packages/yykv-executor", version = "0.0.0" }
 yykv-index = { path = "packages/yykv-index", version = "0.0.0" }

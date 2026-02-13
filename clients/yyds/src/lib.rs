@@ -50,7 +50,7 @@ pub use yyds_compute as compute;
 #[cfg(feature = "full")]
 pub use yyds_ai as ai;
 #[cfg(feature = "full")]
-pub use yykv_wal as wal;
+pub use yykv_event as wal;
 #[cfg(feature = "full")]
 pub use yykv_index as index;
 #[cfg(feature = "full")]
