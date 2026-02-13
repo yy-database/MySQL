@@ -1,38 +1,23 @@
 #![warn(missing_docs)]
 #![doc = include_str!("../readme.md")]
-//! yyds - Aggregate of the yyds ecosystem
-//!
-//! This crate provides a unified interface to the various components of the yyds ecosystem.
-//!
-//! # Example
-//!
-//! ```rust
-//! use yyds::types::YYValue;
-//! use yyds::wal::{WalManager, OpType};
-//! use yyds::types::Redundancy;
-//! use uuid::Uuid;
-//!
-//! async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//!     let wal = WalManager::new(100);
-//!     let tenant_id = Uuid::new_v4();
-//!     
-//!     wal.write(
-//!         tenant_id,
-//!         "users".into(),
-//!         OpType::Insert,
-//!         Redundancy::TRUTH,
-//!         YYValue::Text("Alice".into())
-//!     ).await?;
-//!     
-//!     Ok(())
-//! }
-//! ```
 
 pub use we_trust as trust;
+#[cfg(feature = "full")]
+pub use we_trust_postgres as postgres;
+#[cfg(feature = "full")]
+pub use we_trust_s3 as s3;
+#[cfg(feature = "full")]
+pub use we_trust_otel as otel;
+#[cfg(feature = "full")]
+pub use we_trust_arrow as arrow;
+#[cfg(feature = "full")]
+pub use we_trust_mysql as mysql;
+#[cfg(feature = "full")]
+pub use we_trust_vector as vector;
 
 pub use yykv_types as types;
-pub use yykv_types::{DsValue as YYValue, DsError as YYError};
-pub type Result<T> = std::result::Result<T, YYError>;
+pub use yykv_types::{DsValue, DsError};
+pub type Result<T> = std::result::Result<T, DsError>;
 
 #[cfg(feature = "full")]
 pub use yyds_consensus as consensus;
@@ -79,35 +64,35 @@ impl Client {
         tenant_id: uuid::Uuid,
         secret_key: &[u8],
     ) -> Result<Self> {
-        let addr = addr.parse().map_err(|e| YYError::internal(format!("Invalid address: {}", e)))?;
+        let addr = addr.parse().map_err(|e| DsError::internal(format!("Invalid address: {}", e)))?;
         let inner = we_trust::WeTrustClient::connect(addr, tenant_id, secret_key.to_vec())
             .await
-            .map_err(|e| YYError::internal(format!("Connection failed: {:?}", e)))?;
+            .map_err(|e| DsError::internal(format!("Connection failed: {:?}", e)))?;
         Ok(Self { inner })
     }
 
     /// Execute a query against the YYDS server.
-    pub async fn query(&mut self, query: &str) -> Result<Vec<Vec<YYValue>>> {
+    pub async fn query(&mut self, query: &str) -> Result<Vec<Vec<DsValue>>> {
         self.inner.send_query(query).await
-            .map_err(|e| YYError::internal(format!("Query failed: {:?}", e)))
+            .map_err(|e| DsError::internal(format!("Query failed: {:?}", e)))
     }
 
     /// Put a value into the YYDS storage.
-    pub async fn put(&mut self, key: &str, value: YYValue) -> Result<()> {
+    pub async fn put(&mut self, key: &str, value: DsValue) -> Result<()> {
         self.inner.put(key, value).await
-            .map_err(|e| YYError::internal(format!("Put failed: {:?}", e)))
+            .map_err(|e| DsError::internal(format!("Put failed: {:?}", e)))
     }
 
     /// Get a value from the YYDS storage.
-    pub async fn get(&mut self, key: &str) -> Result<Option<YYValue>> {
+    pub async fn get(&mut self, key: &str) -> Result<Option<DsValue>> {
         self.inner.get(key).await
-            .map_err(|e| YYError::internal(format!("Get failed: {:?}", e)))
+            .map_err(|e| DsError::internal(format!("Get failed: {:?}", e)))
     }
 
     /// Delete a value from the YYDS storage.
     pub async fn delete(&mut self, key: &str) -> Result<()> {
         self.inner.delete(key).await
-            .map_err(|e| YYError::internal(format!("Delete failed: {:?}", e)))
+            .map_err(|e| DsError::internal(format!("Delete failed: {:?}", e)))
     }
 }
 

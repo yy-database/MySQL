@@ -10,6 +10,7 @@ description = "Indexing service for YYKV using Tantivy for full-text search"
 
 [dependencies]
 yykv-types.workspace = true
+yyds-types.workspace = true
 yykv-event.workspace = true
 serde.workspace = true
 

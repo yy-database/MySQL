@@ -119,11 +119,11 @@ impl TaskManager {
         let mut receiver = self.wal_manager.subscribe();
         
         while let Ok(event) = receiver.recv().await {
-            if event.table == "sys:tasks" {
+            if event.table() == "sys:tasks" {
                 // Handle task event (e.g., execute the task)
                 // This is where the actual task logic would go, 
                 // possibly involving Wasm-based UDFs as mentioned in the roadmap.
-                tracing::debug!("Received task event: {:?}", event.id);
+                tracing::debug!("Received task event: {:?}", event.key());
             }
         }
     }

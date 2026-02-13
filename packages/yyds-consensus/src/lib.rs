@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
-use yyds_types::{DsError, DsResult, YYError};
+use yyds_types::{DsError, DsResult};
 use yykv_event::WalEvent;
 use uuid::Uuid;
 
