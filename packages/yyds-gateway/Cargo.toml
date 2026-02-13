@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "yyds-gateway"
 version.workspace = true
 authors.workspace = true
@@ -11,9 +11,9 @@ yykv-types = { workspace = true }
 yykv-operators = { workspace = true }
 we-trust-s3 = { workspace = true }
 we-trust-postgres = { workspace = true }
-oak-sql = { path = "../oaks/examples/oak-sql" }
-oak-rbq = { path = "../oaks/examples/oak-rbq" }
-oak-json = { path = "../oaks/examples/oak-json" }
+oak-sql = { workspace = true }
+oak-rbq = { workspace = true }
+oak-json = { workspace = true }
 oak-core = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
@@ -22,3 +22,4 @@ futures = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 async-trait = { workspace = true }
+
