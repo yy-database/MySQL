@@ -17,8 +17,10 @@ path = "src/bin/yykv.rs"
 clap = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 yyds = { workspace = true }
-yykv = { workspace = true }
+yyds-types = { workspace = true }
+yyds-loader = { workspace = true }
 yyds-server = { workspace = true }
+yykv = { workspace = true }
 yykv-server = { workspace = true }
 yykv-types = { workspace = true }
 yykv-hal = { workspace = true }
@@ -26,5 +28,10 @@ yykv-io = { workspace = true }
 yykv-layout = { workspace = true }
 indicatif = { workspace = true }
 console = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 rand = { workspace = true }
 tracing = { workspace = true }
+futures = { workspace = true }
+tokio-stream = { workspace = true }
+dialoguer = "0.11"

@@ -7,8 +7,8 @@ use futures::stream::{BoxStream, StreamExt};
 
 /// Trait for data loaders.
 pub trait Loader: Send + Sync {
-    /// Load data from the given path as a stream of DsValue.
-    fn load(&self, path: &Path) -> BoxStream<'static, DsResult<DsValue>>;
+    /// Load data from the given path as a stream of DsValue, starting from the given offset.
+    fn load(&self, path: &Path, offset: u64) -> BoxStream<'static, DsResult<(u64, DsValue)>>;
 }
 
 /// Loader for DSV (Delimiter-Separated Values) format.
@@ -35,15 +35,22 @@ impl DsvLoader {
 }
 
 impl Loader for DsvLoader {
-    fn load(&self, path: &Path) -> BoxStream<'static, DsResult<DsValue>> {
+    fn load(&self, path: &Path, offset: u64) -> BoxStream<'static, DsResult<(u64, DsValue)>> {
         let path = path.to_path_buf();
         let delimiter = self.delimiter;
         let has_header = self.has_header;
         let quote = b'"';
         
         let stream = async_stream::stream! {
-            let file = File::open(&path).await
+            let mut file = File::open(&path).await
                 .map_err(|e| DsError::io_raw(e, Some(path.clone())))?;
+            
+            if offset > 0 {
+                use tokio::io::AsyncSeekExt;
+                file.seek(std::io::SeekFrom::Start(offset)).await
+                    .map_err(|e| DsError::io_raw(e, Some(path.clone())))?;
+            }
+
             let mut reader = BufReader::new(file);
             let mut buffer = [0u8; 8192];
             
@@ -52,7 +59,8 @@ impl Loader for DsvLoader {
             let mut field_index = 0u32;
             let mut in_quote = false;
             let mut last_was_quote = false;
-            let mut is_first_record = true;
+            let mut is_first_record = offset == 0;
+            let mut current_pos = offset;
             
             loop {
                 let n = reader.read(&mut buffer).await
@@ -64,13 +72,14 @@ impl Loader for DsvLoader {
                         if !is_first_record || !has_header {
                             let text = String::from_utf8_lossy(&current_field).to_string();
                             current_record.insert(field_index, DsValue::Text(text));
-                            yield Ok(DsValue::Object { schema_id: 0, fields: current_record });
+                            yield Ok((current_pos, DsValue::Object { schema_id: 0, fields: current_record }));
                         }
                     }
                     break;
                 }
                 
                 for &b in &buffer[..n] {
+                    current_pos += 1;
                     if in_quote {
                         if b == quote {
                             if last_was_quote {
@@ -112,7 +121,7 @@ impl Loader for DsvLoader {
                             
                             if !is_first_record || !has_header {
                                 let record = std::mem::take(&mut current_record);
-                                yield Ok(DsValue::Object { schema_id: 0, fields: record });
+                                yield Ok((current_pos, DsValue::Object { schema_id: 0, fields: record }));
                             } else {
                                 current_record.clear();
                                 is_first_record = false;
@@ -136,23 +145,41 @@ impl Loader for DsvLoader {
 pub struct JsonlLoader;
 
 impl Loader for JsonlLoader {
-    fn load(&self, path: &Path) -> BoxStream<'static, DsResult<DsValue>> {
+    fn load(&self, path: &Path, offset: u64) -> BoxStream<'static, DsResult<(u64, DsValue)>> {
         let path = path.to_path_buf();
         
         let stream = async_stream::stream! {
-            let file = File::open(&path).await
+            let mut file = File::open(&path).await
                 .map_err(|e| DsError::io_raw(e, Some(path.clone())))?;
-            let reader = BufReader::new(file);
-            let mut lines = reader.lines();
+            
+            if offset > 0 {
+                use tokio::io::AsyncSeekExt;
+                file.seek(std::io::SeekFrom::Start(offset)).await
+                    .map_err(|e| DsError::io_raw(e, Some(path.clone())))?;
+            }
 
-            while let Some(line) = lines.next_line().await
-                .map_err(|e| DsError::io_raw(e, Some(path.clone())))? {
-                if line.trim().is_empty() {
+            let mut reader = BufReader::new(file);
+            let mut line = String::new();
+            let mut current_pos = offset;
+
+            loop {
+                line.clear();
+                let n = reader.read_line(&mut line).await
+                    .map_err(|e| DsError::io_raw(e, Some(path.clone())))?;
+                
+                if n == 0 {
+                    break;
+                }
+                
+                current_pos += n as u64;
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
                     continue;
                 }
-                let value: serde_json::Value = serde_json::from_str(&line)
+                
+                let value: serde_json::Value = serde_json::from_str(trimmed)
                     .map_err(|e| DsError::parse("JSONL", e.to_string()))?;
-                yield Ok(json_to_ds_value(value));
+                yield Ok((current_pos, json_to_ds_value(value)));
             }
         };
         
@@ -200,11 +227,12 @@ mod tests {
         writeln!(file, "3,\"Charlie \"\"Chuck\"\"\"").unwrap();
 
         let loader = DsvLoader::csv(true);
-        let mut stream = loader.load(file.path());
+        let mut stream = loader.load(file.path(), 0);
 
         let mut results = Vec::new();
         while let Some(res) = stream.next().await {
-            results.push(res?);
+            let (_pos, val) = res?;
+            results.push(val);
         }
 
         assert_eq!(results.len(), 3);
@@ -231,11 +259,12 @@ mod tests {
         writeln!(file, "{{\"id\": 2, \"name\": \"Bob\"}}").unwrap();
 
         let loader = JsonlLoader;
-        let mut stream = loader.load(file.path());
+        let mut stream = loader.load(file.path(), 0);
 
         let mut results = Vec::new();
         while let Some(res) = stream.next().await {
-            results.push(res?);
+            let (_pos, val) = res?;
+            results.push(val);
         }
 
         assert_eq!(results.len(), 2);
