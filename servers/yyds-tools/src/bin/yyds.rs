@@ -35,6 +35,9 @@ enum Commands {
         /// Format of the file (dsv, jsonl)
         #[arg(short, long)]
         format: String,
+        /// Target table name
+        #[arg(short, long)]
+        table: String,
         /// Delimiter for DSV (default is ',')
         #[arg(short, long)]
         delimiter: Option<char>,
@@ -44,9 +47,21 @@ enum Commands {
         /// Optional schema ID for validation
         #[arg(long)]
         schema_id: Option<u32>,
+        /// Optional path to a JSON schema file for validation
+        #[arg(long)]
+        schema_file: Option<String>,
         /// Path to save/load import state for resumable import
         #[arg(long)]
         state_file: Option<String>,
+        /// YYDS server address
+        #[arg(long, default_value = "127.0.0.1:8889")]
+        addr: String,
+        /// Tenant ID
+        #[arg(long)]
+        tenant_id: Option<String>,
+        /// Secret key for authentication
+        #[arg(long)]
+        secret: Option<String>,
     },
 }
 
@@ -113,6 +128,73 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 println!("1 | 127.0.0.1:8889 | Leader | Active");
             }
         },
+        Commands::Import {
+            path,
+            format,
+            table,
+            delimiter,
+            has_header,
+            schema_id,
+            schema_file,
+            state_file,
+            addr,
+            tenant_id,
+            secret,
+        } => {
+            use yyds_loader::{DsvLoader, JsonlLoader, Loader};
+            use yyds_tools::import::Importer;
+            use std::path::PathBuf;
+            use uuid::Uuid;
+            use yyds_types::DsSchema;
+
+            let loader: Box<dyn Loader> = match format.to_lowercase().as_str() {
+                "dsv" | "csv" | "tsv" => {
+                    let d = delimiter.map(|c| c as u8).unwrap_or(b',');
+                    Box::new(DsvLoader::new(d, *has_header))
+                }
+                "jsonl" => Box::new(JsonlLoader),
+                _ => {
+                    eprintln!("Unsupported format: {}", format);
+                    std::process::exit(1);
+                }
+            };
+
+            // Connect to YYDS
+            let tenant_uuid = tenant_id.as_ref()
+                .and_then(|id| Uuid::parse_str(id).ok())
+                .unwrap_or_else(Uuid::nil);
+            
+            let secret_bytes = secret.as_ref().map(|s| s.as_bytes()).unwrap_or(&[]);
+
+            println!("Connecting to YYDS at {}...", addr);
+            let client = yyds::Client::connect(addr, tenant_uuid, secret_bytes).await?;
+
+            // Load schema
+            let mut schema = None;
+            if let Some(sf) = schema_file {
+                let content = std::fs::read_to_string(sf)?;
+                let s: DsSchema = serde_json::from_str(&content)?;
+                schema = Some(s);
+            } else if let Some(sid) = schema_id {
+                println!("Fetching schema {} from server...", sid);
+                // TODO: Implement schema fetching from server
+                eprintln!("Schema fetching from server not yet implemented. Please use --schema-file.");
+                std::process::exit(1);
+            }
+
+            let mut importer = Importer::new(
+                loader,
+                schema,
+                state_file.as_ref().map(PathBuf::from),
+                client,
+                table.clone(),
+            );
+
+            if let Err(e) = importer.run(std::path::Path::new(path)).await {
+                eprintln!("Import failed: {}", e);
+                std::process::exit(1);
+            }
+        }
     }
 
     Ok(())
