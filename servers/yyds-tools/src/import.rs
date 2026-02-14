@@ -3,9 +3,27 @@ use std::path::{Path, PathBuf};
 use yyds_types::{DsValue, DsResult, DsSchema, DsError};
 use yyds_loader::{Loader, DsvLoader, JsonlLoader};
 use indicatif::{ProgressBar, ProgressStyle};
-use dialoguer::{Confirm, Select};
 use futures::StreamExt;
 use std::fs;
+use clap::ValueEnum;
+
+#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum ErrorStrategy {
+    /// Skip the record and continue
+    Skip,
+    /// Stop the import process
+    Abort,
+}
+
+#[derive(ValueEnum, Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub enum RetryStrategy {
+    /// Retry the operation
+    Retry,
+    /// Skip the record and continue
+    Skip,
+    /// Stop the import process
+    Abort,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ImportState {
@@ -39,6 +57,8 @@ pub struct Importer {
     state_file: Option<PathBuf>,
     client: yyds::Client,
     table: String,
+    schema_error_strategy: ErrorStrategy,
+    insertion_error_strategy: RetryStrategy,
 }
 
 impl Importer {
@@ -48,6 +68,8 @@ impl Importer {
         state_file: Option<PathBuf>,
         client: yyds::Client,
         table: String,
+        schema_error_strategy: ErrorStrategy,
+        insertion_error_strategy: RetryStrategy,
     ) -> Self {
         Self {
             loader,
@@ -55,6 +77,8 @@ impl Importer {
             state_file,
             client,
             table,
+            schema_error_strategy,
+            insertion_error_strategy,
         }
     }
 
@@ -101,40 +125,20 @@ impl Importer {
                     
                     // Validate schema if present
                     if let Some(schema) = &self.schema {
-                        loop {
-                            match schema.validate(&validated_value) {
-                                Ok(_) => break,
-                                Err(e) => {
-                                    let mut action = 0;
-                                    pb.suspend(|| {
-                                        println!("\nSchema validation error at offset {}: {}", pos, e);
-                                        let selections = &["Skip", "Abort", "Fix (Manual - not implemented)"];
-                                        action = Select::new()
-                                            .with_prompt("What would you like to do?")
-                                            .items(selections)
-                                            .default(0)
-                                            .interact()
-                                            .unwrap();
-                                    });
+                        if let Err(e) = schema.validate(&validated_value) {
+                            pb.suspend(|| {
+                                println!("\nSchema validation error at offset {}: {}", pos, e);
+                            });
 
-                                    match action {
-                                        0 => {
-                                            // Skip: move to next record
-                                            state.offset = pos;
-                                            pb.set_position(pos);
-                                            continue 'outer;
-                                        }
-                                        1 => {
-                                            println!("Aborting import.");
-                                            std::process::exit(1);
-                                        }
-                                        _ => {
-                                            println!("Manual fix not supported yet. Skipping...");
-                                            state.offset = pos;
-                                            pb.set_position(pos);
-                                            continue 'outer;
-                                        }
-                                    }
+                            match self.schema_error_strategy {
+                                ErrorStrategy::Skip => {
+                                    state.offset = pos;
+                                    pb.set_position(pos);
+                                    continue 'outer;
+                                }
+                                ErrorStrategy::Abort => {
+                                    println!("Aborting import due to schema validation error.");
+                                    std::process::exit(1);
                                 }
                             }
                         }
@@ -142,35 +146,27 @@ impl Importer {
 
                     // Process value: insert into DB
                     loop {
-                        // Use a key. For now, we could use the offset as key or generate a UUID
-                        // Actually, if it's a table, maybe we just append.
-                        // YYDS put(key, value) usually requires a key.
                         let key = format!("{}:{}", self.table, state.total_records);
                         
                         match self.client.put(&key, validated_value.clone()).await {
                             Ok(_) => break,
                             Err(e) => {
-                                let mut action = 0;
                                 pb.suspend(|| {
                                     println!("\nInsertion error at offset {}: {}", pos, e);
-                                    let selections = &["Retry", "Skip", "Abort"];
-                                    action = Select::new()
-                                        .with_prompt("What would you like to do?")
-                                        .items(selections)
-                                        .default(0)
-                                        .interact()
-                                        .unwrap();
                                 });
 
-                                match action {
-                                    0 => continue, // Retry loop
-                                    1 => {
+                                match self.insertion_error_strategy {
+                                    RetryStrategy::Retry => {
+                                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                                        continue; // Retry loop
+                                    }
+                                    RetryStrategy::Skip => {
                                         state.offset = pos;
                                         pb.set_position(pos);
                                         continue 'outer;
                                     }
-                                    _ => {
-                                        println!("Aborting import.");
+                                    RetryStrategy::Abort => {
+                                        println!("Aborting import due to insertion error.");
                                         std::process::exit(1);
                                     }
                                 }
@@ -193,13 +189,18 @@ impl Importer {
                 Err(e) => {
                     pb.suspend(|| {
                         println!("\nError reading file at offset {}: {}", state.offset, e);
-                        if !Confirm::new()
-                            .with_prompt("Continue with next record?")
-                            .interact()
-                            .unwrap() {
+                    });
+                    
+                    match self.schema_error_strategy {
+                        ErrorStrategy::Skip => {
+                            // Cannot easily skip without a valid position, but we can try to continue
+                            continue 'outer;
+                        }
+                        ErrorStrategy::Abort => {
+                            println!("Aborting import due to read error.");
                             std::process::exit(1);
                         }
-                    });
+                    }
                 }
             }
         }
