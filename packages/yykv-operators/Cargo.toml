@@ -12,8 +12,6 @@ description = "Core query operators and data transformation logic for YYKV"
 yykv-types.workspace = true
 yykv-schema.workspace = true
 serde.workspace = true
-oak-sql.workspace = true
-oak-core.workspace = true
 
 bytes.workspace = true
 uuid.workspace = true

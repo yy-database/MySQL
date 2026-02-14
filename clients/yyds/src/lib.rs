@@ -5,6 +5,8 @@ pub use we_trust as trust;
 
 pub use yykv_types as types;
 pub use yykv_types::{DsError, DsValue};
+use yykv_operators::OpsGraph;
+use yykv_types::{ToValue, layout::DsValueDecoder, layout::DsValueEncoder};
 #[allow(missing_docs)]
 pub type Result<T> = std::result::Result<T, DsError>;
 
@@ -26,11 +28,28 @@ impl Client {
     }
 
     /// Execute a query against the YYDS server.
-    pub async fn query(&mut self, query: &str) -> Result<Vec<Vec<DsValue>>> {
-        self.inner
-            .send_query(query)
+    pub async fn query_graph(&mut self, graph: OpsGraph) -> Result<Vec<DsValue>> {
+        let graph_val = graph.to_value();
+        let payload = DsValueEncoder::encode(&graph_val)
+            .map_err(|e| DsError::protocol(e.to_string()))?;
+        let resp = self
+            .inner
+            .send_request(we_trust::MessageType::Query, payload)
             .await
-            .map_err(|e| DsError::internal(format!("Query failed: {:?}", e)))
+            .map_err(|e| DsError::network(None, e.to_string()))?;
+
+        if resp.header.msg_type == we_trust::MessageType::Error as u8 {
+            let err = String::from_utf8_lossy(&resp.payload).to_string();
+            return Err(DsError::protocol(err));
+        }
+
+        let mut data = resp.payload;
+        let v = DsValueDecoder::decode(&mut data)
+            .map_err(|e| DsError::protocol(e.to_string()))?;
+        match v {
+            DsValue::List(items) => Ok(items),
+            other => Err(DsError::type_err("DsValue::List", format!("{:?}", other))),
+        }
     }
 
     /// Put a value into the YYDS storage.

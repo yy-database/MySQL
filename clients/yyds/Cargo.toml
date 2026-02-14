@@ -13,6 +13,7 @@ readme = "readme.md"
 # Core dependencies for client
 yyds-types = { workspace = true }
 yykv-types = { workspace = true }
+yykv-operators = { workspace = true }
 we-trust = { workspace = true }
 uuid = { workspace = true }
 

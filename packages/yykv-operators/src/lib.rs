@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yykv_types::{DsError, DsResult, DsValue, FromValue, ToValue};
 
-pub mod sql;
-
 impl ToValue for OpsGraph {
     fn to_value(&self) -> DsValue {
         // Serialize via serde_json to a string, then wrap in DsValue::Text
@@ -386,6 +384,7 @@ impl std::fmt::Display for Expr {
             Expr::Exists(g, negated) => {
                 write!(f, "{}EXISTS({:?})", if *negated { "NOT " } else { "" }, g)
             }
+            Expr::Cast(e, ty) => write!(f, "CAST({} AS {})", e, ty),
         }
     }
 }
@@ -589,6 +588,41 @@ impl Expr {
                     Ok(DsValue::Bool(if *negated { !exists } else { exists }))
                 } else {
                     Ok(DsValue::Null)
+                }
+            }
+            Expr::Cast(expr, ty) => {
+                let v = expr.evaluate_with_params_and_context(row, params, context)?;
+                let ty = ty.to_uppercase();
+                match ty.as_str() {
+                    "INT" | "INTEGER" => match v {
+                        DsValue::Int(i) => Ok(DsValue::Int(i)),
+                        DsValue::Float(f) => Ok(DsValue::Int(f as i64)),
+                        DsValue::Bool(b) => Ok(DsValue::Int(if b { 1 } else { 0 })),
+                        DsValue::Text(s) => Ok(DsValue::Int(s.parse::<i64>().unwrap_or(0))),
+                        _ => Ok(DsValue::Null),
+                    },
+                    "FLOAT" | "DOUBLE" => match v {
+                        DsValue::Float(f) => Ok(DsValue::Float(f)),
+                        DsValue::Int(i) => Ok(DsValue::Float(i as f64)),
+                        DsValue::Bool(b) => Ok(DsValue::Float(if b { 1.0 } else { 0.0 })),
+                        DsValue::Text(s) => Ok(DsValue::Float(s.parse::<f64>().unwrap_or(0.0))),
+                        _ => Ok(DsValue::Null),
+                    },
+                    "BOOL" | "BOOLEAN" => match v {
+                        DsValue::Bool(b) => Ok(DsValue::Bool(b)),
+                        DsValue::Int(i) => Ok(DsValue::Bool(i != 0)),
+                        DsValue::Float(f) => Ok(DsValue::Bool(f != 0.0)),
+                        DsValue::Text(s) => {
+                            let s = s.to_lowercase();
+                            Ok(DsValue::Bool(s == "true" || s == "1" || s == "t"))
+                        }
+                        _ => Ok(DsValue::Null),
+                    },
+                    "TEXT" | "STRING" => match v {
+                        DsValue::Text(s) => Ok(DsValue::Text(s)),
+                        other => Ok(DsValue::Text(format!("{:?}", other))),
+                    },
+                    _ => Ok(v),
                 }
             }
             Expr::FunctionCall(name, args) => {

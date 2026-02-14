@@ -7,6 +7,7 @@ use yykv_types::{DsError, DsValue};
 
 pub mod rbq;
 pub mod sql;
+pub mod trust_backend;
 
 use crate::rbq::{RbqParser, RbqStatement};
 use crate::sql::{SqlParser, SqlStatement};
