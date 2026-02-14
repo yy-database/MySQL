@@ -1,7 +1,7 @@
 use clap::Subcommand;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
-use rand::RngCore;
+use rand::prelude::*;
 use std::time::Instant;
 use yykv_hal::Hal;
 use yykv_io::WindowsHal;
@@ -81,7 +81,7 @@ pub async fn run_bench(path: String, size_mb: u64, block_size_kb: u32) -> DsResu
     let num_blocks = total_size / block_size as u64;
 
     let mut data = vec![0u8; block_size];
-    rand::thread_rng().fill_bytes(&mut data);
+    rand::rng().fill(&mut data);
 
     // Write Benchmark
     println!("\n{}", style("Sequential Write Benchmark").bold());
@@ -226,8 +226,6 @@ pub async fn run_layout(path: String) -> DsResult<()> {
     Ok(())
 }
 
-use rand::Rng;
-
 pub async fn run_hotspots(path: String) -> DsResult<()> {
     println!(
         "{} Analyzing hot spots for {}",
@@ -242,12 +240,12 @@ pub async fn run_hotspots(path: String) -> DsResult<()> {
     );
     println!("  -----------|------------|-----------");
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut hot_pages = Vec::new();
 
     for _ in 0..10 {
-        let page_id = rng.gen_range(1000..9999);
-        let accesses = rng.gen_range(50..500);
+        let page_id = rng.random_range(1000..9999);
+        let accesses = rng.random_range(50..500);
         hot_pages.push((page_id, accesses));
     }
 

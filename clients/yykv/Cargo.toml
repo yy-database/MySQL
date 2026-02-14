@@ -3,7 +3,7 @@ name = "yykv"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-description = "High-performance heterogeneous storage engine for the yykv ecosystem"
+description = "YYKV client library for connecting to a YYKV server"
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
@@ -12,37 +12,4 @@ homepage.workspace = true
 # Core dependencies for client
 yykv-types = { workspace = true }
 we-trust = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-bytes = { workspace = true }
-tracing = { workspace = true }
-oak-json = { workspace = true }
 uuid = { workspace = true }
-
-# Engine dependencies (optional)
-yykv-wal = { workspace = true, optional = true }
-yykv-hal = { workspace = true, optional = true }
-yykv-allocator = { workspace = true, optional = true }
-yykv-layout = { workspace = true, optional = true }
-yykv-scheduler = { workspace = true, optional = true }
-yykv-tiering = { workspace = true, optional = true }
-yykv-compute = { workspace = true, optional = true }
-async-trait = { workspace = true, optional = true }
-
-[features]
-default = []
-engine = [
-    "yykv-wal",
-    "yykv-hal",
-    "yykv-allocator",
-    "yykv-layout",
-    "yykv-scheduler",
-    "yykv-tiering",
-    "yykv-compute",
-    "async-trait"
-]
-
-[target.'cfg(windows)'.dependencies]
-windows = { workspace = true }
-
-[target.'cfg(unix)'.dependencies]
-libc = { workspace = true }

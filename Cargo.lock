@@ -4139,37 +4139,9 @@ dependencies = [
 name = "yyds"
 version = "0.0.0"
 dependencies = [
- "bytes",
- "clap",
- "oak-json",
- "serde",
- "tokio",
  "uuid",
  "we-trust",
- "we-trust-arrow",
- "we-trust-mysql",
- "we-trust-otel",
- "we-trust-postgres",
- "we-trust-s3",
- "we-trust-vector",
- "yyds-ai",
- "yyds-billing",
- "yyds-cache",
- "yyds-compute",
- "yyds-consensus",
- "yyds-gateway",
- "yyds-observability",
- "yyds-pubsub",
- "yyds-quota",
- "yyds-task",
- "yyds-tenant",
  "yyds-types",
- "yykv-event",
- "yykv-executor",
- "yykv-index",
- "yykv-operators",
- "yykv-schema",
- "yykv-storage",
  "yykv-types",
 ]
 
@@ -4212,6 +4184,7 @@ dependencies = [
  "wasmtime",
  "wasmtime-wasi",
  "yyds-types",
+ "yykv-types",
  "yykv-udf",
 ]
 
@@ -4318,6 +4291,7 @@ dependencies = [
  "yykv-compute",
  "yykv-executor",
  "yykv-index",
+ "yykv-io",
  "yykv-operators",
  "yykv-storage",
  "yykv-wal",
@@ -4386,23 +4360,9 @@ dependencies = [
 name = "yykv"
 version = "0.0.0"
 dependencies = [
- "async-trait",
- "bytes",
- "libc",
- "oak-json",
- "tokio",
- "tracing",
  "uuid",
  "we-trust",
- "windows",
- "yykv-allocator",
- "yykv-compute",
- "yykv-hal",
- "yykv-layout",
- "yykv-scheduler",
- "yykv-tiering",
  "yykv-types",
- "yykv-wal",
 ]
 
 [[package]]

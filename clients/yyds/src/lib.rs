@@ -2,55 +2,11 @@
 #![doc = include_str!("../readme.md")]
 
 pub use we_trust as trust;
-#[cfg(feature = "full")]
-pub use we_trust_postgres as postgres;
-#[cfg(feature = "full")]
-pub use we_trust_s3 as s3;
-#[cfg(feature = "full")]
-pub use we_trust_otel as otel;
-#[cfg(feature = "full")]
-pub use we_trust_arrow as arrow;
-#[cfg(feature = "full")]
-pub use we_trust_mysql as mysql;
-#[cfg(feature = "full")]
-pub use we_trust_vector as vector;
 
 pub use yykv_types as types;
 pub use yykv_types::{DsValue, DsError};
+#[allow(missing_docs)]
 pub type Result<T> = std::result::Result<T, DsError>;
-
-#[cfg(feature = "full")]
-pub use yyds_consensus as consensus;
-#[cfg(feature = "full")]
-pub use yyds_compute as compute;
-#[cfg(feature = "full")]
-pub use yyds_ai as ai;
-#[cfg(feature = "full")]
-pub use yykv_event as wal;
-#[cfg(feature = "full")]
-pub use yykv_index as index;
-#[cfg(feature = "full")]
-pub use yykv_schema as schema;
-#[cfg(feature = "full")]
-pub use yyds_task as task;
-#[cfg(feature = "full")]
-pub use yykv_operators as operators;
-#[cfg(feature = "full")]
-pub use yykv_executor as executor;
-#[cfg(feature = "full")]
-pub use yyds_gateway as gateway;
-#[cfg(feature = "full")]
-pub use yyds_observability as observability;
-#[cfg(feature = "full")]
-pub use yyds_tenant as tenant;
-#[cfg(feature = "full")]
-pub use yyds_billing as billing;
-#[cfg(feature = "full")]
-pub use yyds_quota as quota;
-#[cfg(feature = "full")]
-pub use yyds_pubsub as pubsub;
-#[cfg(feature = "full")]
-pub use yyds_cache as cache;
 
 /// A lightweight client for the YYDS distributed middleware.
 pub struct Client {
@@ -96,6 +52,7 @@ impl Client {
     }
 }
 
+#[allow(missing_docs)]
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
