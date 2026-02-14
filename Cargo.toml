@@ -62,6 +62,7 @@ yyds-quota = { path = "packages/yyds-quota", version = "0.0.0" }
 yyds-server = { path = "servers/yyds-server", version = "0.0.0" }
 yyds-task = { path = "packages/yyds-task", version = "0.0.0" }
 yyds-tenant = { path = "packages/yyds-tenant", version = "0.0.0" }
+yyds-loader = { path = "packages/yyds-loader", version = "0.0.0" }
 
 # Protocols
 we-trust = { path = "protocols/we-trust", version = "0.0.0" }
