@@ -1,9 +1,9 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use yyds_types::{Redundancy, DsError, DsResult, InternalId};
 use std::collections::HashMap;
+use uuid::Uuid;
+use yyds_types::{DsError, DsResult, InternalId, Redundancy};
 
 /// Tenant metadata in the YYDS SaaS ecosystem.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -38,22 +38,28 @@ impl TenantManager {
 
     /// Register a new tenant with sharding info.
     pub fn register_tenant(
-        &mut self, 
-        uuid: Uuid, 
+        &mut self,
+        uuid: Uuid,
         region_id: u8,
         shard_id: u16,
         sequence: u64,
-        name: String, 
-        tier: Redundancy, 
-        secret_key: Vec<u8>
+        name: String,
+        tier: Redundancy,
+        secret_key: Vec<u8>,
     ) -> DsResult<()> {
         if self.tenants_by_uuid.contains_key(&uuid) {
-            return Err(DsError::internal(format!("Tenant with UUID {} already exists", uuid)));
+            return Err(DsError::internal(format!(
+                "Tenant with UUID {} already exists",
+                uuid
+            )));
         }
-        
+
         let internal_id = InternalId::new(region_id, shard_id, sequence);
         if self.tenants_by_id.contains_key(&internal_id.0) {
-            return Err(DsError::internal(format!("Tenant with internal ID {} already exists", internal_id.0)));
+            return Err(DsError::internal(format!(
+                "Tenant with internal ID {} already exists",
+                internal_id.0
+            )));
         }
 
         let tenant = Tenant {

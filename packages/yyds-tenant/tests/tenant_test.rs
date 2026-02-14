@@ -1,5 +1,5 @@
 use yyds_tenant::*;
-use yyds_types::{Uuid, Redundancy, InternalId};
+use yyds_types::{InternalId, Redundancy, Uuid};
 
 #[test]
 fn test_tenant_registration() {
@@ -10,11 +10,21 @@ fn test_tenant_registration() {
     let sequence = 1001;
     let secret = b"secret123".to_vec();
 
-    manager.register_tenant(uuid, region_id, shard_id, sequence, "Test Tenant".into(), Redundancy::TRUTH, secret.clone()).unwrap();
+    manager
+        .register_tenant(
+            uuid,
+            region_id,
+            shard_id,
+            sequence,
+            "Test Tenant".into(),
+            Redundancy::TRUTH,
+            secret.clone(),
+        )
+        .unwrap();
 
     let internal_id_raw = manager.get_internal_id(uuid).unwrap();
     let internal_id = InternalId(internal_id_raw);
-    
+
     assert_eq!(internal_id.region_id(), region_id);
     assert_eq!(internal_id.shard_id(), shard_id);
     assert_eq!(internal_id.sequence(), sequence);

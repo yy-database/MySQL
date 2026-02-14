@@ -1,8 +1,8 @@
 #![warn(missing_docs)]
 
-pub use yykv_udf::{UdfEngine, UdfRuntime as WasmtimeUdfEngine};
-use yykv_types::{DsValue, DsResult};
 use async_trait::async_trait;
+use yykv_types::{DsResult, DsValue};
+pub use yykv_udf::{UdfEngine, UdfRuntime as WasmtimeUdfEngine};
 
 /// 模拟 Wasm UDF 运行时 (保留用于测试)
 pub struct MockWasmRuntime;

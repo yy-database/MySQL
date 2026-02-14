@@ -295,7 +295,6 @@ impl From<std::io::Error> for DsError {
     }
 }
 
-
 impl From<std::num::ParseIntError> for DsError {
     fn from(e: std::num::ParseIntError) -> Self {
         DsErrorKind::Parse {

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use yykv_types::{DsValue, ToValue, FromValue, DsResult, DsError};
+use yykv_types::{DsError, DsResult, DsValue, FromValue, ToValue};
 
 pub mod sql;
 

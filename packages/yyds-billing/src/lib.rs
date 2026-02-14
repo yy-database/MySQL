@@ -1,11 +1,11 @@
 #![warn(missing_docs)]
 
 use chrono::{DateTime, Utc};
+use oak_json::JsonValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use oak_json::JsonValue;
 
 /// Types of resources that can be metered.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -68,8 +68,10 @@ impl MeteringRecord {
         let resource_type = ResourceType::from_str(resource_type_str)?;
         let amount = obj.get("amount")?.as_f64()? as u64;
         let timestamp_str = obj.get("timestamp")?.as_str()?;
-        let timestamp = DateTime::parse_from_rfc3339(timestamp_str).ok()?.with_timezone(&Utc);
-        
+        let timestamp = DateTime::parse_from_rfc3339(timestamp_str)
+            .ok()?
+            .with_timezone(&Utc);
+
         Some(MeteringRecord {
             tenant_id,
             resource_type,
@@ -88,60 +90,72 @@ struct BillingState {
 
 impl BillingState {
     pub fn to_json(&self) -> String {
-        let records_json = self.records.iter()
+        let records_json = self
+            .records
+            .iter()
             .map(|r| r.to_json())
             .collect::<Vec<_>>()
             .join(",");
-            
-        let usage_json = self.daily_usage.iter()
-            .map(|((id, ty), amt)| {
-                format!("[[{},\"{}\"],{}]", id, ty.as_str(), amt)
-            })
+
+        let usage_json = self
+            .daily_usage
+            .iter()
+            .map(|((id, ty), amt)| format!("[[{},\"{}\"],{}]", id, ty.as_str(), amt))
             .collect::<Vec<_>>()
             .join(",");
-            
+
         format!(
             "{{\"records\":[{}],\"daily_usage\":[{}]}}",
-            records_json,
-            usage_json
+            records_json, usage_json
         )
     }
 
     pub fn from_json(json: &str) -> Result<Self, String> {
         let val = oak_json::parse(json)?;
         let obj = val.as_object().ok_or("Expected object")?;
-        
-        let records_val = obj.get("records")
+
+        let records_val = obj
+            .get("records")
             .and_then(|v| v.as_array())
             .ok_or("Expected 'records' field as array")?;
-            
+
         let mut records = Vec::new();
         for r_val in &records_val.elements {
             records.push(MeteringRecord::from_json_value(r_val).ok_or("Invalid record")?);
         }
-        
-        let usage_val = obj.get("daily_usage")
+
+        let usage_val = obj
+            .get("daily_usage")
             .and_then(|v| v.as_array())
             .ok_or("Expected 'daily_usage' field as array")?;
-            
+
         let mut daily_usage = Vec::new();
         for u_val in &usage_val.elements {
             let pair = u_val.as_array().ok_or("Expected pair")?;
-            if pair.elements.len() != 2 { return Err("Invalid usage pair".to_string()); }
-            
+            if pair.elements.len() != 2 {
+                return Err("Invalid usage pair".to_string());
+            }
+
             let key_val = pair.elements[0].as_array().ok_or("Expected key array")?;
-            if key_val.elements.len() != 2 { return Err("Invalid key array".to_string()); }
-            
+            if key_val.elements.len() != 2 {
+                return Err("Invalid key array".to_string());
+            }
+
             let id = key_val.elements[0].as_f64().ok_or("Invalid tenant_id")? as u64;
-            let ty_str = key_val.elements[1].as_str().ok_or("Invalid resource_type")?;
+            let ty_str = key_val.elements[1]
+                .as_str()
+                .ok_or("Invalid resource_type")?;
             let ty = ResourceType::from_str(ty_str).ok_or("Unknown resource_type")?;
-            
+
             let amt = pair.elements[1].as_f64().ok_or("Invalid amount")? as u64;
-            
+
             daily_usage.push(((id, ty), amt));
         }
-        
-        Ok(BillingState { records, daily_usage })
+
+        Ok(BillingState {
+            records,
+            daily_usage,
+        })
     }
 }
 
@@ -196,7 +210,10 @@ impl BillingManager {
         };
 
         // Update daily aggregation
-        let entry = self.daily_usage.entry((tenant_id, resource_type)).or_insert(0);
+        let entry = self
+            .daily_usage
+            .entry((tenant_id, resource_type))
+            .or_insert(0);
         *entry += amount;
 
         self.records.push(record);
@@ -204,7 +221,10 @@ impl BillingManager {
 
     /// Get total usage for a tenant by resource type.
     pub fn get_total_usage(&self, tenant_id: u64, resource_type: ResourceType) -> u64 {
-        *self.daily_usage.get(&(tenant_id, resource_type)).unwrap_or(&0)
+        *self
+            .daily_usage
+            .get(&(tenant_id, resource_type))
+            .unwrap_or(&0)
     }
 
     /// Clear records (e.g. after pushing to a persistent billing system).

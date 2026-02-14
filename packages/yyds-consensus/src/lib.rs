@@ -1,10 +1,10 @@
 #![warn(missing_docs)]
 
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use yyds_types::{DsError, DsResult};
 use yykv_event::WalEvent;
-use uuid::Uuid;
 
 use std::collections::HashMap;
 use tokio::sync::mpsc;
@@ -224,9 +224,11 @@ impl ConsensusAdapter for RaftAdapter {
 
     async fn step(&self, msg: ConsensusMessage) -> DsResult<()> {
         let mut state = self.state.write().await;
-        
+
         match msg {
-            ConsensusMessage::RequestVote { term, candidate_id, .. } => {
+            ConsensusMessage::RequestVote {
+                term, candidate_id, ..
+            } => {
                 if term > state.current_term {
                     state.current_term = term;
                     state.role = NodeRole::Follower;
@@ -236,15 +238,27 @@ impl ConsensusAdapter for RaftAdapter {
                 let can_vote = state.voted_for.is_none() || state.voted_for == Some(candidate_id);
                 if term == state.current_term && can_vote {
                     state.voted_for = Some(candidate_id);
-                    let _ = self.msg_tx.send((candidate_id, ConsensusMessage::VoteResponse {
-                        term: state.current_term,
-                        vote_granted: true,
-                    })).await;
+                    let _ = self
+                        .msg_tx
+                        .send((
+                            candidate_id,
+                            ConsensusMessage::VoteResponse {
+                                term: state.current_term,
+                                vote_granted: true,
+                            },
+                        ))
+                        .await;
                 } else {
-                    let _ = self.msg_tx.send((candidate_id, ConsensusMessage::VoteResponse {
-                        term: state.current_term,
-                        vote_granted: false,
-                    })).await;
+                    let _ = self
+                        .msg_tx
+                        .send((
+                            candidate_id,
+                            ConsensusMessage::VoteResponse {
+                                term: state.current_term,
+                                vote_granted: false,
+                            },
+                        ))
+                        .await;
                 }
             }
             ConsensusMessage::VoteResponse { term, vote_granted } => {
@@ -280,7 +294,12 @@ impl ConsensusAdapter for RaftAdapter {
                     }
                 }
             }
-            ConsensusMessage::AppendResponse { term, success, last_index, node_id } => {
+            ConsensusMessage::AppendResponse {
+                term,
+                success,
+                last_index,
+                node_id,
+            } => {
                 if term > state.current_term {
                     state.current_term = term;
                     state.role = NodeRole::Follower;
@@ -291,7 +310,7 @@ impl ConsensusAdapter for RaftAdapter {
                     if success {
                         state.match_index.insert(node_id, last_index);
                         state.next_index.insert(node_id, last_index + 1);
-                        
+
                         // Check if we can commit
                         // Simplified: check if majority match_index >= N
                     } else {

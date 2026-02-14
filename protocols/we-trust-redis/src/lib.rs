@@ -554,7 +554,11 @@ pub struct RedisService {
 
 impl RedisService {
     pub async fn new() -> Result<Self> {
-        let wal = Arc::new(WalManager::new(PathBuf::from("wal_redis")).await.map_err(|e| DsError::storage(e.to_string()))?);
+        let wal = Arc::new(
+            WalManager::new(PathBuf::from("wal_redis"))
+                .await
+                .map_err(|e| DsError::storage(e.to_string()))?,
+        );
         // let index = Arc::new(SearchIndexManager::new_in_memory()?);
 
         Ok(Self {

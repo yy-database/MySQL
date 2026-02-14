@@ -43,7 +43,9 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             yykv_server::run().await?;
         }
         Commands::Profile { command } => {
-            yyds_tools::profile::run(command.clone()).await.map_err(|e| e.to_string())?;
+            yyds_tools::profile::run(command.clone())
+                .await
+                .map_err(|e| e.to_string())?;
         }
         Commands::Inspect { path } => {
             println!("Inspecting storage file: {}", path);

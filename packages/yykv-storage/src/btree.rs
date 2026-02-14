@@ -64,7 +64,13 @@ impl BTree {
     }
 
     /// Put a value with tenant ID and redundancy (ignored for now).
-    pub async fn put(&self, _tenant_id: u64, key: String, value: DsValue, _redundancy: yykv_types::Redundancy) -> DsResult<()> {
+    pub async fn put(
+        &self,
+        _tenant_id: u64,
+        key: String,
+        value: DsValue,
+        _redundancy: yykv_types::Redundancy,
+    ) -> DsResult<()> {
         self.insert(&DsValue::Text(key), &value).await
     }
 

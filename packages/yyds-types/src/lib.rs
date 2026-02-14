@@ -118,16 +118,23 @@ pub struct InternalId(pub u64);
 impl InternalId {
     /// Create a new InternalId.
     pub fn new(region_id: u8, shard_id: u16, sequence: u64) -> Self {
-        let id = ((region_id as u64) << 56) | ((shard_id as u64) << 40) | (sequence & 0xFF_FFFF_FFFF);
+        let id =
+            ((region_id as u64) << 56) | ((shard_id as u64) << 40) | (sequence & 0xFF_FFFF_FFFF);
         Self(id)
     }
 
     /// Get region ID.
-    pub fn region_id(&self) -> u8 { (self.0 >> 56) as u8 }
+    pub fn region_id(&self) -> u8 {
+        (self.0 >> 56) as u8
+    }
     /// Get shard ID.
-    pub fn shard_id(&self) -> u16 { ((self.0 >> 40) & 0xFFFF) as u16 }
+    pub fn shard_id(&self) -> u16 {
+        ((self.0 >> 40) & 0xFFFF) as u16
+    }
     /// Get tenant sequence.
-    pub fn sequence(&self) -> u64 { self.0 & 0xFF_FFFF_FFFF }
+    pub fn sequence(&self) -> u64 {
+        self.0 & 0xFF_FFFF_FFFF
+    }
 }
 
 /// File reference in the storage engine.
@@ -152,11 +159,15 @@ impl Vector {
     pub fn cosine_similarity(&self, other: &Self) -> f32 {
         let a = &self.0;
         let b = &other.0;
-        if a.len() != b.len() || a.is_empty() { return 0.0; }
+        if a.len() != b.len() || a.is_empty() {
+            return 0.0;
+        }
         let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
         let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
         let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-        if norm_a == 0.0 || norm_b == 0.0 { return 0.0; }
+        if norm_a == 0.0 || norm_b == 0.0 {
+            return 0.0;
+        }
         dot_product / (norm_a * norm_b)
     }
 }
@@ -236,12 +247,15 @@ impl DsSchema {
 
     /// Add a field to the schema.
     pub fn add_field(&mut self, tag: u32, name: &str, field_type: FieldType, nullable: bool) {
-        self.fields.insert(tag, FieldConstraint {
-            name: name.to_string(),
-            field_type,
-            nullable,
-            default_value: None,
-        });
+        self.fields.insert(
+            tag,
+            FieldConstraint {
+                name: name.to_string(),
+                field_type,
+                nullable,
+                default_value: None,
+            },
+        );
     }
 
     /// Validate a value against the schema.
@@ -249,16 +263,31 @@ impl DsSchema {
         match value {
             DsValue::Object { schema_id, fields } => {
                 if *schema_id != self.id {
-                    return Err(DsError::schema(Some(self.name.clone()), None, format!("Schema ID mismatch: expected {}, got {}", self.id, schema_id)));
+                    return Err(DsError::schema(
+                        Some(self.name.clone()),
+                        None,
+                        format!(
+                            "Schema ID mismatch: expected {}, got {}",
+                            self.id, schema_id
+                        ),
+                    ));
                 }
                 for (tag, constraint) in &self.fields {
                     if fields.get(tag).is_none() && !constraint.nullable {
-                        return Err(DsError::schema(Some(self.name.clone()), Some(constraint.name.clone()), format!("Missing non-nullable field: {}", constraint.name)));
+                        return Err(DsError::schema(
+                            Some(self.name.clone()),
+                            Some(constraint.name.clone()),
+                            format!("Missing non-nullable field: {}", constraint.name),
+                        ));
                     }
                 }
                 Ok(())
             }
-            _ => Err(DsError::schema(Some(self.name.clone()), None, "Value is not an object")),
+            _ => Err(DsError::schema(
+                Some(self.name.clone()),
+                None,
+                "Value is not an object",
+            )),
         }
     }
 }
@@ -383,18 +412,23 @@ impl PartialOrd for DsValue {
             (DsValue::File(a), DsValue::File(b)) => a.partial_cmp(b),
             (DsValue::List(a), DsValue::List(b)) => a.partial_cmp(b),
             (DsValue::Dict(a), DsValue::Dict(b)) => a.partial_cmp(b),
-            (DsValue::Object { schema_id: s1, fields: f1 }, DsValue::Object { schema_id: s2, fields: f2 }) => {
-                match s1.partial_cmp(s2) {
-                    Some(std::cmp::Ordering::Equal) => f1.partial_cmp(f2),
-                    ord => ord,
-                }
-            }
-            (DsValue::Ext(s1, v1), DsValue::Ext(s2, v2)) => {
-                match s1.partial_cmp(s2) {
-                    Some(std::cmp::Ordering::Equal) => v1.partial_cmp(v2),
-                    ord => ord,
-                }
-            }
+            (
+                DsValue::Object {
+                    schema_id: s1,
+                    fields: f1,
+                },
+                DsValue::Object {
+                    schema_id: s2,
+                    fields: f2,
+                },
+            ) => match s1.partial_cmp(s2) {
+                Some(std::cmp::Ordering::Equal) => f1.partial_cmp(f2),
+                ord => ord,
+            },
+            (DsValue::Ext(s1, v1), DsValue::Ext(s2, v2)) => match s1.partial_cmp(s2) {
+                Some(std::cmp::Ordering::Equal) => v1.partial_cmp(v2),
+                ord => ord,
+            },
             _ => None,
         }
     }
@@ -417,9 +451,15 @@ impl fmt::Display for DsValue {
             DsValue::Vector(v) => write!(f, "Vector({:?})", v.0),
             DsValue::Dict(d) => write!(f, "Dict({:?})", d),
             DsValue::List(l) => write!(f, "List({:?})", l),
-            DsValue::Object { schema_id, fields } => write!(f, "Object(schema={}, fields={:?})", schema_id, fields),
+            DsValue::Object { schema_id, fields } => {
+                write!(f, "Object(schema={}, fields={:?})", schema_id, fields)
+            }
             DsValue::Ext(t, b) => write!(f, "Ext({}, 0x{})", t, hex::encode(b)),
-            DsValue::File(file) => write!(f, "File({}, name={}, size={})", file.file_id, file.name, file.size),
+            DsValue::File(file) => write!(
+                f,
+                "File({}, name={}, size={})",
+                file.file_id, file.name, file.size
+            ),
         }
     }
 }
@@ -430,13 +470,41 @@ pub trait ToValue {
     fn to_value(&self) -> DsValue;
 }
 
-impl ToValue for DsValue { fn to_value(&self) -> DsValue { self.clone() } }
-impl ToValue for i64 { fn to_value(&self) -> DsValue { DsValue::Int(*self) } }
-impl ToValue for f32 { fn to_value(&self) -> DsValue { DsValue::Float(*self as f64) } }
-impl ToValue for String { fn to_value(&self) -> DsValue { DsValue::Text(self.clone()) } }
-impl ToValue for &str { fn to_value(&self) -> DsValue { DsValue::Text(self.to_string()) } }
-impl ToValue for bool { fn to_value(&self) -> DsValue { DsValue::Bool(*self) } }
-impl ToValue for Uuid { fn to_value(&self) -> DsValue { DsValue::Uuid(*self) } }
+impl ToValue for DsValue {
+    fn to_value(&self) -> DsValue {
+        self.clone()
+    }
+}
+impl ToValue for i64 {
+    fn to_value(&self) -> DsValue {
+        DsValue::Int(*self)
+    }
+}
+impl ToValue for f32 {
+    fn to_value(&self) -> DsValue {
+        DsValue::Float(*self as f64)
+    }
+}
+impl ToValue for String {
+    fn to_value(&self) -> DsValue {
+        DsValue::Text(self.clone())
+    }
+}
+impl ToValue for &str {
+    fn to_value(&self) -> DsValue {
+        DsValue::Text(self.to_string())
+    }
+}
+impl ToValue for bool {
+    fn to_value(&self) -> DsValue {
+        DsValue::Bool(*self)
+    }
+}
+impl ToValue for Uuid {
+    fn to_value(&self) -> DsValue {
+        DsValue::Uuid(*self)
+    }
+}
 
 /// Trait for converting from DsValue.
 pub trait FromValue: Sized {

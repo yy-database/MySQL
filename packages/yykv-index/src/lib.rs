@@ -6,8 +6,8 @@ use crate::yni::{IndexEngine, YniEngine};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use yykv_wal::WalManager;
 use yyds_types::{DsResult, DsValue};
+use yykv_wal::WalManager;
 
 /// Search Index Manager
 pub struct SearchIndexManager {

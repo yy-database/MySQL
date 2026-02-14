@@ -1,16 +1,16 @@
-use yyds_consensus::*;
-use yyds_types::{DsValue, Redundancy};
-use yykv_event::{WalEvent, OpType};
-use uuid::Uuid;
 use chrono::Utc;
 use tokio::sync::mpsc;
+use uuid::Uuid;
+use yyds_consensus::*;
+use yyds_types::{DsValue, Redundancy};
+use yykv_event::{OpType, WalEvent};
 
 #[tokio::test]
 async fn test_raft_propose_and_step() {
     let node_id = Uuid::new_v4();
     let (tx, _rx) = mpsc::channel(10);
     let raft = RaftAdapter::new(node_id, vec![], tx);
-    
+
     // Mocking leader state
     // Note: state is public in RaftAdapter
     {
@@ -31,7 +31,7 @@ async fn test_raft_propose_and_step() {
 
     // Propose a change
     raft.propose(event.clone()).await.unwrap();
-    
+
     {
         let state = raft.state().read().await;
         assert_eq!(state.log.len(), 1);
@@ -42,7 +42,7 @@ async fn test_raft_propose_and_step() {
     let follower_id = Uuid::new_v4();
     let (tx2, _rx2) = mpsc::channel(10);
     let follower_raft = RaftAdapter::new(follower_id, vec![], tx2);
-    
+
     let msg = ConsensusMessage::AppendEntries {
         term: 1,
         leader_id: node_id,

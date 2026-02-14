@@ -347,9 +347,9 @@ impl DsValueDecoder {
             ValueTypeId::DateTime => {
                 let secs = src.get_i64();
                 let n = src.get_u32();
-                let dt = Utc.timestamp_opt(secs, n)
-                    .single()
-                    .ok_or_else(|| DsError::serialization_with_format("binary", "Invalid datetime"))?;
+                let dt = Utc.timestamp_opt(secs, n).single().ok_or_else(|| {
+                    DsError::serialization_with_format("binary", "Invalid datetime")
+                })?;
                 Ok(DsValue::DateTime(dt))
             }
             ValueTypeId::Vector => {
@@ -486,4 +486,3 @@ impl DsValueBinaryEncoder {
         VALUE_MAGIC
     }
 }
-
