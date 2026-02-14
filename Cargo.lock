@@ -4393,6 +4393,7 @@ name = "yykv-event"
 version = "0.0.0"
 dependencies = [
  "bytes",
+ "chrono",
  "crc32fast",
  "serde",
  "tokio",
