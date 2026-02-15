@@ -27,19 +27,19 @@ impl FromValue for OpsGraph {
     }
 }
 
-/// 算子图 IR
+/// Operator graph IR
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpsGraph {
-    /// 图 ID
+    /// Graph ID
     pub id: Uuid,
-    /// 算子节点列表
+    /// List of operator nodes
     pub nodes: Vec<OperatorNode>,
-    /// 算子边列表
+    /// List of operator edges
     pub edges: Vec<Edge>,
 }
 
 impl OpsGraph {
-    /// 创建新的算子图
+    /// Create a new operator graph
     pub fn new() -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -55,293 +55,293 @@ impl Default for OpsGraph {
     }
 }
 
-/// 算子边，连接两个算子
+/// Operator edge, connecting two operators
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Edge {
     pub from: usize,
     pub to: usize,
 }
 
-/// 算子节点
+/// Operator node
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperatorNode {
-    /// 数据源 (如 TableScan)
+    /// Data source (e.g., TableScan)
     Source(SourceOp),
-    /// 过滤算子
+    /// Filter operator
     Filter(FilterOp),
-    /// 投影算子
+    /// Project operator
     Project(ProjectOp),
-    /// 聚合算子
+    /// Aggregate operator
     Aggregate(AggregateOp),
-    /// 向量检索算子
+    /// Vector search operator
     VectorSearch(VectorSearchOp),
-    /// 索引扫描算子
+    /// Index scan operator
     IndexScan(IndexScanOp),
-    /// Join 算子
+    /// Join operator
     Join(JoinOp),
-    /// 窗口函数算子
+    /// Window function operator
     Window(WindowOp),
-    /// UDF 调用算子
+    /// UDF call operator
     UdfCall(UdfOp),
-    /// 排序算子
+    /// Sort operator
     Sort(SortOp),
-    /// 限制算子
+    /// Limit operator
     Limit(LimitOp),
-    /// 汇聚节点 (Sink)
+    /// Sink node (Sink)
     Sink(SinkOp),
 }
 
-/// 排序算子
+/// Sort operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SortOp {
-    /// 排序规则
+    /// Sorting rules
     pub order_by: Vec<OrderBy>,
 }
 
-/// 限制算子
+/// Limit operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LimitOp {
-    /// 限制条数
+    /// Limit count
     pub limit: usize,
-    /// 偏移量
+    /// Offset
     pub offset: usize,
 }
 
-/// 数据源算子
+/// Data source operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceOp {
-    /// 表名
+    /// Table name
     pub table: String,
-    /// 列名
+    /// Column names
     pub columns: Vec<String>,
 }
 
-/// 索引扫描算子
+/// Index scan operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexScanOp {
-    /// 表名
+    /// Table name
     pub table: String,
-    /// 索引名
+    /// Index name
     pub index_name: String,
-    /// 列名
+    /// Column names
     pub columns: Vec<String>,
-    /// 扫描条件
+    /// Scan conditions
     pub conditions: Vec<IndexCondition>,
 }
 
-/// 索引条件
+/// Index condition
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexCondition {
-    /// 列名
+    /// Column name
     pub column: String,
-    /// 运算符
+    /// Operator
     pub op: BinaryOperator,
-    /// 值
+    /// Value
     pub value: DsValue,
 }
 
-/// 过滤算子
+/// Filter operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterOp {
-    /// 过滤表达式
+    /// Filter expression
     pub expression: Expr,
 }
 
-/// 投影算子
+/// Project operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectOp {
-    /// 投影列表 (别名, 表达式)
+    /// Project list (alias, expression)
     pub projections: Vec<(String, Expr)>,
 }
 
-/// 聚合算子
+/// Aggregate operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AggregateOp {
-    /// 分组列表
+    /// Group by list
     pub group_by: Vec<Expr>,
-    /// 聚合列表
+    /// Aggregate list
     pub aggs: Vec<AggExpr>,
 }
 
-/// 向量检索算子
+/// Vector search operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VectorSearchOp {
-    /// 向量列
+    /// Vector column
     pub column: String,
-    /// 检索向量
+    /// Search vector
     pub vector: Vec<f32>,
-    /// 限制条数
+    /// Limit count
     pub limit: usize,
 }
 
-/// Join 算子
+/// Join operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JoinOp {
-    /// 左表列名
+    /// Left table column name
     pub left_on: String,
-    /// 右表列名
+    /// Right table column name
     pub right_on: String,
-    /// Join 类型
+    /// Join type
     pub join_type: JoinType,
 }
 
-/// 窗口函数算子
+/// Window function operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowOp {
-    /// 分区列表
+    /// Partition by list
     pub partition_by: Vec<Expr>,
-    /// 排序列表
+    /// Sort by list
     pub order_by: Vec<OrderBy>,
-    /// 窗口函数
+    /// Window function
     pub func: WindowFunc,
 }
 
-/// 排序规则
+/// Sorting rule
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderBy {
-    /// 排序表达式
+    /// Sorting expression
     pub expr: Expr,
-    /// 是否降序
+    /// Whether descending
     pub desc: bool,
 }
 
-/// 窗口函数
+/// Window function
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WindowFunc {
-    /// 行号
+    /// Row number
     RowNumber,
-    /// 排名
+    /// Rank
     Rank,
-    /// 稠密排名
+    /// Dense rank
     DenseRank,
-    /// 聚合函数
+    /// Aggregate function
     Aggregate(AggExpr),
 }
 
-/// Join 类型
+/// Join type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum JoinType {
-    /// 内连接
+    /// Inner join
     Inner,
-    /// 左连接
+    /// Left join
     Left,
-    /// 右连接
+    /// Right join
     Right,
-    /// 全连接
+    /// Full join
     Full,
 }
 
-/// UDF 调用算子
+/// UDF call operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UdfOp {
-    /// 函数名
+    /// Function name
     pub function_name: String,
-    /// 参数列表
+    /// Parameter list
     pub args: Vec<Expr>,
 }
 
-/// 汇聚算子
+/// Sink operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SinkOp {
-    /// 目标标识
+    /// Target identifier
     pub target: String,
 }
 
-/// 表达式 IR
+/// Expression IR
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Expr {
-    /// 列名
+    /// Column name
     Column(String),
-    /// 字面量
+    /// Literal
     Literal(DsValue),
-    /// 二元运算
+    /// Binary operation
     BinaryOp(Box<Expr>, BinaryOperator, Box<Expr>),
-    /// 一元运算
+    /// Unary operation
     UnaryOp(Box<UnaryOperator>, Box<Expr>),
-    /// 函数调用
+    /// Function call
     FunctionCall(String, Vec<Expr>),
-    /// 参数绑定 ($1, $2, ...)
+    /// Parameter binding ($1, $2, ...)
     Param(usize),
-    /// IN 列表
+    /// IN list
     InList(Box<Expr>, Vec<Expr>, bool),
-    /// 标量子查询
+    /// Scalar subquery
     ScalarSubquery(Box<OpsGraph>),
-    /// IN 子查询
+    /// IN subquery
     InSubquery(Box<Expr>, Box<OpsGraph>, bool),
-    /// EXISTS 子查询
+    /// EXISTS subquery
     Exists(Box<OpsGraph>, bool),
-    /// 类型转换
+    /// Type cast
     Cast(Box<Expr>, String),
 }
 
-/// 二元运算符
+/// Binary operator
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum BinaryOperator {
-    /// 等于
+    /// Equal
     Eq,
-    /// 不等于
+    /// Not equal
     Neq,
-    /// 大于
+    /// Greater than
     Gt,
-    /// 大于等于
+    /// Greater than or equal
     Gte,
-    /// 小于
+    /// Less than
     Lt,
-    /// 小于等于
+    /// Less than or equal
     Lte,
-    /// 加
+    /// Add
     Add,
-    /// 减
+    /// Subtract
     Sub,
-    /// 乘
+    /// Multiply
     Mul,
-    /// 除
+    /// Divide
     Div,
-    /// 与
+    /// And
     And,
-    /// 或
+    /// Or
     Or,
-    /// 包含 (LIKE)
+    /// Like
     Like,
-    /// 不区分大小写包含 (ILIKE)
+    /// Case-insensitive like (ILIKE)
     ILike,
-    /// 正则匹配
+    /// Regex match
     Regex,
-    /// 字符串拼接
+    /// String concatenation
     Concat,
 }
 
-/// 一元运算符
+/// Unary operator
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UnaryOperator {
-    /// 非
+    /// Not
     Not,
-    /// 负
+    /// Negative
     Neg,
 }
 
-/// 聚合表达式
+/// Aggregate expression
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AggExpr {
-    /// 计数
+    /// Count
     Count(Expr),
-    /// 求和
+    /// Sum
     Sum(Expr),
-    /// 平均值
+    /// Average
     Avg(Expr),
-    /// 最大值
+    /// Max
     Max(Expr),
-    /// 最小值
+    /// Min
     Min(Expr),
 }
 
-/// 子查询评估器接口
+/// Subquery evaluator interface
 pub trait SubqueryEvaluator {
-    /// 评估标量子查询
+    /// Evaluate scalar subquery
     fn evaluate_scalar(&self, graph: &OpsGraph) -> Result<DsValue, String>;
-    /// 评估列表子查询
+    /// Evaluate list subquery
     fn evaluate_list(&self, graph: &OpsGraph) -> Result<Vec<DsValue>, String>;
-    /// 评估是否存在子查询
+    /// Evaluate if subquery exists
     fn evaluate_exists(&self, graph: &OpsGraph) -> Result<bool, String>;
 }
 
@@ -390,12 +390,12 @@ impl std::fmt::Display for Expr {
 }
 
 impl Expr {
-    /// 评估表达式的值
+    /// Evaluate the value of the expression
     pub fn evaluate(&self, row: &DsValue) -> Result<DsValue, String> {
         self.evaluate_with_params_and_context(row, &[], None)
     }
 
-    /// 使用参数评估表达式的值
+    /// Evaluate the value of the expression with parameters
     pub fn evaluate_with_params(
         &self,
         row: &DsValue,
@@ -404,7 +404,7 @@ impl Expr {
         self.evaluate_with_params_and_context(row, params, None)
     }
 
-    /// 使用参数和上下文评估表达式的值
+    /// Evaluate the value of the expression with parameters and context
     pub fn evaluate_with_params_and_context(
         &self,
         row: &DsValue,
@@ -420,8 +420,8 @@ impl Expr {
                 if let DsValue::Dict(d) = row {
                     Ok(d.get(name).cloned().unwrap_or(DsValue::Null))
                 } else if let DsValue::Object { .. } = row {
-                    // 假设 Object 的 fields 是 tag -> value，这里简化为字符串匹配
-                    // 实际中可能需要 Schema 信息
+                    // Assuming Object fields are tag -> value, simplified here as string match
+                    // In reality, Schema info might be needed
                     Ok(DsValue::Null)
                 } else {
                     Ok(DsValue::Null)

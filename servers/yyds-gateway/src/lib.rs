@@ -40,13 +40,13 @@ pub trait GatewayBackend: Send + Sync {
     ) -> Result<()>;
 }
 
-/// YYDS Gateway - 多协议兼容层
+/// YYDS Gateway - Multi-protocol compatibility layer
 ///
-/// 职责：
-/// 1. 协议监听 (Postgres/MySQL/S3/Arrow/OTLP)
-/// 2. 使用 we-trust-* 处理协议编解码
-/// 3. 将外部请求转换为内核原生的算子图 (Ops Graph)
-/// 4. 将生成的算子图分发给 yykv-executor 执行
+/// Responsibilities:
+/// 1. Protocol listening (Postgres/MySQL/S3/Arrow/OTLP)
+/// 2. Use we-trust-* for protocol encoding/decoding
+/// 3. Convert external requests into kernel-native Operator Graphs (Ops Graph)
+/// 4. Distribute generated Ops Graphs to yykv-executor for execution
 #[derive(Clone)]
 pub struct YydsGateway {
     backend: Arc<dyn GatewayBackend>,
@@ -57,7 +57,7 @@ impl YydsGateway {
         Self { backend }
     }
 
-    /// 启动 Postgres 协议监听
+    /// Start Postgres protocol listening
     pub async fn listen_postgres(&self, addr: &str) -> Result<()> {
         let listener = TcpListener::bind(addr)
             .await
@@ -161,7 +161,7 @@ impl YydsGateway {
         }
     }
 
-    /// 处理 Postgres 协议请求
+    /// Handle Postgres protocol requests
     pub async fn handle_pg_query(&self, tenant_id: Uuid, sql: &str) -> Result<Vec<DsValue>> {
         // 1. Parse SQL to SqlStatement (which contains OpsGraph for queries)
         let stmt = SqlParser::parse_sql(sql)
@@ -193,12 +193,12 @@ impl YydsGateway {
         }
     }
 
-    /// 处理 MySQL 协议请求
+    /// Handle MySQL protocol requests
     pub async fn handle_mysql_query(&self, tenant_id: Uuid, sql: &str) -> Result<Vec<DsValue>> {
         self.handle_pg_query(tenant_id, sql).await
     }
 
-    /// 处理 RBQ 协议请求
+    /// Handle RBQ protocol requests
     pub async fn handle_rbq_query(&self, tenant_id: Uuid, rbq: &str) -> Result<Vec<DsValue>> {
         // 1. Parse RBQ to RbqStatement
         let stmt = RbqParser::parse_rbq(rbq)
@@ -214,28 +214,28 @@ impl YydsGateway {
         }
     }
 
-    /// 处理 S3 PutObject 请求
+    /// Handle S3 PutObject requests
     pub async fn handle_s3_put_object(
         &self,
         _bucket: &str,
         _key: &str,
         _data: bytes::Bytes,
     ) -> Result<PutObjectOutput> {
-        // 将 S3 PutObject 转换为 Ops Graph
+        // Convert S3 PutObject to Ops Graph
         let _graph = OpsGraph::new();
-        // ... 映射逻辑 ...
+        // ... mapping logic ...
         Ok(PutObjectOutput {
             e_tag: "placeholder".into(),
             version_id: None,
         })
     }
 
-    /// 处理 Arrow Flight 流式读取
+    /// Handle Arrow Flight streaming read
     pub async fn handle_arrow_flight(&self, _ticket: Vec<u8>) -> Result<()> {
-        // 将 Arrow Flight 请求转换为 Ops Graph
-        // 核心优势：利用 Arrow 零拷贝特性，直接返回算子执行结果
+        // Convert Arrow Flight request to Ops Graph
+        // Core advantage: Leverage Arrow zero-copy features to directly return operator execution results
         let _graph = OpsGraph::new();
-        // ... 映射逻辑 ...
+        // ... mapping logic ...
         Ok(())
     }
 }
