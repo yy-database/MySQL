@@ -18,7 +18,7 @@ tokio-util = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
 oak-xml = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 http = { workspace = true }
 
 tracing = { workspace = true }

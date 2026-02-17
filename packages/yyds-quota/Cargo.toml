@@ -10,4 +10,4 @@ description = "Resource quota and rate limiting service for YYDS tenants"
 readme = "readme.md"
 
 [dependencies]
-serde = { workspace = true }
+serde = { workspace = true, optional = true }

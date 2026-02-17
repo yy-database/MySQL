@@ -16,7 +16,7 @@ uuid = { workspace = true }
 bytes = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 # serde_json = { workspace = true } # replaced by oak-json
 oak-json = { workspace = true }
 
