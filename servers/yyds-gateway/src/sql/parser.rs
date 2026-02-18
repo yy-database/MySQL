@@ -374,6 +374,11 @@ impl SqlParser {
                                 }
                             }
                         }
+                        SqlElementType::ValueList => {
+                            if current_keyword == Some(SqlSyntaxKind::Values) {
+                                Self::collect_insert_values(n, source, &mut values)?;
+                            }
+                        }
                         _ => {}
                     }
                 }
@@ -393,6 +398,26 @@ impl SqlParser {
         let key = values.get(0).cloned().unwrap();
         let value = if values.len() == 1 { key.clone() } else { DsValue::List(values) };
         Ok(SqlStatement::Insert { table, key, value })
+    }
+
+    fn collect_insert_values(
+        node: RedNode<SqlLanguage>,
+        source: &SourceText,
+        out: &mut Vec<DsValue>,
+    ) -> DsResult<()> {
+        for child in node.children() {
+            if let RedTree::Node(n) = child {
+                if n.kind::<SqlElementType>() == SqlElementType::Expression {
+                    let expr = Self::translate_expr_node(n, source)?;
+                    if let Expr::Literal(v) = expr {
+                        out.push(v);
+                    }
+                } else {
+                    Self::collect_insert_values(n, source, out)?;
+                }
+            }
+        }
+        Ok(())
     }
 
     fn parse_delete_node(node: RedNode<SqlLanguage>, source: &SourceText) -> DsResult<SqlStatement> {
@@ -649,7 +674,7 @@ impl SqlParser {
         if parts.len() >= 3 {
             if let Some(name_token) = parts[0].as_token() {
                 if let (Some(lparen), Some(rparen)) = (parts[1].as_token(), parts.last().and_then(|p| p.as_token())) {
-                    if lparen.kind() == SqlSyntaxKind::LParen && rparen.kind() == SqlSyntaxKind::RParen {
+                    if lparen.kind() == SqlSyntaxKind::LeftParen && rparen.kind() == SqlSyntaxKind::RightParen {
                         let name = name_token.text(source).to_uppercase();
                         let mut args = Vec::new();
                         for i in 2..parts.len() - 1 {
@@ -685,12 +710,12 @@ impl SqlParser {
 
             if let (Some(Ok(l)), Some(t), Some(Ok(r))) = (left, op_token, right) {
                 let op = match t.kind() {
-                    SqlSyntaxKind::Equal | SqlSyntaxKind::Eq => Some(BinaryOperator::Eq),
-                    SqlSyntaxKind::NotEqual | SqlSyntaxKind::Ne => Some(BinaryOperator::Neq),
-                    SqlSyntaxKind::Greater | SqlSyntaxKind::Gt => Some(BinaryOperator::Gt),
-                    SqlSyntaxKind::GreaterEqual | SqlSyntaxKind::Ge => Some(BinaryOperator::Gte),
-                    SqlSyntaxKind::Less | SqlSyntaxKind::Lt => Some(BinaryOperator::Lt),
-                    SqlSyntaxKind::LessEqual | SqlSyntaxKind::Le => Some(BinaryOperator::Lte),
+                    SqlSyntaxKind::Equal => Some(BinaryOperator::Eq),
+                    SqlSyntaxKind::NotEqual => Some(BinaryOperator::Neq),
+                    SqlSyntaxKind::Greater => Some(BinaryOperator::Gt),
+                    SqlSyntaxKind::GreaterEqual => Some(BinaryOperator::Gte),
+                    SqlSyntaxKind::Less => Some(BinaryOperator::Lt),
+                    SqlSyntaxKind::LessEqual => Some(BinaryOperator::Lte),
                     SqlSyntaxKind::Plus => Some(BinaryOperator::Add),
                     SqlSyntaxKind::Minus => Some(BinaryOperator::Sub),
                     SqlSyntaxKind::Star => Some(BinaryOperator::Mul),
@@ -706,7 +731,7 @@ impl SqlParser {
 
         if parts.len() == 3 {
             if let (Some(l), Some(r)) = (parts[0].as_token(), parts[2].as_token()) {
-                if l.kind() == SqlSyntaxKind::LParen && r.kind() == SqlSyntaxKind::RParen {
+                if l.kind() == SqlSyntaxKind::LeftParen && r.kind() == SqlSyntaxKind::RightParen {
                     if let RedTree::Node(n) = &parts[1] { return Self::translate_expr_node(n.clone(), source); }
                 }
             }

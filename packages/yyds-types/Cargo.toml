@@ -12,8 +12,7 @@ readme = "readme.md"
 [dependencies]
 bytes = { workspace = true }
 chrono = { workspace = true }
-serde = { workspace = true, optional = true }
-oak-json = { workspace = true }
+serde = { workspace = true }
 hex = { workspace = true }
 crc32fast = { workspace = true }
 uuid = { workspace = true }

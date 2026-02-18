@@ -10,7 +10,7 @@ homepage.workspace = true
 
 [dependencies]
 yyds-types = { workspace = true }
-serde = { workspace = true, optional = true }
+serde = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 bytes = { workspace = true }

@@ -78,12 +78,19 @@ we-trust-sqlserver = { path = "protocols/we-trust-sqlserver", version = "0.0.0" 
 we-trust-vector = { path = "protocols/we-trust-vector", version = "0.0.0" }
 
 # External projects for Local
-oak-sql = { path = "../oaks/examples/oak-sql", version = "0.0.3" }
-oak-rbq = { path = "../oaks/examples/oak-rbq", version = "0.0.3" }
-oak-json = { path = "../oaks/examples/oak-json", version = "0.0.3" }
-oak-toml = { path = "../oaks/examples/oak-toml", version = "0.0.3" }
-oak-core = { path = "../oaks/projects/oak-core", version = "0.0.3" }
-oak-xml = { path = "../oaks/examples/oak-xml", version = "0.0.3" }
+# oak-sql = { path = "../oaks/examples/oak-sql", version = "0.0.3" }
+# oak-rbq = { path = "../oaks/examples/oak-rbq", version = "0.0.3" }
+# oak-json = { path = "../oaks/examples/oak-json", version = "0.0.3" }
+# oak-toml = { path = "../oaks/examples/oak-toml", version = "0.0.3" }
+# oak-core = { path = "../oaks/projects/oak-core", version = "0.0.3" }
+# oak-xml = { path = "../oaks/examples/oak-xml", version = "0.0.3" }
+
+oak-sql = { path = "../oaks/examples/oak-sql", version = "0.0.4" }
+oak-rbq = { path = "../oaks/examples/oak-rbq", version = "0.0.4" }
+oak-json = { path = "../oaks/examples/oak-json", version = "0.0.4" }
+oak-toml = { path = "../oaks/examples/oak-toml", version = "0.0.4" }
+oak-core = { path = "../oaks/projects/oak-core", version = "0.0.4" }
+oak-xml = { path = "../oaks/examples/oak-xml", version = "0.0.4" }
 
 # External Dependencies
 bytes = { version = "1.11.1", features = ["serde"] }
