@@ -30,3 +30,6 @@ tracing = { workspace = true }
 parking_lot = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
+
+# Pure Rust SQLite implementation
+limbo = "0.0.22"

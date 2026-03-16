@@ -85,12 +85,12 @@ we-trust-vector = { path = "protocols/we-trust-vector", version = "0.0.0" }
 # oak-core = { path = "../oaks/projects/oak-core", version = "0.0.3" }
 # oak-xml = { path = "../oaks/examples/oak-xml", version = "0.0.3" }
 
-oak-sql = { path = "../oaks/examples/oak-sql", version = "0.0.4" }
-oak-rbq = { path = "../oaks/examples/oak-rbq", version = "0.0.4" }
-oak-json = { path = "../oaks/examples/oak-json", version = "0.0.4" }
-oak-toml = { path = "../oaks/examples/oak-toml", version = "0.0.4" }
-oak-core = { path = "../oaks/projects/oak-core", version = "0.0.4" }
-oak-xml = { path = "../oaks/examples/oak-xml", version = "0.0.4" }
+oak-sql = { path = "../oaks/examples/oak-sql", version = "0.0.6" }
+oak-rbq = { path = "../oaks/examples/oak-rbq", version = "0.0.6" }
+oak-json = { path = "../oaks/examples/oak-json", version = "0.0.6" }
+oak-toml = { path = "../oaks/examples/oak-toml", version = "0.0.6" }
+oak-core = { path = "../oaks/projects/oak-core", version = "0.0.6" }
+oak-xml = { path = "../oaks/examples/oak-xml", version = "0.0.6" }
 
 # External Dependencies
 bytes = { version = "1.11.1", features = ["serde"] }
@@ -140,3 +140,5 @@ opentelemetry = "0.31.0"
 opentelemetry_sdk = { version = "0.31.0", features = ["rt-tokio"] }
 opentelemetry-otlp = "0.31.0"
 thiserror = "2.0.18"
+# Pure Rust SQLite implementation
+limbo = "0.0.22"
