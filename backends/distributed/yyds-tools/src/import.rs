@@ -54,7 +54,7 @@ impl ImportState {
 
     pub fn save(&self, state_file: &Path) -> DsResult<()> {
         let content = serde_json::to_string(self)
-            .map_err(|e| DsError::parse("ImportState", e.to_string()))?;
+            .map_err(|e| DsError::parse(format!("ImportState: {}", e)))?;
         fs::write(state_file, content)
             .map_err(|e| DsError::io_raw(e, Some(state_file.to_path_buf())))?;
         Ok(())

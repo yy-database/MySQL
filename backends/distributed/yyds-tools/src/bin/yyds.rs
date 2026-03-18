@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use yyds_types::DsValue;
 
 #[derive(Parser)]
 #[command(name = "yyds")]
@@ -175,7 +176,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             let secret_bytes = secret.as_ref().map(|s| s.as_bytes()).unwrap_or(&[]);
 
             println!("Connecting to YYDS at {}...", addr);
-            let client = yyds::Client::connect(addr, tenant_uuid, secret_bytes).await?;
+            let mut client = yyds::Client::connect(addr, tenant_uuid, secret_bytes).await?;
 
             // Load schema
             let mut schema = None;

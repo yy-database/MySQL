@@ -179,7 +179,7 @@ impl Loader for JsonlLoader {
                 }
                 
                 let value: serde_json::Value = serde_json::from_str(trimmed)
-                    .map_err(|e| DsError::parse("JSONL", e.to_string()))?;
+                    .map_err(|e| DsError::parse(format!("JSONL: {}", e)))?;
                 yield Ok((current_pos, json_to_ds_value(value)));
             }
         };

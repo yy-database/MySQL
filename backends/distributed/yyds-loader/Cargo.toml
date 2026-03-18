@@ -12,7 +12,7 @@ readme = "readme.md"
 [dependencies]
 yyds-types.workspace = true
 yykv-types.workspace = true
-oak-dsv = { path = "../../../oaks/examples/oak-dsv" }
+oak-dsv = { path = "../../../../oaks/examples/oak-dsv" }
 oak-json = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true

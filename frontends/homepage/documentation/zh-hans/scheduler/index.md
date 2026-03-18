@@ -10,24 +10,24 @@ YYDS (独一分布式存储) 的调度系统是一个多层级的复杂体系，
 
 ### 1. I/O 调度层 (Low-level I/O)
 专注于单机硬件性能的极致释放。
-- 相关包：[yykv-scheduler](../../packages/yykv-scheduler), [yykv-io](../../packages/yykv-io), [yykv-hal](../../packages/yykv-hal), [yykv-allocator](../../packages/yykv-allocator)
+- 相关包：[yykv-scheduler](../../backends/kv-store/yykv-scheduler), [yykv-io](../../backends/kv-store/yykv-io), [yykv-hal](../../backends/kv-store/yykv-hal), [yykv-allocator](../../backends/kv-store/yykv-allocator)
 
 ### 2. 任务调度层 (Background Tasks)
 专注于后台异步任务的可靠执行与持久化。
-- 相关包：[yyds-task](../../packages/yyds-task), [yykv-event](../../packages/yykv-event), [yykv-wal](../../packages/yykv-wal)
+- 相关包：[yyds-task](../../backends/distributed/yyds-task), [yykv-event](../../backends/kv-store/yykv-event), [yykv-wal](../../backends/kv-store/yykv-wal)
 
 ### 3. 数据生命周期调度 (Data Lifecycle)
 专注于数据在不同存储介质间的流动与形态转换。
-- 相关包：[yykv-compaction](../../packages/yykv-compaction), [yykv-tiering](../../packages/yykv-tiering), [yykv-layout](../../packages/yykv-layout)
+- 相关包：[yykv-compaction](../../backends/kv-store/yykv-compaction), [yykv-tiering](../../backends/kv-store/yykv-tiering), [yykv-layout](../../backends/kv-store/yykv-layout)
 
 ### 4. 计算与流编排 (Compute & Stream)
 专注于计算算子的执行位置调度与数据流驱动。
-- 相关包：[yyds-compute](../../packages/yyds-compute), [yykv-compute](../../packages/yykv-compute), [yykv-stream](../../packages/yykv-stream), [yykv-udf](../../packages/yykv-udf), [yyds-ai](../../packages/yyds-ai)
+- 相关包：[yyds-compute](../../backends/distributed/yyds-compute), [yykv-compute](../../backends/kv-store/yykv-compute), [yykv-stream](../../backends/kv-store/yykv-stream), [yykv-udf](../../backends/kv-store/yykv-udf), [yyds-ai](../../backends/distributed/yyds-ai)
 
 ### 5. 资源与配额调度 (Resource & Quota)
 专注于多租户环境下的公平性与资源隔离。
-- 相关包：[yyds-quota](../../packages/yyds-quota), [yyds-tenant](../../packages/yyds-tenant), [yyds-billing](../../packages/yyds-billing), [yyds-observability](../../packages/yyds-observability)
+- 相关包：[yyds-quota](../../backends/distributed/yyds-quota), [yyds-tenant](../../backends/distributed/yyds-tenant), [yyds-billing](../../backends/distributed/yyds-billing), [yyds-observability](../../backends/distributed/yyds-observability)
 
 ### 6. 分布式共识与协调 (Global Coordination)
 专注于跨节点的任务分配、状态同步与全局索引。
-- 相关包：[yyds-consensus](../../packages/yyds-consensus), [yyds-pubsub](../../packages/yyds-pubsub), [yykv-index](../../packages/yykv-index), [yykv-executor](../../packages/yykv-executor)
+- 相关包：[yyds-consensus](../../backends/distributed/yyds-consensus), [yyds-pubsub](../../backends/distributed/yyds-pubsub), [yykv-index](../../backends/kv-store/yykv-index), [yykv-executor](../../backends/kv-store/yykv-executor)

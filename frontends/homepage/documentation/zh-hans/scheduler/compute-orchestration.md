@@ -4,21 +4,21 @@
 
 ## 核心组件
 
-### [yyds-compute](../../packages/yyds-compute) / [yykv-compute](../../packages/yykv-compute)
+### [yyds-compute](../../backends/distributed/yyds-compute) / [yykv-compute](../../backends/kv-store/yykv-compute)
 **分布式/单机计算算子**。
 - **职责**：执行 KQL 查询中的过滤、投影和聚合。
 - **调度逻辑**：根据数据分布，决定计算是在网关层执行还是下推到存储节点执行（近数据计算）。
 
-### [yykv-stream](../../packages/yykv-stream)
+### [yykv-stream](../../backends/kv-store/yykv-stream)
 **流式执行引擎**。
 - **职责**：处理连续的数据流查询。
 - **调度特性**：基于反压机制的流式调度，确保数据产生速度与消费速度匹配。
 
-### [yykv-udf](../../packages/yykv-udf)
+### [yykv-udf](../../backends/kv-store/yykv-udf)
 **用户定义函数运行时**。
 - **职责**：在存储层执行沙箱化的 UDF（Wasm 沙箱）。
 - **调度相关**：调度 UDF 的执行资源，确保租户代码的隔离与安全，防止影响存储内核稳定性。
 
-### [yyds-ai](../../packages/yyds-ai)
+### [yyds-ai](../../backends/distributed/yyds-ai)
 **AI 协处理器调度**。
 - **职责**：管理向量化（Embedding）和模型推理任务，协调 CPU 与专用 AI 加速器之间的负载。

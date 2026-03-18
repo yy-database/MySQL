@@ -13,13 +13,11 @@ export interface DocMetadata {
     order?: number;
 }
 
-import { docsModules as rawDocsModules } from "virtual:docs";
-
-const docsModules: Record<string, string> = {};
-for (const key in rawDocsModules) {
-    const normalizedKey = key.replace(/\\/g, "/");
-    docsModules[`../../documentation/zh-hans/${normalizedKey}`] = rawDocsModules[key];
-}
+const docsModules = import.meta.glob("../../documentation/zh-hans/**/*.md", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+});
 
 console.log("Loaded docsModules:", Object.keys(docsModules));
 

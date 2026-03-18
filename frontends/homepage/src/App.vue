@@ -455,7 +455,7 @@ import { loadDocs, getDocContent, type DocNode } from "@/docs";
 import MarkdownViewer from "@/components/MarkdownViewer.vue";
 import DocTreeNode from "@/components/DocTreeNode.vue";
 
-const currentSection = ref<"home" | "download" | "docs">("home");
+const currentSection = ref<"home" | "features" | "download" | "docs">('home');
 const docTree = ref<DocNode[]>([]);
 const currentDocPath = ref<string>("");
 const currentDoc = ref<DocNode | null>(null);

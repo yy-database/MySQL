@@ -4,7 +4,7 @@
 
 ## 核心组件
 
-### [yyds-task](../../packages/yyds-task)
+### [yyds-task](../../backends/distributed/yyds-task)
 **分布式任务管理器**。
 - **职责**：接收、存储并分发各类后台任务。
 - **调度特性**：
@@ -12,12 +12,12 @@
     - **状态追踪**：任务状态持久化于 WAL，支持节点宕机后的自动重调度。
     - **协同调度**：感知 `yykv-scheduler` 的负载，在 I/O 繁忙时自动挂起非紧急后台任务。
 
-### [yykv-event](../../packages/yykv-event)
+### [yykv-event](../../backends/kv-store/yykv-event)
 **事件驱动系统**。
 - **职责**：监听存储层的状态变化（如 Page 变更、事务提交）。
 - **WAE 机制**：实现 **Write-Ahead Event**，当数据写入 WAL 时实时触发订阅者，支持在数据落盘前完成索引预构建。
 
-### [yykv-wal](../../packages/yykv-wal)
+### [yykv-wal](../../backends/kv-store/yykv-wal)
 **预写日志管理器**。
 - **职责**：确保任务和数据的持久化。
 - **调度保障**：通过 WAL 机制确保任务的原子性与可恢复性。
