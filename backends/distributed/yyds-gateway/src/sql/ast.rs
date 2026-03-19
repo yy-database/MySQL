@@ -12,6 +12,11 @@ pub enum SqlStatement {
         key: DsValue,
         value: DsValue,
     },
+    InsertBatch {
+        table: String,
+        columns: Option<Vec<String>>,
+        values: Vec<Vec<DsValue>>,
+    },
     CreateTable {
         name: String,
         schema: Option<DsSchema>,
