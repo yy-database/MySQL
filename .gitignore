@@ -21,6 +21,9 @@ target/
 .project
 .factorypath
 
+# Rust
+.cargo/config.toml
+
 # OS
 .DS_Store
 Thumbs.db

@@ -10,9 +10,9 @@ description = "Distributed consensus implementation for YYDS based on Raft or Pa
 readme = "readme.md"
 
 [dependencies]
-yyds-types = { workspace = true }
-yykv-event = { workspace = true }
-serde = { version = "1.0.228", features = ["derive"] }
-async-trait = "0.1.89"
-uuid = { version = "1.21.0", features = ["v4", "v7", "serde"] }
-tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "net", "time", "sync", "io-util", "fs"] }
+yyds-types = { path = "../yyds-types", version = "0.1.0" }
+yykv-event = { path = "../../kv-store/yykv-event", version = "0.1.0" }
+serde = { workspace = true, features = ["derive"] }
+async-trait = { workspace = true }
+uuid = { workspace = true, features = ["v4", "v7", "serde"] }
+tokio = { workspace = true }

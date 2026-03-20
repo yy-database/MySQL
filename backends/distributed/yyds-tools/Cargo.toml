@@ -1,8 +1,9 @@
 [package]
 name = "yyds-tools"
-version = "0.1.0"
-edition = "2024"
-authors = ["YY Team"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
 publish = false
 
 [[bin]]
@@ -34,5 +35,5 @@ rand = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
 tokio-stream = { workspace = true }
-dialoguer = "0.12"
+dialoguer = { workspace = true }
 uuid = { workspace = true }
