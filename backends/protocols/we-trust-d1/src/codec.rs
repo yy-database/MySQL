@@ -1,12 +1,12 @@
 use bytes::{Buf, BufMut, BytesMut};
-use oak_json::JsonValue;
+use oak_json::JsonValueNode;
 use tokio_util::codec::{Decoder, Encoder};
 use yykv_types::DsError;
 
 #[derive(Debug)]
 pub struct D1Request {
     pub sql: String,
-    pub params: Vec<JsonValue>,
+    pub params: Vec<JsonValueNode>,
 }
 
 impl D1Request {
@@ -37,7 +37,7 @@ impl D1Request {
 #[derive(Debug)]
 pub struct D1Response {
     pub success: bool,
-    pub results: Option<JsonValue>,
+    pub results: Option<JsonValueNode>,
     pub error: Option<String>,
 }
 
