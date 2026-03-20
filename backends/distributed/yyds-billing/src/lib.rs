@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 use chrono::{DateTime, Utc};
-use oak_json::JsonValue;
+use oak_json::JsonValueNode;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -61,7 +61,7 @@ impl MeteringRecord {
         )
     }
 
-    pub fn from_json_value(val: &JsonValue) -> Option<Self> {
+    pub fn from_json_value(val: &JsonValueNode) -> Option<Self> {
         let obj = val.as_object()?;
         let tenant_id = obj.get("tenant_id")?.as_f64()? as u64;
         let resource_type_str = obj.get("resource_type")?.as_str()?;
