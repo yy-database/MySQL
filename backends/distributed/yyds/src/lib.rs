@@ -1,5 +1,5 @@
 #![warn(missing_docs)]
-#![doc = include_str!("../readme.md")]
+#![doc = include_str!("readme.md")]
 
 pub use we_trust as trust;
 
