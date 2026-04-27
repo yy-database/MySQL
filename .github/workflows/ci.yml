@@ -14,7 +14,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -35,7 +35,7 @@ jobs:
           - { name: "default features", flags: "" }
           - { name: "all features", flags: "--all-features" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
         with:
@@ -54,7 +54,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Rust Nightly
         uses: dtolnay/rust-toolchain@nightly
       - name: Build Release
