@@ -1,6 +1,8 @@
 name: Check TypeScript
 
-# pnpm install, TypeScript build and native binding smoke.
+# pnpm install, TypeScript build, native binding smoke and install-state
+# acceptance (packs the product, platform package and harness, installs them in
+# a temporary directory and connects with the real mysql2 driver).
 # Python: check-python.yml. Rust workspace: check-rust.yml.
 # Publish: publish-npm.yml on v* tags.
 on:
@@ -25,7 +27,7 @@ jobs:
           version: 10.18.3
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly-2026-07-20
+          toolchain: nightly
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
@@ -40,6 +42,8 @@ jobs:
         run: node scripts/build-napi.mjs
       - name: Smoke the native roundtrip
         run: node projects/mysql.ts/examples/roundtrip.ts
+      - name: Install-state acceptance
+        run: node projects/mysql.ts/packages/mysql-harness/stages/install.mjs
       - name: Build the WebAssembly package
         run: pnpm run build:wasm
       - name: Check the WebAssembly package
