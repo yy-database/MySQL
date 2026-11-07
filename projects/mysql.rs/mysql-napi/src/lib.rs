@@ -1,7 +1,10 @@
 //! Node bindings: thin wrappers over the `mysql-core` framing primitives.
 //!
-//! No global state, no `start` entry and no CLI: the TypeScript host owns the
-//! socket loop, the transaction state and the command line.
+//! No bin, no global state and no CLI: the TypeScript host owns the command
+//! line. The server handles in [`server`] compose the upstream
+//! `database.server::yyds::mysql` gateway; no protocol bytes live here.
+
+mod server;
 
 use napi::{Error, Result, Status, bindgen_prelude::Buffer};
 use napi_derive::napi;

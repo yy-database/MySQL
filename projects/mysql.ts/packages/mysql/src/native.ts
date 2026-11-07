@@ -19,6 +19,33 @@ export interface DecodedPacket {
     readonly payload: Buffer;
 }
 
+/** Exclusive node lease over one MySQL data directory. */
+export interface MysqlLeaseHandle {
+    /** Data directory held by this lease. */
+    dataDir(): string;
+}
+
+/** Local KV executor over the catalog's `.yykv` shards. */
+export interface MysqlExecutorHandle {
+    readonly _brand?: 'MysqlExecutor';
+}
+
+/** Persisted SQL schema registry. */
+export interface MysqlSchemaHandle {
+    /** Current schema revision, bumped by every applied DDL. */
+    revision(): number;
+}
+
+/** Loopback MySQL listener owned by the upstream gateway. */
+export interface MysqlServiceHandle {
+    /** Bound address, including the assigned port when started with `0`. */
+    address(): string;
+    /** Whether the accept worker has exited. */
+    isFinished(): boolean;
+    /** Stops the listener and waits for its worker to exit. */
+    stop(): void;
+}
+
 /** Primitives exported by the `mysql-napi` binding. */
 export interface MysqlNative {
     /** Largest payload one classic packet may carry. */
@@ -29,6 +56,23 @@ export interface MysqlNative {
     encodePacket(sequence: number, payload: Buffer): Buffer;
     /** Decodes the first complete packet, or `null` when the input is incomplete. */
     decodePacket(input: Buffer): DecodedPacket | null;
+    /** Publishes single-node shard routing into a `.yyds` catalog. */
+    mysqlPublishRouting(catalogPath: string, epoch: number, shardIds: string[]): void;
+    /** Acquires the exclusive lease for one data directory. */
+    MysqlLease: new (dataDir: string, clusterId: string, nodeId: string) => MysqlLeaseHandle;
+    /** Opens the KV executor from published `.yyds` routing. */
+    MysqlExecutor: { open(dataDir: string, catalogPath: string): MysqlExecutorHandle };
+    /** Opens the persisted SQL schema registry. */
+    MysqlSchema: { open(path: string): MysqlSchemaHandle };
+    /** Starts the loopback listener on `127.0.0.1:<port>`. */
+    MysqlService: {
+        start(
+            lease: MysqlLeaseHandle,
+            executor: MysqlExecutorHandle,
+            schema: MysqlSchemaHandle,
+            port: number,
+        ): MysqlServiceHandle;
+    };
 }
 
 /** Platform key for the running process, or `null` when no binding exists. */
@@ -45,12 +89,16 @@ export function loadNative(): MysqlNative {
     const key = platformKey();
     if (!key) throw new Error(`MySQL native binding is unavailable for ${process.platform}-${process.arch}`);
     const platformPackage = `@yydb/mysql-${key}`;
+    // A workspace checkout wins over the package manager's installed copy: pnpm
+    // materialises the platform package under `node_modules/.pnpm` at install
+    // time, so a freshly built addon only lands in the workspace directory.
+    // Installed consumers have no workspace directory and fall through.
+    const repo = resolve(packageRoot, '..', '..', '..', '..');
+    const local = join(repo, 'projects', 'mysql.ts', 'platforms', `mysql-${key}`);
+    if (existsSync(join(local, 'package.json'))) return require(local) as MysqlNative;
     try {
         return require(platformPackage) as MysqlNative;
     } catch (error) {
-        const repo = resolve(packageRoot, '..', '..', '..', '..');
-        const local = join(repo, 'projects', 'mysql.ts', 'platforms', `mysql-${key}`);
-        if (existsSync(join(local, 'package.json'))) return require(local) as MysqlNative;
         throw new Error(
             `cannot resolve ${platformPackage}: install the matching platform package (${(error as Error).message})`,
         );

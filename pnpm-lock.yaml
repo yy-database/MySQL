@@ -34,6 +34,28 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+    optionalDependencies:
+      '@yydb/mysql-darwin-arm64':
+        specifier: 0.0.0
+        version: 0.0.0
+      '@yydb/mysql-darwin-x64':
+        specifier: 0.0.0
+        version: 0.0.0
+      '@yydb/mysql-linux-x64':
+        specifier: 0.0.0
+        version: 0.0.0
+      '@yydb/mysql-unknown-wasm32':
+        specifier: 0.0.0
+        version: 0.0.0
+      '@yydb/mysql-win32-x64':
+        specifier: 0.0.0
+        version: 0.0.0
+
+  projects/mysql.ts/packages/mysql-harness:
+    dependencies:
+      mysql2:
+        specifier: ^3.24.6
+        version: 3.24.6(@types/node@24.10.1)
 
   projects/mysql.ts/platforms/mysql-darwin-arm64: {}
 
@@ -84,6 +106,72 @@ packages:
     resolution: {integrity: sha512-hDTOJGKHam1+GYnOJY8M0yqctrBt8RfdkvUVmkeu1LQVRyfWRZ8kqWnTdYcW8PoCWKP4DdDpcWJrbmI7rn68Bg==}
     engines: {node: '>=20'}
 
+  '@yydb/mysql-darwin-arm64@0.0.0':
+    resolution: {integrity: sha512-MgRLlAcEsKhbpsqg5tBJL+RNQTDoaoXsI/Od4O0gEpc3YjFPRAOnOv7mWV4bNNZG10ymugmbf3kQh1CVw5asLg==}
+    engines: {node: '>=24.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@yydb/mysql-darwin-x64@0.0.0':
+    resolution: {integrity: sha512-WcV7M6XtUyu/0jw1SnxQwEccenl6wI5s1XWs9o0QJALbhwVlfHaVRQ0srj8N6IKVWESuRKESLWtinWXHCxZHog==}
+    engines: {node: '>=24.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@yydb/mysql-linux-x64@0.0.0':
+    resolution: {integrity: sha512-W1dbeFeogn0vVwPz2489hMRK0yaiM2gBAWlnmfvFIJnSa02qsks1hh0vliP6ZY4FyW5gbwnG5ma0KSGjBGfwhg==}
+    engines: {node: '>=24.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@yydb/mysql-unknown-wasm32@0.0.0':
+    resolution: {integrity: sha512-4EZaR5cMOOGplC1YjWYOcGFzr0KpeElTXf/pVYybmTDAwScXFk/AWzFOxTIKgfLPxL9TY8NF7AdfH6qG8t+8xQ==}
+    engines: {node: '>=24.0.0'}
+
+  '@yydb/mysql-win32-x64@0.0.0':
+    resolution: {integrity: sha512-0H5iceiPNFmFUAgrt7Fkp86By2n8ATaV5K201NDJUYaZzfDTOri/lpDrRgS2vFnE+xzT4j3MQEdNulMMaaXNlA==}
+    engines: {node: '>=24.0.0'}
+    cpu: [x64]
+    os: [win32]
+
+  aws-ssl-profiles@1.1.2:
+    resolution: {integrity: sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g==}
+    engines: {node: '>= 6.0.0'}
+
+  generate-function@2.3.1:
+    resolution: {integrity: sha512-eeB5GfMNeevm/GRYq20ShmsaGcmI81kIX2K9XQx5miC8KdHaC6Jm0qQ8ZNeGOi7wYB8OsdxKs+Y2oVuTFuVwKQ==}
+
+  iconv-lite@0.7.3:
+    resolution: {integrity: sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==}
+    engines: {node: '>=0.10.0'}
+
+  is-property@1.0.2:
+    resolution: {integrity: sha512-Ks/IoX00TtClbGQr4TWXemAnktAQvYB7HzcCxDGqEZU6oCmb2INHuOoKxbtR+HFkmYWBKv/dOZtGRiAjDhj92g==}
+
+  long@5.3.2:
+    resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
+
+  lru.min@1.1.5:
+    resolution: {integrity: sha512-5J9ysMYUpYIg9RF2vJpy9SinEmSviFSe0GyPpCQ4L5QSkLAgeLXlTAOu2ZwWUU5m+0SBl6gUU1R1ZQB3aKypfA==}
+    engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
+
+  mysql2@3.24.6:
+    resolution: {integrity: sha512-enu73KhbAua2L3dIxjc6qg6ZJ7H3pt1BImZASWNWY5xSsmJ1ZuUPULTDGXgmJbI61vb+nJAG19IZclIq19UidQ==}
+    engines: {node: '>= 8.0'}
+    peerDependencies:
+      '@types/node': '>= 8'
+
+  named-placeholders@1.1.6:
+    resolution: {integrity: sha512-Tz09sEL2EEuv5fFowm419c1+a/jSMiBjI9gHxVLrVdbUkkNUUfjsVYs9pVZu5oCon/kmRh9TfLEObFtkVxmY0w==}
+    engines: {node: '>=8.0.0'}
+
+  safer-buffer@2.1.2:
+    resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
+
+  sql-escaper@1.5.2:
+    resolution: {integrity: sha512-6CKD38c31SENivxOADeMNLdukOnUxUcflKtzVWzace7Riv1v7cAEym5Cx9Q7gYZ3ezIJI7ZpqecQq8cqNeSSFg==}
+    engines: {bun: '>=1.0.0', deno: '>=2.0.0', node: '>=12.0.0'}
+
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -124,6 +212,56 @@ snapshots:
       undici-types: 7.16.0
 
   '@vmz/commander@0.2.8': {}
+
+  '@yydb/mysql-darwin-arm64@0.0.0':
+    optional: true
+
+  '@yydb/mysql-darwin-x64@0.0.0':
+    optional: true
+
+  '@yydb/mysql-linux-x64@0.0.0':
+    optional: true
+
+  '@yydb/mysql-unknown-wasm32@0.0.0':
+    optional: true
+
+  '@yydb/mysql-win32-x64@0.0.0':
+    optional: true
+
+  aws-ssl-profiles@1.1.2: {}
+
+  generate-function@2.3.1:
+    dependencies:
+      is-property: 1.0.2
+
+  iconv-lite@0.7.3:
+    dependencies:
+      safer-buffer: 2.1.2
+
+  is-property@1.0.2: {}
+
+  long@5.3.2: {}
+
+  lru.min@1.1.5: {}
+
+  mysql2@3.24.6(@types/node@24.10.1):
+    dependencies:
+      '@types/node': 24.10.1
+      aws-ssl-profiles: 1.1.2
+      generate-function: 2.3.1
+      iconv-lite: 0.7.3
+      long: 5.3.2
+      lru.min: 1.1.5
+      named-placeholders: 1.1.6
+      sql-escaper: 1.5.2
+
+  named-placeholders@1.1.6:
+    dependencies:
+      lru.min: 1.1.5
+
+  safer-buffer@2.1.2: {}
+
+  sql-escaper@1.5.2: {}
 
   typescript@5.9.3: {}
 

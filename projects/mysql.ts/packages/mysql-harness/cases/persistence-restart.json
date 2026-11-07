@@ -1,0 +1,10 @@
+{
+    "name": "persistence-restart",
+    "description": "Rows survive a real process stop and a fresh process on the same data directory.",
+    "steps": [
+        { "sql": "CREATE TABLE harness_persist (id INT NOT NULL PRIMARY KEY, label VARCHAR(64))", "ok": true },
+        { "sql": "INSERT INTO harness_persist (id, label) VALUES (2, 'beta')", "affectedRows": 1 },
+        { "restart": true },
+        { "sql": "SELECT id, label FROM harness_persist WHERE id = 2", "columns": ["id", "label"], "rows": [[2, "beta"]] }
+    ]
+}

@@ -1,0 +1,5 @@
+{
+    "name": "connect-ping",
+    "description": "The real mysql2 driver completes the protocol-v10 handshake and COM_PING.",
+    "steps": [{ "ping": true }]
+}

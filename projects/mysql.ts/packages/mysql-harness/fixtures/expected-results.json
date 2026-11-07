@@ -1,0 +1,23 @@
+{
+    "provenance": {
+        "source": "batch-1 semantic expectations",
+        "note": "Batch 3 replaces these with captures from a real mysql:8.4 instance; the corpus is then frozen and this implementation never writes back into it.",
+        "serverVersion": null,
+        "capturedAt": null,
+        "driver": "mysql2",
+        "image": null
+    },
+    "cases": {
+        "connect-ping": { "ping": true },
+        "select-constant": { "columns": ["1"], "rows": [[1]] },
+        "session-variables": { "versionType": "string", "autocommitIn": ["OFF", "off", 0, "0", false] },
+        "ddl-dml-select": {
+            "create": "ok",
+            "insertAffectedRows": 1,
+            "rowAfterInsert": [1, "alpha"],
+            "updateAffectedRows": 1,
+            "rowAfterUpdate": ["alpha-updated"]
+        },
+        "persistence-restart": { "rowAfterRestart": [2, "beta"] }
+    }
+}

@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 name = "mysql_napi"
 
 [dependencies]
-mysql-core = { path = "../mysql-core" }
+mysql-core = { path = "../mysql-core", features = ["server"] }
 napi = { workspace = true }
 napi-derive = { workspace = true }
 

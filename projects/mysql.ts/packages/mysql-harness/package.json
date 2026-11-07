@@ -1,0 +1,30 @@
+{
+    "name": "@yydb/mysql-harness",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Acceptance harness: real MySQL clients against the .yyds/.yykv backed server",
+    "license": "MPL-2.0",
+    "bin": {
+        "mysql-harness": "./bin/mysql-harness.mjs"
+    },
+    "files": [
+        "bin",
+        "src",
+        "stages",
+        "cases",
+        "fixtures",
+        "corpus",
+        "readme.md"
+    ],
+    "scripts": {
+        "check": "node stages/node.mjs",
+        "install-state": "node stages/install.mjs"
+    },
+    "dependencies": {
+        "mysql2": "^3.24.6"
+    },
+    "engines": {
+        "node": ">=24.0.0"
+    }
+}

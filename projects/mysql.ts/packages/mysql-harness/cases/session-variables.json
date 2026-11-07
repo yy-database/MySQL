@@ -1,0 +1,9 @@
+{
+    "name": "session-variables",
+    "description": "Session commands a real driver sends during startup: SET and @@variable probes.",
+    "steps": [
+        { "sql": "SET autocommit = 0", "ok": true },
+        { "sql": "SELECT @@version AS version", "rowCount": 1, "valueType": "string", "valueNonEmpty": true },
+        { "sql": "SELECT @@autocommit AS autocommit", "rowCount": 1, "valueIn": ["OFF", "off", 0, "0", false] }
+    ]
+}

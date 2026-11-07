@@ -1,0 +1,5 @@
+{
+    "name": "select-constant",
+    "description": "SELECT 1 returns one column named \"1\" holding 1.",
+    "steps": [{ "sql": "SELECT 1", "columns": ["1"], "rows": [[1]] }]
+}
