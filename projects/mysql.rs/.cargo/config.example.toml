@@ -1,5 +1,5 @@
 # Optional local override. Fresh clones and CI need nothing here: `Cargo.toml`
-# pins the `database-protocol-mysql` git revision and `cargo check` resolves it
+# pins the `database` and `database-protocol-mysql` git revisions and `cargo check` resolves them
 # directly.
 #
 # Only when you are co-developing `database.rs` in a local checkout, copy this
@@ -8,5 +8,6 @@
 # makes `cargo check` fail before compilation starts.
 #
 # [patch."https://github.com/oovm/database.rs.git"]
+# database = { path = "../../database.rs/projects/database/database" }
 # database-protocol-mysql = { path = "../../database.rs/projects/database/database.protocol.mysql" }
 # database-types = { path = "../../database.rs/projects/database/database.types" }

@@ -11,11 +11,11 @@
    `.yykv` 分片、KV executor、schema registry。
 3. 命中即复用。只有在两处都搜不到、且能写出「上游为何不承载」的理由时，才允许在本仓新增。
 
-## 上游能力边界（pin `647d97a1`）
+## 上游能力边界（pin `d302887d`）
 
 | 能力 | 上游位置 | 状态 | 本仓动作 |
 |---|---|---|---|
-| 帧编解码 | `database-protocol-mysql`（`Packet` / `decode_packet` / `encode_packet`） | 完整 | 仅再导出 |
+| 帧编解码 | `database-protocol-mysql`（`Packet` / `decode_packet` / `encode_packet` / `PROTOCOL_VERSION`） | 完整 | 绑定直连 |
 | classic wire 辅助 | `database.server::yyds::mysql::wire` | 完整 | 不接触 |
 | 握手 v10 | `connection.rs::serve_session` | 完整（capability / status flags / `mysql_native_password`） | 复用 |
 | 认证 | 同上 | loopback + 空密码；空用户或非空密码 → `1045` / `28000` | 复用，本批不扩展 |
@@ -26,6 +26,7 @@
 | `OK` / `ERR` / `EOF` | `connection.rs` | 完整（含 SQLSTATE、错误码 1045/1047/1193） | 复用 |
 | length-encoded | `connection.rs` + `tests/mysql/length_encoded.rs` | 完整（uint/string、251 边界） | 复用 |
 | 监听循环 | `service.rs::MysqlService::{start, start_with_registry, start_with_executor, start_with_executor_lane, address, is_finished, stop}` | 完整（loopback、worker 线程、可停） | 复用（见下节裁决） |
+| 数据目录装配 | `instance.rs::MysqlInstance`（`publish_routing` / `acquire_lease` / `open_executor` / `open_schema`） | 完整（批次 4 上移） | 绑定直连 |
 | `.yyds` catalog | `database.cluster::catalog::Catalog`（`open` / `publish_routing` / `ensure_schema` / `flush`） | 完整 | 复用 |
 | `.yykv` 分片 | `database.storage::cluster_kv::FileShard` | 完整（`.yykv`、原子临时文件） | 复用 |
 | KV 执行面 | `database.execution::cluster::LocalExecutor` | 完整（实现 `KeyValueExecutor`） | 复用 |
@@ -34,8 +35,8 @@
 
 ## 监听循环裁决（方案 A）
 
-监听循环由上游 `database-server` 承担，本仓 napi / pyo3 只导出 handle，TypeScript 与
-Python 负责数据目录 bootstrap、端口和命令组合。
+监听循环与数据目录装配都由上游 `database-server` 承担，本仓 napi / pyo3 只导出 handle，
+TypeScript 与 Python 只负责端口与命令组合。
 
 选择 A 的理由：方案 B 需要从 `node:net` 的 fd 重建 `TcpStream`，而 Windows 上
 `_handle.fd` 不是 socket handle，为字面合规换一层跨平台不稳定适配不划算。A 是宿主调
@@ -46,7 +47,7 @@ handle 起上游服务，属「组合原语」，不违反「不自己实现主�
 
 | 能力 | 位置 | 性质 |
 |---|---|---|
-| 数据目录 bootstrap（catalog 路由、`.yykv` executor、schema、lease） | `mysql-core::server` | 组合上游原语，无协议字节 |
+| 数据目录 bootstrap（catalog 路由、`.yykv` executor、schema、lease） | 上游 `database.server::yyds::mysql::instance`（批次 4 上移） | 组合上游原语，绑定只做转换 |
 | Node-API handle | `mysql-napi::server` | 类型转换与错误映射 |
 | TS 服务组合 API | `@yydb/mysql` 的 `startMysqlServer` | 顺序组合原语 |
 | 安装态验收 | `@yydb/mysql-harness`（cases / fixtures / corpus / stages） | 真实 `mysql2` 客户端 |
@@ -82,8 +83,19 @@ venv 单跑。
 原样提交，provenance 为 `mysql:8.4`（digest `mysql@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902`）、
 `8.4.13`、`capturedAt 2026-11-07T05:30:37.514Z`、`mysql2 3.24.6`。
 
-## `mysql-core` 两个既有测试的定位
+## 已删除的 `mysql-core` 两个测试
 
 `reexport_framing_roundtrips_one_payload` 与 `reexport_framing_rejects_oversized_payload`
-断言的是 `database-protocol-mysql` 的**再导出契约**：pin 之后绑定面没有静默改变。
-它们不构成第二份帧实现，帧语义测试归上游 `database.server/tests/mysql`。两条保留。
+断言的是 `database-protocol-mysql` 的**再导出契约**。批次 4 删除 `mysql-core` 时它们
+随 crate 一起删除，没有搬进绑定假装还在测帧语义：帧语义测试归上游
+`database.server/tests/mysql`，绑定层行为由安装态用例覆盖。
+
+## 批次 4：移除 `mysql-core`
+
+- 绑定直连：`mysql-napi` / `mysql-pyo3` 依赖 `database` 与
+  `database-protocol-mysql`，`mysql-wasm` 只依赖 `database-protocol-mysql`。
+- 上移落点：`database.server::yyds::mysql::instance`（`MysqlInstance`、三个目录常量、
+  `publish_routing` / `acquire_lease` / `open_executor` / `open_schema`），错误文案逐字保留。
+- `PROTOCOL_VERSION` 只在 `database-protocol-mysql` 定义一次，握手与三个绑定共用。
+- 产物不变：同一组操作前后，`catalog.yyds`（48 字节 `9891c43a…`）、`local-0.yykv`
+  （94 字节 `6e167cd2…`）、`sql-schema.v0.json`（820 字节 `8f3d4620…`）的 SHA-256 完全一致。

@@ -1,6 +1,6 @@
 # mysql-pyo3
 
-PyO3 binding for `mysql-core`.
+PyO3 binding over `database` and `database-protocol-mysql`.
 
 Exports orthogonal primitives only (`max_packet_payload`, `encode_packet`,
 `decode_packet`, `protocol_version`) plus the server handles (`MysqlLease`,

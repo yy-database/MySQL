@@ -5,9 +5,8 @@ for a server that persists into `.yyds` / `.yykv`.
 
 ## Layout
 
-- `projects/mysql.rs/` — Rust workspace
-  - `mysql-core` — protocol primitives shared by every binding, the only place
-    where parsing and execution live
+- `projects/mysql.rs/` — Rust workspace, three bindings that depend directly on
+  `database` and `database-protocol-mysql`
   - `mysql-napi` — Node-API binding, type conversion and error mapping only
   - `mysql-pyo3` — PyO3 binding, type conversion and error mapping only
   - `mysql-wasm` — browser WebAssembly binding, codec exports only
