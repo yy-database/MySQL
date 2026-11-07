@@ -29,6 +29,11 @@ jobs:
       - name: Install workspace dependencies
         run: pnpm install --no-frozen-lockfile
       - name: Capture the corpus from mysql:8.4
+        # A previously frozen corpus is intentionally replaced: this job is the
+        # only place allowed to produce ground truth, and it always captures a
+        # fresh copy from the real server.
+        env:
+          TRUTH_CAPTURE_REFRESH: '1'
         run: node projects/mysql.ts/packages/mysql-harness/stages/truth.mjs capture
       - uses: actions/upload-artifact@v4
         with:

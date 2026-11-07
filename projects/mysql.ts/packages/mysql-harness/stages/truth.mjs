@@ -58,6 +58,126 @@ const SCENARIOS = [
         ],
         after: [{ sql: 'SELECT id, name FROM truth_keep', compare: 'full' }],
     },
+    // WHERE filters, ordering, LIMIT/OFFSET and the row counts every write
+    // reports. `affectedRows` is captured as the wire number so a client that
+    // negotiates `CLIENT_FOUND_ROWS` (mysql2 does) is pinned to matched rows.
+    {
+        name: 'where-order',
+        restart: false,
+        steps: [
+            { sql: 'CREATE TABLE truth_wo (id INT NOT NULL PRIMARY KEY, name VARCHAR(32), score INT, team INT)', compare: 'columns' },
+            {
+                sql: "INSERT INTO truth_wo VALUES (1, 'ann', 10, 1), (2, 'bob', 20, 1), (3, 'cid', 30, 2), (4, 'dan', NULL, 2), (5, 'eve', 20, NULL)",
+                compare: 'full',
+            },
+            { sql: 'SELECT id, name FROM truth_wo WHERE score > 15 ORDER BY score DESC, id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE score = 20 ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE score IS NULL ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE score IS NOT NULL ORDER BY id DESC', compare: 'full' },
+            { sql: "SELECT id FROM truth_wo WHERE name LIKE 'a%' ORDER BY id", compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE id IN (1, 3) ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE id BETWEEN 2 AND 4 ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE score > 10 AND team = 1 ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE score > 25 OR team = 1 ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_wo WHERE team <> 1 ORDER BY id', compare: 'full' },
+            { sql: 'SELECT name FROM truth_wo ORDER BY name DESC LIMIT 2', compare: 'full' },
+            { sql: 'SELECT name FROM truth_wo ORDER BY name LIMIT 2 OFFSET 1', compare: 'full' },
+            { sql: 'UPDATE truth_wo SET score = 99 WHERE id = 999', compare: 'full' },
+            { sql: 'UPDATE truth_wo SET score = 99 WHERE id = 2', compare: 'full' },
+            { sql: 'SELECT score FROM truth_wo WHERE id = 2', compare: 'full' },
+            { sql: 'UPDATE truth_wo SET score = 0 WHERE team = 2', compare: 'full' },
+            { sql: 'DELETE FROM truth_wo WHERE id = 999', compare: 'full' },
+            { sql: 'DELETE FROM truth_wo WHERE team = 2', compare: 'full' },
+            { sql: 'SELECT COUNT(*) AS n FROM truth_wo', compare: 'full' },
+        ],
+        after: [],
+    },
+    // Aggregates, GROUP BY, HAVING and DISTINCT over a table whose nullable
+    // column exercises SQL three-valued logic in every aggregate.
+    {
+        name: 'aggregates',
+        restart: false,
+        steps: [
+            { sql: 'CREATE TABLE truth_agg (id INT NOT NULL PRIMARY KEY, team INT, score INT)', compare: 'columns' },
+            { sql: 'INSERT INTO truth_agg VALUES (1, 1, 10), (2, 1, 20), (3, 2, 30), (4, 2, NULL), (5, NULL, 20), (6, 3, NULL)', compare: 'full' },
+            { sql: 'SELECT COUNT(*) AS n, COUNT(score) AS ns, COUNT(team) AS nt FROM truth_agg', compare: 'full' },
+            { sql: 'SELECT SUM(score) AS s, MIN(score) AS mi, MAX(score) AS ma FROM truth_agg', compare: 'full' },
+            { sql: 'SELECT SUM(score) AS s FROM truth_agg WHERE score > 1000', compare: 'full' },
+            { sql: 'SELECT team, COUNT(*) AS n, SUM(score) AS s FROM truth_agg GROUP BY team ORDER BY team', compare: 'full' },
+            { sql: 'SELECT team, COUNT(*) AS n FROM truth_agg GROUP BY team HAVING COUNT(*) > 1 ORDER BY team', compare: 'full' },
+            { sql: 'SELECT DISTINCT score FROM truth_agg ORDER BY score', compare: 'full' },
+            { sql: 'SELECT MAX(score) AS ma FROM truth_agg WHERE team = 3', compare: 'full' },
+        ],
+        after: [],
+    },
+    // INNER / LEFT / RIGHT joins, including rows whose join key has no match.
+    {
+        name: 'joins',
+        restart: false,
+        steps: [
+            { sql: 'CREATE TABLE truth_dept (id INT NOT NULL PRIMARY KEY, dname VARCHAR(32))', compare: 'columns' },
+            { sql: 'CREATE TABLE truth_emp (id INT NOT NULL PRIMARY KEY, name VARCHAR(32), dept INT, salary INT)', compare: 'columns' },
+            { sql: "INSERT INTO truth_dept VALUES (1, 'red'), (2, 'blue'), (3, 'green')", compare: 'full' },
+            { sql: "INSERT INTO truth_emp VALUES (1, 'ann', 1, 100), (2, 'bob', 1, 200), (3, 'cid', 2, 300), (4, 'dan', NULL, 400), (5, 'eve', 9, 500)", compare: 'full' },
+            { sql: 'SELECT e.id, e.name, d.dname FROM truth_emp e JOIN truth_dept d ON e.dept = d.id ORDER BY e.id', compare: 'full' },
+            { sql: 'SELECT e.id, d.dname FROM truth_emp e LEFT JOIN truth_dept d ON e.dept = d.id ORDER BY e.id', compare: 'full' },
+            { sql: 'SELECT d.id, e.name FROM truth_emp e RIGHT JOIN truth_dept d ON e.dept = d.id ORDER BY d.id, e.id', compare: 'full' },
+            { sql: 'SELECT COUNT(*) AS n FROM truth_emp e JOIN truth_dept d ON e.dept = d.id', compare: 'full' },
+            { sql: 'SELECT e.name FROM truth_emp e JOIN truth_dept d ON e.dept = d.id WHERE d.dname = \'red\' ORDER BY e.name', compare: 'full' },
+        ],
+        after: [],
+    },
+    // Declared-type boundaries and NULL semantics on every supported column
+    // family. Values stay inside each declared range so the corpus pins
+    // formatting, roundtrip and NULL handling rather than overflow errors.
+    {
+        name: 'types',
+        restart: false,
+        steps: [
+            {
+                sql: 'CREATE TABLE truth_types (id INT NOT NULL PRIMARY KEY, ti TINYINT, si SMALLINT, bi BIGINT, fl FLOAT, db DOUBLE, vc VARCHAR(8), tx TEXT, bo BOOLEAN, d DATE, dt DATETIME)',
+                compare: 'columns',
+            },
+            {
+                sql: "INSERT INTO truth_types VALUES (1, 127, 32767, 9223372036854775807, 1.5, 2.25, 'abc', 'hello', 1, '2024-01-02', '2024-01-02 03:04:05')",
+                compare: 'full',
+            },
+            { sql: 'INSERT INTO truth_types (id, ti, si, bi, fl, db, vc, tx, bo, d, dt) VALUES (2, -128, -32768, -9223372036854775807, -0.5, -2.25, \'\', \'\', 0, \'1970-01-01\', \'1970-01-01 00:00:00\')', compare: 'full' },
+            { sql: 'INSERT INTO truth_types (id) VALUES (3)', compare: 'full' },
+            { sql: 'SELECT id, ti, si, bi FROM truth_types ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id, fl, db FROM truth_types ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id, vc, tx, LENGTH(vc) AS vlen FROM truth_types ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id, bo FROM truth_types ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id, d, dt FROM truth_types ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_types WHERE bi > 0', compare: 'full' },
+            { sql: "SELECT id FROM truth_types WHERE vc = ''", compare: 'full' },
+            { sql: 'SELECT id FROM truth_types WHERE vc IS NULL ORDER BY id', compare: 'full' },
+            { sql: 'SELECT id FROM truth_types WHERE bo = TRUE', compare: 'full' },
+            { sql: "SELECT id FROM truth_types WHERE d = '2024-01-02'", compare: 'full' },
+            { sql: 'SELECT id FROM truth_types WHERE ti BETWEEN -128 AND 127 ORDER BY id', compare: 'full' },
+            { sql: 'SELECT COUNT(*) AS n, COUNT(vc) AS nv, COUNT(tx) AS nt FROM truth_types', compare: 'full' },
+        ],
+        after: [],
+    },
+    // Error contract: only the MySQL error number and SQLSTATE are compared.
+    // Message text is server-specific by design and is deliberately not pinned.
+    {
+        name: 'errors',
+        restart: false,
+        steps: [
+            { sql: 'CREATE TABLE truth_err (id INT NOT NULL PRIMARY KEY, v INT NOT NULL)', compare: 'columns' },
+            { sql: 'SELECT id FROM truth_err_missing', compare: 'full' },
+            { sql: 'SELECT missing_col FROM truth_err', compare: 'full' },
+            { sql: 'INSERT INTO truth_err VALUES (1, 5)', compare: 'full' },
+            { sql: 'INSERT INTO truth_err VALUES (1, 6)', compare: 'full' },
+            { sql: 'INSERT INTO truth_err VALUES (2, NULL)', compare: 'full' },
+            { sql: 'INSERT INTO truth_err VALUES (3, \'not-a-number\')', compare: 'full' },
+            { sql: 'INSERT INTO truth_err (id) VALUES (4)', compare: 'full' },
+            { sql: 'SELEC 1', compare: 'full' },
+            { sql: 'SELECT COUNT(*) AS n FROM truth_err', compare: 'full' },
+        ],
+        after: [],
+    },
 ];
 
 function json(value) {
@@ -103,7 +223,21 @@ async function waitForMysql(port, user, password) {
 }
 
 async function runQuery(connection, step) {
-    const [result, fields] = await connection.query({ sql: step.sql, rowsAsArray: true });
+    let result;
+    let fields;
+    try {
+        [result, fields] = await connection.query({ sql: step.sql, rowsAsArray: true });
+    } catch (error) {
+        // Only the machine-readable contract is pinned. Message text is
+        // server-specific and would make the corpus unportable.
+        return {
+            sql: step.sql,
+            compare: step.compare,
+            columns: null,
+            rows: [],
+            error: { errno: error.errno ?? null, sqlState: error.sqlState ?? null },
+        };
+    }
     if (Array.isArray(result)) {
         return { sql: step.sql, compare: step.compare, columns: fields.map((field) => field.name), rows: result };
     }
@@ -187,11 +321,13 @@ async function capture(target) {
 function compareStep(expected, observed, label, counter) {
     counter.total += 1;
     const columnsMatch = json(observed.columns) === json(expected.columns);
+    const errorMatch = json(observed.error ?? null) === json(expected.error ?? null);
     const fullMatch =
         columnsMatch &&
+        errorMatch &&
         json(observed.rows) === json(expected.rows) &&
         (observed.affectedRows ?? null) === (expected.affectedRows ?? null);
-    const matched = expected.compare === 'full' ? fullMatch : columnsMatch;
+    const matched = expected.compare === 'full' ? fullMatch : columnsMatch && errorMatch;
     if (matched) {
         counter.passed += 1;
         console.log(`PASS ${label}: ${expected.sql}`);
@@ -199,7 +335,7 @@ function compareStep(expected, observed, label, counter) {
     }
     counter.failures.push(label);
     console.log(
-        `FAIL ${label}: ${expected.sql} observed=${json({ columns: observed.columns, rows: observed.rows, affectedRows: observed.affectedRows })} expected=${json({ columns: expected.columns, rows: expected.rows, affectedRows: expected.affectedRows })}`,
+        `FAIL ${label}: ${expected.sql} observed=${json({ columns: observed.columns, rows: observed.rows, affectedRows: observed.affectedRows, error: observed.error })} expected=${json({ columns: expected.columns, rows: expected.rows, affectedRows: expected.affectedRows, error: expected.error })}`,
     );
 }
 
