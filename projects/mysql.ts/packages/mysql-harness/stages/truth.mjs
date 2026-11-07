@@ -52,6 +52,7 @@ const SCENARIOS = [
         name: 'persistence',
         restart: true,
         steps: [
+            { sql: 'SET autocommit = 1', compare: 'columns' },
             { sql: 'CREATE TABLE truth_keep (id INT, name VARCHAR(32))', compare: 'columns' },
             { sql: "INSERT INTO truth_keep VALUES (2, 'beta')", compare: 'full' },
         ],
@@ -102,7 +103,7 @@ async function waitForMysql(port, user, password) {
 }
 
 async function runQuery(connection, step) {
-    const [result, fields] = await connection.query(step.sql);
+    const [result, fields] = await connection.query({ sql: step.sql, rowsAsArray: true });
     if (Array.isArray(result)) {
         return { sql: step.sql, compare: step.compare, columns: fields.map((field) => field.name), rows: result };
     }
