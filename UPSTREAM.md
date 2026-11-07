@@ -59,8 +59,13 @@ handle 起上游服务，属「组合原语」，不违反「不自己实现主�
 | Python 服务组合 API | `yydb-mysql` 的 `start_server` | 顺序组合原语 |
 | Python 安装态验收 | `mysql-harness/stages/python.mjs` + `stages/python/run.py` | 真实 `pymysql` 客户端，clean venv |
 
-驱动不可用时不降级：`pymysql` 接不上先试 `mysql-connector-python`，两者都失败即报
-`driver unavailable: <原因>` 并失败，不改成本仓自比。
+驱动不可用时不降级：`pymysql` 接不上即报 `driver unavailable: <原因>` 并失败，不改成本仓自比。
+`mysql-connector-python` 与我们抢同一个顶层 `mysql` 包，不装进验收 venv，如需验证在独立
+venv 单跑。
+
+顶层 `mysql` 归属：`yydb-mysql` 提供它，Python 安装器不校验跨发行版同名顶层包，与
+`mysql-connector-python` 一类发行版不可共存。`mysql/__init__.py` 在导入期识别冲突并抛
+`ImportError` 指明冲突包名与解法，不静默、不吞异常。
 
 ## 本仓新增（批次 3）
 
@@ -72,6 +77,10 @@ handle 起上游服务，属「组合原语」，不违反「不自己实现主�
 
 冻结规则：`capture` 在语料已存在时拒绝覆盖，除非显式设置
 `TRUTH_CAPTURE_REFRESH=1`。`Truth corpus` workflow 只上传产物，不写仓。
+
+已冻结语料：`mysql-harness/corpus/truth.json` 由 CI 产物（`Truth corpus` run `42342968788`）
+原样提交，provenance 为 `mysql:8.4`（digest `mysql@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902`）、
+`8.4.13`、`capturedAt 2026-11-07T05:30:37.514Z`、`mysql2 3.24.6`。
 
 ## `mysql-core` 两个既有测试的定位
 

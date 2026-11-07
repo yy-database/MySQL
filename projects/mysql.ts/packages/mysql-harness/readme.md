@@ -26,5 +26,5 @@ the persisted schema registry on disk.
 node stages/node.mjs          # workspace build
 node stages/install.mjs       # install-state acceptance (TypeScript)
 node stages/python.mjs        # install-state acceptance (Python)
-node stages/truth.mjs         # truth corpus (Docker, mysql:8.4)
+node stages/truth.mjs         # verify the frozen corpus (capture needs Docker + mysql:8.4)
 ```
