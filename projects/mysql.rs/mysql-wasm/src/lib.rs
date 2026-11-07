@@ -1,4 +1,4 @@
-//! Browser WebAssembly binding: codec exports over `mysql-core`.
+//! Browser WebAssembly binding: codec exports over `database-protocol-mysql`.
 //!
 //! Storage is native-only: the wasm build carries the classic framing so a
 //! browser host can shape packets itself.
@@ -30,25 +30,25 @@ impl DecodedPacket {
 /// Largest payload one classic packet may carry.
 #[wasm_bindgen]
 pub fn max_packet_payload() -> u32 {
-    mysql_core::max_packet_payload() as u32
+    database_protocol_mysql::MAX_PACKET_PAYLOAD as u32
 }
 
 /// Protocol version announced in the initial handshake.
 #[wasm_bindgen]
 pub fn protocol_version() -> u8 {
-    mysql_core::PROTOCOL_VERSION
+    database_protocol_mysql::PROTOCOL_VERSION
 }
 
 /// Frames one payload with the classic 4-byte header.
 #[wasm_bindgen]
 pub fn encode_packet(sequence: u8, payload: &[u8]) -> Result<Vec<u8>, JsValue> {
-    mysql_core::encode_packet(sequence, payload).map_err(|error| JsValue::from_str(&format!("{error:?}")))
+    database_protocol_mysql::encode_packet(sequence, payload).map_err(|error| JsValue::from_str(&format!("{error:?}")))
 }
 
 /// Decodes the first complete packet, leaving the rest of the input untouched.
 #[wasm_bindgen]
 pub fn decode_packet(input: &[u8]) -> Result<Option<DecodedPacket>, JsValue> {
-    match mysql_core::decode_packet(input, mysql_core::MAX_PACKET_PAYLOAD) {
+    match database_protocol_mysql::decode_packet(input, database_protocol_mysql::MAX_PACKET_PAYLOAD) {
         Ok(Some(packet)) => Ok(Some(DecodedPacket { sequence: packet.sequence, payload: packet.payload.to_vec() })),
         Ok(None) => Ok(None),
         Err(error) => Err(JsValue::from_str(&format!("{error:?}"))),

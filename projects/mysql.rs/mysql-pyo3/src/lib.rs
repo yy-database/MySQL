@@ -1,8 +1,8 @@
-//! Python bindings: thin wrappers over the `mysql-core` primitives.
+//! Python bindings: thin wrappers over `database-protocol-mysql` framing and the
+//! upstream `database.server::yyds::mysql` gateway handles.
 //!
 //! No global state, no CLI and no second listener: the Python host composes the
-//! exported handles, and the accept loop stays in the upstream
-//! `database.server::yyds::mysql` gateway.
+//! exported handles, and the accept loop stays upstream.
 
 use pyo3::{
     exceptions::PyValueError,
@@ -12,26 +12,26 @@ use pyo3::{
 
 mod server;
 
-fn map_error(error: mysql_core::PacketError) -> PyErr {
+fn map_error(error: database_protocol_mysql::PacketError) -> PyErr {
     PyValueError::new_err(format!("{error:?}"))
 }
 
 /// Largest payload one classic packet may carry.
 #[pyfunction]
 fn max_packet_payload() -> usize {
-    mysql_core::max_packet_payload()
+    database_protocol_mysql::MAX_PACKET_PAYLOAD
 }
 
 /// Frames one payload with the classic 4-byte header.
 #[pyfunction]
 fn encode_packet(sequence: u8, payload: &[u8]) -> PyResult<Vec<u8>> {
-    mysql_core::encode_packet(sequence, payload).map_err(map_error)
+    database_protocol_mysql::encode_packet(sequence, payload).map_err(map_error)
 }
 
 /// Decodes the first complete packet as `(sequence, payload)`.
 #[pyfunction]
 fn decode_packet<'py>(py: Python<'py>, input: &[u8]) -> PyResult<Option<(u8, Bound<'py, PyBytes>)>> {
-    match mysql_core::decode_packet(input, mysql_core::MAX_PACKET_PAYLOAD).map_err(map_error)? {
+    match database_protocol_mysql::decode_packet(input, database_protocol_mysql::MAX_PACKET_PAYLOAD).map_err(map_error)? {
         Some(packet) => Ok(Some((packet.sequence, PyBytes::new(py, packet.payload)))),
         None => Ok(None),
     }
@@ -40,7 +40,7 @@ fn decode_packet<'py>(py: Python<'py>, input: &[u8]) -> PyResult<Option<(u8, Bou
 /// Protocol version announced in the initial handshake.
 #[pyfunction]
 fn protocol_version() -> u8 {
-    mysql_core::PROTOCOL_VERSION
+    database_protocol_mysql::PROTOCOL_VERSION
 }
 
 /// The native module behind `mysql.mysql_pyo3`.
@@ -50,7 +50,7 @@ fn mysql_pyo3(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(encode_packet, module)?)?;
     module.add_function(wrap_pyfunction!(decode_packet, module)?)?;
     module.add_function(wrap_pyfunction!(protocol_version, module)?)?;
-    module.add("MAX_PACKET_PAYLOAD", mysql_core::MAX_PACKET_PAYLOAD)?;
+    module.add("MAX_PACKET_PAYLOAD", database_protocol_mysql::MAX_PACKET_PAYLOAD)?;
     server::register(module)?;
     Ok(())
 }

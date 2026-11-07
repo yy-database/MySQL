@@ -13,12 +13,13 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-mysql-core = { path = "../mysql-core" }
+database-protocol-mysql = { workspace = true }
 wasm-bindgen = { workspace = true }
 
 # `getrandom` 0.4 has no default backend for `wasm32-unknown-unknown`. The
-# feature unifies with the copy pulled in through `mysql-core`, so the shared
-# dependency graph links instead of failing with the crate's compile_error.
+# feature unifies with the copy pulled in through `database-protocol-mysql`,
+# so the shared dependency graph links instead of failing with the crate's
+# compile_error.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
 
