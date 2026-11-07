@@ -1,0 +1,153 @@
+{
+    "provenance": {
+        "image": "mysql:8.4",
+        "imageDigest": "mysql@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902",
+        "serverVersion": "8.4.13",
+        "capturedAt": "2026-11-07T05:30:37.514Z",
+        "driver": "mysql2",
+        "driverVersion": "3.24.6",
+        "captureTool": "projects/mysql.ts/packages/mysql-harness/stages/truth.mjs"
+    },
+    "scenarios": [
+        {
+            "name": "semantics",
+            "restart": false,
+            "steps": [
+                {
+                    "sql": "SELECT 1",
+                    "compare": "columns",
+                    "columns": [
+                        "1"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT @@version AS version",
+                    "compare": "columns",
+                    "columns": [
+                        "version"
+                    ],
+                    "rows": [
+                        [
+                            "8.4.13"
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SET autocommit = 0",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "SELECT @@autocommit AS autocommit",
+                    "compare": "columns",
+                    "columns": [
+                        "autocommit"
+                    ],
+                    "rows": [
+                        [
+                            0
+                        ]
+                    ]
+                },
+                {
+                    "sql": "CREATE TABLE truth_rows (id INT, name VARCHAR(32))",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "INSERT INTO truth_rows VALUES (1, 'alpha')",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "SELECT id, name FROM truth_rows",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            "alpha"
+                        ]
+                    ]
+                },
+                {
+                    "sql": "UPDATE truth_rows SET name = 'alpha-updated' WHERE id = 1",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "SELECT name FROM truth_rows WHERE id = 1",
+                    "compare": "full",
+                    "columns": [
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            "alpha-updated"
+                        ]
+                    ]
+                }
+            ],
+            "after": []
+        },
+        {
+            "name": "persistence",
+            "restart": true,
+            "steps": [
+                {
+                    "sql": "SET autocommit = 1",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "CREATE TABLE truth_keep (id INT, name VARCHAR(32))",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "INSERT INTO truth_keep VALUES (2, 'beta')",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                }
+            ],
+            "after": [
+                {
+                    "sql": "SELECT id, name FROM truth_keep",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            2,
+                            "beta"
+                        ]
+                    ]
+                }
+            ]
+        }
+    ]
+}
