@@ -44,6 +44,10 @@ jobs:
         run: node projects/mysql.ts/examples/roundtrip.ts
       - name: Install-state acceptance
         run: node projects/mysql.ts/packages/mysql-harness/stages/install.mjs
+      - name: Install the MySQL client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+      - name: Truth corpus acceptance
+        run: node projects/mysql.ts/packages/mysql-harness/stages/truth.mjs
       - name: Build the WebAssembly package
         run: pnpm run build:wasm
       - name: Check the WebAssembly package

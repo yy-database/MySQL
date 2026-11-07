@@ -1,0 +1,36 @@
+name: Truth corpus
+
+# Captures the truth corpus from a real `mysql:8.4` instance and uploads it as
+# an artifact. A maintainer downloads the artifact and commits `corpus/truth.json`
+# so the acceptance stage verifies against a frozen copy. This workflow never
+# writes to the repository, and the corpus is never generated from this
+# implementation's output.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - projects/mysql.ts/packages/mysql-harness/stages/truth.mjs
+      - projects/mysql.ts/packages/mysql-harness/corpus/README.md
+
+jobs:
+  capture:
+    name: capture mysql:8.4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install workspace dependencies
+        run: pnpm install --no-frozen-lockfile
+      - name: Capture the corpus from mysql:8.4
+        run: node projects/mysql.ts/packages/mysql-harness/stages/truth.mjs capture
+      - uses: actions/upload-artifact@v4
+        with:
+          name: truth-corpus
+          path: projects/mysql.ts/packages/mysql-harness/corpus/truth.json

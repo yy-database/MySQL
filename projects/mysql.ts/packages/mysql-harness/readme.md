@@ -17,9 +17,14 @@ the persisted schema registry on disk.
 - `stages/python.mjs` — builds the `yydb-mysql` wheel with maturin, creates a
   clean virtualenv in a system temporary directory, installs the real `pymysql`
   driver and runs the same cases from inside the virtualenv.
+- `stages/truth.mjs` — captures semantics and restart behavior from a real
+  `mysql:8.4` container into `corpus/truth.json` with provenance, then compares
+  this implementation against that frozen corpus and probes it with the `mysql`
+  client. Verify never writes to the corpus.
 
 ```shell
 node stages/node.mjs          # workspace build
 node stages/install.mjs       # install-state acceptance (TypeScript)
 node stages/python.mjs        # install-state acceptance (Python)
+node stages/truth.mjs         # truth corpus (Docker, mysql:8.4)
 ```

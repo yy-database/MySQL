@@ -62,6 +62,17 @@ handle 起上游服务，属「组合原语」，不违反「不自己实现主�
 驱动不可用时不降级：`pymysql` 接不上先试 `mysql-connector-python`，两者都失败即报
 `driver unavailable: <原因>` 并失败，不改成本仓自比。
 
+## 本仓新增（批次 3）
+
+| 能力 | 位置 | 性质 |
+|---|---|---|
+| 真库语料抓取（`mysql:8.4`） | `mysql-harness/stages/truth.mjs capture` | 真值来自真实外部引擎，含镜像 tag/digest、`serverVersion`、捕获时间、驱动版本 |
+| 语料对账 | `mysql-harness/stages/truth.mjs verify` | 只读语料，本实现输出不写回 |
+| `mysql` CLI 探针 | `mysql-harness/stages/truth.mjs` | 真客户端在组合服务上执行 `SELECT 1` |
+
+冻结规则：`capture` 在语料已存在时拒绝覆盖，除非显式设置
+`TRUTH_CAPTURE_REFRESH=1`。`Truth corpus` workflow 只上传产物，不写仓。
+
 ## `mysql-core` 两个既有测试的定位
 
 `reexport_framing_roundtrips_one_payload` 与 `reexport_framing_rejects_oversized_payload`
