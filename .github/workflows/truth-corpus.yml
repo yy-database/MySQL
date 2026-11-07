@@ -35,7 +35,7 @@ jobs:
         env:
           TRUTH_CAPTURE_REFRESH: '1'
         run: node projects/mysql.ts/packages/mysql-harness/stages/truth.mjs capture
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: truth-corpus
           path: projects/mysql.ts/packages/mysql-harness/corpus/truth.json
