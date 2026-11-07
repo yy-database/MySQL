@@ -103,7 +103,7 @@ jobs:
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
       - name: Download native artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: native-*
           path: _natives
