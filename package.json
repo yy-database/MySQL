@@ -9,6 +9,8 @@
         "check": "cargo check --manifest-path projects/mysql.rs/Cargo.toml --workspace --all-targets",
         "build:napi": "node scripts/build-napi.mjs",
         "build:ts": "tsc -p projects/mysql.ts/packages/mysql/tsconfig.json",
+        "build:wasm": "node scripts/build-wasm.mjs",
+        "check:wasm": "node scripts/check-wasm-package.mjs",
         "fmt": "cargo fmt --manifest-path projects/mysql.rs/Cargo.toml --all",
         "fmt:check": "cargo fmt --manifest-path projects/mysql.rs/Cargo.toml --all --check",
         "test:rust": "cargo test --manifest-path projects/mysql.rs/Cargo.toml --workspace",

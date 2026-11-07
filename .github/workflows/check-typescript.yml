@@ -26,16 +26,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly-2026-07-20
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: projects/mysql.rs
       - name: Install workspace dependencies
         run: pnpm install --no-frozen-lockfile
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
       - name: Build TypeScript
         run: pnpm run build:ts
       - name: Build the native binding
         run: node scripts/build-napi.mjs
       - name: Smoke the native roundtrip
         run: node projects/mysql.ts/examples/roundtrip.ts
+      - name: Build the WebAssembly package
+        run: pnpm run build:wasm
+      - name: Check the WebAssembly package
+        run: pnpm run check:wasm
       - name: Typecheck the workspace
         run: pnpm run typecheck

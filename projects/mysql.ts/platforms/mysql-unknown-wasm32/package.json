@@ -2,13 +2,25 @@
     "name": "@yydb/mysql-unknown-wasm32",
     "version": "0.0.0",
     "license": "MPL-2.0",
-    "description": "WASM binding for @yydb/mysql",
-    "main": "mysql.unknown-wasm32.node",
+    "description": "Browser WebAssembly binding for @yydb/mysql on wasm32-unknown-unknown",
+    "type": "module",
+    "main": "./lib/mysql_wasm.js",
+    "types": "./lib/mysql_wasm.d.ts",
+    "exports": {
+        ".": {
+            "types": "./lib/mysql_wasm.d.ts",
+            "import": "./lib/mysql_wasm.js",
+            "default": "./lib/mysql_wasm.js"
+        },
+        "./mysql_wasm_bg.wasm": "./lib/mysql_wasm_bg.wasm"
+    },
     "files": [
-        "mysql.unknown-wasm32.node",
+        "lib/mysql_wasm.js",
+        "lib/mysql_wasm_bg.wasm",
+        "lib/mysql_wasm.d.ts",
+        "lib/mysql_wasm_bg.wasm.d.ts",
         "readme.md"
     ],
-
     "engines": {
         "node": ">=24.0.0"
     },

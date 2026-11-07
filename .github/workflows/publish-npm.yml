@@ -96,9 +96,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly-2026-07-20
+          targets: wasm32-unknown-unknown
       - name: Upgrade npm for Trusted Publisher support
         run: npm install --global npm@11
       - run: pnpm install --no-frozen-lockfile
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
       - name: Download native artifacts
         uses: actions/download-artifact@v4
         with:
@@ -122,5 +125,9 @@ jobs:
             ls -la "$dest"
           done
       - run: pnpm run build:ts
+      - name: Build the WebAssembly package
+        run: pnpm run build:wasm
+      - name: Check the WebAssembly package
+        run: pnpm run check:wasm
       - name: Publish packages to npm
         run: pnpm exec nifty publish --access public --version="${RELEASE_TAG#v}"

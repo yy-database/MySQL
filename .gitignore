@@ -24,6 +24,10 @@ dist/
 projects/mysql.ts/platforms/*/*.node
 projects/mysql.ts/homepage/node_modules/
 
+# wasm-pack output (built by CI, never committed)
+projects/mysql.rs/mysql-wasm/pkg/
+projects/mysql.ts/platforms/mysql-unknown-wasm32/lib/
+
 # Local npm 2FA (never commit)
 .env.placeholder.local
 .env*.local
@@ -34,6 +38,7 @@ projects/mysql.ts/homepage/node_modules/
 # Python
 projects/mysql.py/packages/mysql/.venv/
 projects/mysql.py/packages/mysql/build/
+projects/mysql.py/packages/mysql/dist-wheels/
 projects/mysql.py/packages/mysql/mysql/*.pyd
 projects/mysql.py/packages/mysql/mysql/*.so
 projects/mysql.py/packages/mysql/mysql/*.dll
