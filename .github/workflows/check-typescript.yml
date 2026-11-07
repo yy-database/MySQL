@@ -27,8 +27,8 @@ jobs:
           version: 10.18.3
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
           targets: wasm32-unknown-unknown
+      - run: rustc --version && cargo --version
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: projects/mysql.rs

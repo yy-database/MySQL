@@ -21,8 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
           components: rustfmt
+      - run: rustc --version && cargo --version
       - name: Format check
         run: cargo fmt --manifest-path projects/mysql.rs/Cargo.toml --all --check
 
@@ -38,8 +38,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
           components: rustfmt, clippy
+      - run: rustc --version && cargo --version
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: projects/mysql.rs
@@ -56,10 +56,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
           targets: wasm32-unknown-unknown
+      - run: rustc --version && cargo --version
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: projects/mysql.rs
       - name: Build the wasm codec
         run: cargo build --manifest-path projects/mysql.rs/Cargo.toml -p mysql-wasm --target wasm32-unknown-unknown
+  toolchain-health:
+    name: toolchain health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: rustup show active-toolchain && rustc -vV
