@@ -1,13 +1,16 @@
-//! Python bindings: thin wrappers over the `mysql-core` framing primitives.
+//! Python bindings: thin wrappers over the `mysql-core` primitives.
 //!
-//! No global state, no `start` entry and no CLI: the Python host owns the
-//! socket loop, the transaction state and the command line.
+//! No global state, no CLI and no second listener: the Python host composes the
+//! exported handles, and the accept loop stays in the upstream
+//! `database.server::yyds::mysql` gateway.
 
 use pyo3::{
     exceptions::PyValueError,
     prelude::*,
     types::{PyBytes, PyModule},
 };
+
+mod server;
 
 fn map_error(error: mysql_core::PacketError) -> PyErr {
     PyValueError::new_err(format!("{error:?}"))
@@ -48,5 +51,6 @@ fn mysql_pyo3(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(decode_packet, module)?)?;
     module.add_function(wrap_pyfunction!(protocol_version, module)?)?;
     module.add("MAX_PACKET_PAYLOAD", mysql_core::MAX_PACKET_PAYLOAD)?;
+    server::register(module)?;
     Ok(())
 }

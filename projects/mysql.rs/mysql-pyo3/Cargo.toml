@@ -14,5 +14,5 @@ crate-type = ["cdylib"]
 name = "mysql_pyo3"
 
 [dependencies]
-mysql-core = { path = "../mysql-core" }
+mysql-core = { path = "../mysql-core", features = ["server"] }
 pyo3 = { workspace = true }

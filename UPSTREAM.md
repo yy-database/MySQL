@@ -51,6 +51,17 @@ handle 起上游服务，属「组合原语」，不违反「不自己实现主�
 | TS 服务组合 API | `@yydb/mysql` 的 `startMysqlServer` | 顺序组合原语 |
 | 安装态验收 | `@yydb/mysql-harness`（cases / fixtures / corpus / stages） | 真实 `mysql2` 客户端 |
 
+## 本仓新增（批次 2）
+
+| 能力 | 位置 | 性质 |
+|---|---|---|
+| PyO3 handle（lease / executor / schema / service / 路由发布） | `mysql-pyo3::server` | 类型转换与错误映射，无协议字节 |
+| Python 服务组合 API | `yydb-mysql` 的 `start_server` | 顺序组合原语 |
+| Python 安装态验收 | `mysql-harness/stages/python.mjs` + `stages/python/run.py` | 真实 `pymysql` 客户端，clean venv |
+
+驱动不可用时不降级：`pymysql` 接不上先试 `mysql-connector-python`，两者都失败即报
+`driver unavailable: <原因>` 并失败，不改成本仓自比。
+
 ## `mysql-core` 两个既有测试的定位
 
 `reexport_framing_roundtrips_one_payload` 与 `reexport_framing_rejects_oversized_payload`
