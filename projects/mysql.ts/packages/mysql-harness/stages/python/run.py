@@ -1,10 +1,11 @@
 """Runs every declarative harness case against the installed Python product.
 
-The orchestrator starts a child process for each case, connects with the real
-`pymysql` driver and, when that cannot finish the handshake, falls back to
-`mysql-connector-python`. A restart step stops the child and starts a fresh
-process on the same data directory, so persistence cannot be satisfied by an
-in-memory object.
+The orchestrator starts a child process for each case and connects with the
+real `pymysql` driver. `mysql-connector-python` is not used: it also ships a
+top-level `mysql` package, so it cannot be installed next to this product and a
+fallback would only produce a half-broken import. If pymysql cannot connect,
+the run reports the driver error and fails; it never compares this
+implementation against itself.
 
 Usage:
     python run.py --cases <dir> --root <dir>   orchestrator
@@ -30,7 +31,7 @@ ADDRESS_PREFIX = "MYSQL_PY_ADDRESS="
 
 
 class DriverUnavailable(RuntimeError):
-    """Neither real driver could connect."""
+    """The real driver could not connect."""
 
 
 def serve(data_dir: str, port: int) -> int:
@@ -76,35 +77,9 @@ class PyMySQLDriver:
         self.connection.close()
 
 
-class ConnectorDriver:
-    name = "mysql-connector-python"
-
-    def __init__(self, connection: object) -> None:
-        self.connection = connection
-
-    def query(self, sql: str) -> tuple[list[list[object]], list[str] | None, int]:
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(sql)
-            if cursor.with_rows:
-                columns = list(cursor.column_names)
-                rows = [list(row) for row in cursor.fetchall()]
-                return rows, columns, len(rows)
-            return [], None, int(cursor.rowcount)
-        finally:
-            cursor.close()
-
-    def ping(self) -> None:
-        self.connection.ping(reconnect=False)
-
-    def close(self) -> None:
-        self.connection.close()
-
-
 def connect(address: str) -> object:
-    """Connects with a real driver, preferring pymysql."""
+    """Connects with the real `pymysql` driver."""
     host, _, port = address.rpartition(":")
-    errors: list[str] = []
     try:
         import pymysql
 
@@ -118,17 +93,8 @@ def connect(address: str) -> object:
                 autocommit=None,
             )
         )
-    except Exception as error:  # noqa: BLE001 - the fallback needs the reason
-        errors.append(f"pymysql: {error}")
-    try:
-        import mysql.connector
-
-        return ConnectorDriver(
-            mysql.connector.connect(host=host, port=int(port), user="yydb", password="", charset="utf8mb4")
-        )
-    except Exception as error:  # noqa: BLE001 - both drivers failed
-        errors.append(f"mysql-connector-python: {error}")
-    raise DriverUnavailable("; ".join(errors))
+    except Exception as error:  # noqa: BLE001 - the driver error is the report
+        raise DriverUnavailable(f"pymysql: {error}") from error
 
 
 def read_address(process: subprocess.Popen[str], timeout: float = 10.0) -> str:

@@ -5,7 +5,13 @@ build-backend = "maturin"
 [project]
 name = "yydb-mysql"
 version = "0.0.0"
-description = "MySQL classic-protocol primitives assembled from the Rust mysql-pyo3 bindings"
+# `yydb-mysql` owns the top-level `mysql` package. Python installers do not
+# check cross-distribution top-level collisions, so this distribution cannot
+# coexist with another distribution that ships `mysql/` (for example
+# `mysql-connector-python`): whichever was installed last owns
+# `mysql/__init__.py`. `mysql/__init__.py` refuses to load when it detects a
+# conflicting owner instead of failing silently.
+description = "MySQL protocol primitives and the loopback server composed from the Rust mysql-pyo3 bindings"
 license = { text = "MPL-2.0" }
 requires-python = ">=3.9"
 classifiers = [

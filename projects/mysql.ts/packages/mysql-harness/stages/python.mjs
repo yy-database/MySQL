@@ -1,10 +1,10 @@
 // Install-state acceptance for the Python product.
 //
 // Builds the wheel from source with maturin, creates a clean virtualenv under a
-// system temporary directory, installs the wheel plus the real drivers and runs
-// every declarative case from inside the virtualenv. The product is never
-// imported from the workspace, and this implementation never stands in for a
-// real MySQL server or a real driver.
+// system temporary directory, installs the wheel plus the real `pymysql` driver
+// and runs every declarative case from inside the virtualenv. The product is
+// never imported from the workspace, and this implementation never stands in
+// for a real MySQL server or a real driver.
 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
@@ -56,14 +56,14 @@ try {
     run(python, ['-m', 'venv', venv], { stdio: 'inherit' });
     const venvPython = process.platform === 'win32' ? join(venv, 'Scripts', 'python.exe') : join(venv, 'bin', 'python');
 
-    // Both real drivers are installed first: `mysql-connector-python` also
-    // ships a top-level `mysql` package, so the product wheel goes last and
-    // wins the `mysql/__init__.py` collision. A failure here is reported as
-    // driver unavailable, never replaced by comparing this implementation
-    // against itself.
+    // Only `pymysql` is installed: it owns the top-level `pymysql` package, so
+    // there is no top-level `mysql` collision and no install-order guard is
+    // needed. `mysql-connector-python` would own `mysql/` as well; it is
+    // verified in its own virtualenv when needed, never installed next to this
+    // product. A failure here is reported as driver unavailable, never
+    // replaced by comparing this implementation against itself.
     try {
-        run(venvPython, ['-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', 'pymysql', 'mysql-connector-python']);
-        run(venvPython, ['-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', join(wheels, wheel)]);
+        run(venvPython, ['-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', 'pymysql', join(wheels, wheel)]);
     } catch (error) {
         throw new Error(`driver unavailable: ${error.message}`);
     }
