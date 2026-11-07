@@ -11,8 +11,8 @@ for a server that persists into `.yyds` / `.yykv`.
   - `mysql-napi` — Node-API binding, type conversion and error mapping only
   - `mysql-pyo3` — PyO3 binding, type conversion and error mapping only
   - `mysql-wasm` — browser WebAssembly binding, codec exports only
-- `projects/mysql.ts/` — TypeScript packages, platform bindings, examples,
-  homepage and emulators
+- `projects/mysql.ts/` — TypeScript packages, platform bindings, examples and
+  homepage
 - `projects/mysql.py/` — Python package assembled from `mysql-pyo3` and examples
 
 ## Build
