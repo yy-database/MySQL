@@ -198,3 +198,19 @@ git -C E:\数据库研究\MySQL rev-parse origin/dev   # 必须与 HEAD 相同
 1-3 的证据来自 `73d3e16` 的示例实测，按要求不重跑。4-6 的证据来自扩宽语料与钉点源码审计，
 不把等待期本地数字写成 CI 结论。六条都不在本仓补实现：本仓只有绑定层与服务组合，
 SQL 解析、行锁、约束检查、列类型上报全在上游 `database.rs`。
+
+## benchmark 发现的上游性能与语义缺口
+
+证据来自 `projects/mysql.ts/examples/vs-js-libraries/tests/benchmark-vs-mysql84.mjs`
+（真实库 8.4.9，同机、同数据、同语句、5 轮中位数 + p95）。报告
+`reports/benchmark-vs-mysql84.md` 由该脚本生成，不手填数字。下面各项都属于上游，
+本仓不越界实现。
+
+| # | 缺口 | 现象 | 真实 MySQL 行为 | 证据 | 归属 | 当前状态 |
+|---|---|---|---|---|---|---|
+| 7 | 每语句 5ms 轮询地板 | `SELECT 1` 中位 6.210ms/语句，是真库 0.134ms 的 46.33 倍，且 point-pk、range-limit、connect 的绝对耗时都贴着这个地板 | 单语句往返在亚毫秒级，`SELECT 1` 约 0.13ms | `reports/benchmark-vs-mysql84.md` 的 `baseline-select1` 与阶段差分表。钉点 `connection.rs` 第 1680-1692 行 `CancellableSocket::attempt` 对 `WouldBlock` 固定 `sleep(5ms)` | 上游 `database.rs`（`database.server::yyds::mysql::connection`） | 上游缺失，未排期 |
+| 8 | UNIQUE 索引未参与点查 | `WHERE uk = ?` 中位 18.329ms/语句，比 `WHERE id = ?` 的 6.282ms 多 12.0ms，与全表 1000 行扫描同量级 | 唯一索引定位，约 0.20ms/语句 | 同上 `point-uk` 与 `point-pk` 两行，阶段差分差额 12.054ms/语句 | 上游 `database.rs`（`database.query` 计划与 `database.execution` 读取路径） | 上游缺失，未排期 |
+| 9 | `ORDER BY` / `GROUP BY` 全表扫描 | `order-limit` 23.119ms/语句、`group-by` 19.805ms/语句，各比地板多约 13.6-16.9ms，等于 1000 行扫描成本 | 索引排序与下推聚合，约 0.66ms / 1.11ms/语句 | 同上两行，阶段差分差额 16.384ms / 12.621ms 每语句 | 上游 `database.rs`（`database.query` 计划与 `database.execution` 聚合） | 上游缺失，未排期 |
+| 10 | 整数范围谓词边界错误 | `WHERE id BETWEEN 6 AND 46` 返回 0 行（真库 41 行）；`WHERE id BETWEEN 2 AND 10` 返回 2（真库 9）；`WHERE id >= 50` 返回 55（真库 51）；`WHERE id > 6` 返回 43（真库 94） | 按整数数值比较，边界含等 | 同报告“语义差异”表；探针固定 1..100 与 `COUNT(*)` | 上游 `database.rs`（`database.query` 谓词求值与 `database.execution` 扫描边界） | 上游缺失，未排期 |
+| 11 | 多行 `INSERT` 每行成本 | `insert-multi` 0.174ms/行，是真库 0.094ms/行的 1.86 倍 | 批量写入一次提交，约 0.094ms/行 | 同上 `insert-multi` 行；`insert-single` 本仓 10.529ms/语句、真库 5.613ms/语句，超出地板后的写入成本反而低 1.160ms/语句 | 上游 `database.rs`（`database.execution` 写入批量与存储提交） | 上游缺失，未排期 |
+| 12 | 连接建立开销 | 20 次连接 + `SELECT 1` + 关闭，16.728ms/连接，是真库 1.777ms 的 9.41 倍 | 约 1.8ms/连接 | 同上 `connect` 行；握手期多次读写同样命中第 7 条的 5ms 轮询 | 上游 `database.rs`（`database.server::yyds::mysql::connection` 握手与会话初始化） | 上游缺失，未排期 |
