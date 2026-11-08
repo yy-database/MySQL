@@ -162,7 +162,7 @@ Move-Item -LiteralPath E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.
 
 # 7. 只暂存这几条显式路径
 git -C E:\数据库研究\MySQL add projects/mysql.ts/packages/mysql-harness/corpus/truth.json projects/mysql.rs/Cargo.toml UPSTREAM.md
-git -C E:\数据库研究\MySQL commit -m "✅ Widen the mysql:8.4 truth corpus to filters aggregates joins types and errors" -m "Pin `database.rs` to the dev revision that reports DATE and DATETIME column types, raises `1364` for missing NOT NULL defaults and returns exact `DECIMAL` aggregates."
+git -C E:\数据库研究\MySQL commit -m "✅ Freeze the widened mysql:8.4 truth corpus and bump the upstream pin" -m "Pin `database.rs` to the dev revision that reports DATE and DATETIME column types, raises `1364` for missing NOT NULL defaults and returns exact `DECIMAL` aggregates."
 
 # 8. 拉平后复跑再推
 git -C E:\数据库研究\MySQL -c http.proxy=socks5h://127.0.0.1:7897 -c https.proxy=socks5h://127.0.0.1:7897 -c http.version=HTTP/1.1 fetch origin dev
