@@ -12,6 +12,7 @@
 //   node stages/truth.mjs verify     compare against `corpus/truth.json`
 
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
@@ -432,9 +433,73 @@ function probeCli(address, counter) {
     }
 }
 
+// 影子模式：只比较纯数据层，服务或容器启动前退出，不替换既有调用路径。
+// `truth.json` 是冻结语料，不能写入摘要或台账字段。
+function shadow() {
+    const binding = require(join(harness, '..', '..', 'platforms', `mysql-${process.platform}-${process.arch}`));
+    const corpus = JSON.parse(readFileSync(corpusPath, 'utf8'));
+    const canonical = JSON.stringify(corpus);
+    const failures = [];
+    const compare = (label, legacy, candidate) => {
+        if (legacy !== candidate) failures.push({ label, legacy, candidate });
+    };
+
+    const nodeDigest = createHash('sha256').update(canonical).digest('hex');
+    const candidateDigest = binding.harnessDigest(Buffer.from(canonical));
+    compare('digest/node', nodeDigest, candidateDigest);
+
+    const identity = {
+        spec: { version: 1, seed: 0, count: corpus.scenarios.length },
+        digest: candidateDigest,
+    };
+    const baseline = { identity, entries: [] };
+    const verdict = JSON.parse(binding.harnessCheckBaseline(
+        JSON.stringify(baseline),
+        JSON.stringify(identity),
+        JSON.stringify([]),
+    ));
+    const legacyLedger = JSON.stringify({ matched: 0, problems: [] });
+    const candidateLedger = JSON.stringify({
+        matched: verdict.matched,
+        problems: verdict.problems.map((problem) => problem.kind),
+    });
+    compare('ledger/clean', legacyLedger, candidateLedger);
+
+    const report = {
+        version: 1,
+        command: 'truth',
+        corpus: {
+            spec: identity.spec,
+            digest: candidateDigest,
+            matched: verdict.matched,
+            problems: [],
+            clean: verdict.problems.length === 0,
+        },
+    };
+    const legacyText = `${JSON.stringify(report, null, 2)}\n`;
+    const candidateText = binding.harnessRenderReport(JSON.stringify(report));
+    compare('report/truth', legacyText, candidateText);
+
+    console.log(JSON.stringify({
+        digest: nodeDigest,
+        scenarios: corpus.scenarios.length,
+        ledger: candidateLedger,
+        failures,
+    }, null, 2));
+    if (failures.length > 0) {
+        console.error(`harness shadow mismatch: ${failures.length} difference(s)`);
+        process.exit(1);
+    }
+    process.exit(0);
+}
+
 async function main() {
     const mode = process.argv[2] ?? 'auto';
     try {
+        if (process.env.HARNESS_SHADOW === '1') {
+            shadow();
+            return;
+        }
         if (mode === 'capture') {
             await capture(corpusPath);
             return;
