@@ -99,3 +99,84 @@ venv 单跑。
 - `PROTOCOL_VERSION` 只在 `database-protocol-mysql` 定义一次，握手与三个绑定共用。
 - 产物不变：同一组操作前后，`catalog.yyds`（48 字节 `9891c43a…`）、`local-0.yykv`
   （94 字节 `6e167cd2…`）、`sql-schema.v0.json`（820 字节 `8f3d4620…`）的 SHA-256 完全一致。
+
+## 升钉点与扩宽语料验收流程（等待上游 SQL 元数据线）
+
+状态：扩宽抓取已生成（7 scenario），按裁决**保持未提交**。只有上游 `database.rs` 的 `dev`
+同时具备以下三项后才执行本流程，在此之前不升 pin、不改语料期望。
+
+1. 日期上报：`mysql_field_type` 按 `field_id` 把 DATE / DATETIME 报成
+   `MYSQL_TYPE_DATE` / `MYSQL_TYPE_DATETIME`，驱动侧拿到 JS `Date`。
+2. `1364`：NOT NULL 且无默认值的列在 `INSERT` 缺列时报 `1364 / HY000`。
+3. `Decimal`：精确聚合（`SUM`）按 `DECIMAL` 文本上报，`mysql2` 返回字符串。
+
+### 一次执行
+
+在 `E:\数据库研究\MySQL` 下用 PowerShell 执行。
+
+```powershell
+# 1. 取上游已推送的 dev rev，并逐项确认三项能力在该 rev，而不是只看分支名
+git -C E:\数据库研究\database.rs fetch origin dev
+$rev = (git -C E:\数据库研究\database.rs rev-parse origin/dev).Trim()
+git -C E:\数据库研究\database.rs grep -n "MYSQL_TYPE_DATE\|MYSQL_TYPE_DATETIME" $rev -- projects/database/database.server/src/yyds/mysql/connection.rs
+git -C E:\数据库研究\database.rs grep -n "1364" $rev -- projects/database
+git -C E:\数据库研究\database.rs grep -n "Decimal" $rev -- projects/database/database.server/src/yyds/mysql/connection.rs
+
+# 2. 两处 pin 必须同 rev（Cargo.toml 第 23、28 行）
+$old = 'd302887d5c9d6cefa826a37342ee7a3c55f3ea2f'
+$file = 'E:\数据库研究\MySQL\projects\mysql.rs\Cargo.toml'
+(Get-Content $file -Raw) -replace $old, $rev | Set-Content $file -NoNewline
+(Select-String -Path $file -Pattern $rev -SimpleMatch).Count   # 期望 2
+
+# 3. 测量钉点前先把本地 path patch 移开（未跟踪文件，不提交、不删除）
+Move-Item -LiteralPath E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml -Destination E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml.off
+
+# 4. 构建（Rust 会按 pin 重新解析 git 依赖）
+pnpm run build:napi
+pnpm run build:ts
+
+# 5. 三个运行期门禁
+node projects/mysql.ts/packages/mysql-harness/stages/truth.mjs verify
+node projects/mysql.ts/packages/mysql-harness/stages/install.mjs
+node projects/mysql.ts/packages/mysql-harness/stages/python.mjs
+```
+
+期望数值（必须逐条相等，不能只判退出码）：
+
+| 门禁 | 期望输出 |
+|---|---|
+| truth | `79/79 assertions`、`7 scenarios`、`0 skipped`，无 `FAILED` |
+| install | `25/25 assertions`、`5 cases`、`0 skipped` |
+| python | `25/25 assertions`、`5 cases`、`0 skipped`（pymysql 在 clean venv） |
+
+`79` = 78 条语料断言 + 1 条 `mysql` CLI 探针。CLI 探针缺客户端时整阶段失败
+（`mysql cli: unavailable`），不得当作通过。本机客户端位于
+`C:\Users\Administrator\Tools\MySQLClient\PFiles64\MySQL\MySQL Server 8.4\bin`，已加入用户
+PATH；CI 侧是 `apt install mysql-client` 的 CI-only 步骤。
+
+### 提交与推送
+
+```powershell
+# 6. 恢复本地 patch（保持未跟踪）
+Move-Item -LiteralPath E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml.off -Destination E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml
+
+# 7. 只暂存这几条显式路径
+git -C E:\数据库研究\MySQL add projects/mysql.ts/packages/mysql-harness/corpus/truth.json projects/mysql.rs/Cargo.toml UPSTREAM.md
+git -C E:\数据库研究\MySQL commit -m "✅ Widen the mysql:8.4 truth corpus to filters aggregates joins types and errors" -m "Pin `database.rs` to the dev revision that reports DATE and DATETIME column types, raises `1364` for missing NOT NULL defaults and returns exact `DECIMAL` aggregates."
+
+# 8. 拉平后复跑再推
+git -C E:\数据库研究\MySQL -c http.proxy=socks5h://127.0.0.1:7897 -c https.proxy=socks5h://127.0.0.1:7897 -c http.version=HTTP/1.1 fetch origin dev
+git -C E:\数据库研究\MySQL rebase origin/dev
+# 复跑第 5 步三条门禁，数值仍须全等
+git -C E:\数据库研究\MySQL -c http.proxy=socks5h://127.0.0.1:7897 -c https.proxy=socks5h://127.0.0.1:7897 -c http.version=HTTP/1.1 push origin dev
+git -C E:\数据库研究\MySQL rev-parse HEAD
+git -C E:\数据库研究\MySQL rev-parse origin/dev   # 必须与 HEAD 相同
+```
+
+### 不得做的事
+
+- 不在上游收口前升 pin，不为凑绿改 `truth.json` 期望或删场景。
+- 不提交 `projects/mysql.rs/.cargo/config.toml`（它 patch 到本仓 `database.rs` 工作树）。
+- 在 `config.toml` 存在时产生的任何本地数字，一律标注「patch 到脏树，不等于 CI 钉点」，
+  不写进验收结论。
+- `truth.json` 只接受 `capture` 产物，本实现输出不得写回语料。

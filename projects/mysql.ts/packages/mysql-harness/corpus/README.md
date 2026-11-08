@@ -27,3 +27,9 @@ gh run download <run-id> -n truth-corpus -D <temp-dir>
 `stages/truth.mjs verify` only reads the corpus. Until `truth.json` exists,
 `stages/truth.mjs` captures into a temporary file, verifies against it and says
 the corpus is not frozen yet.
+
+The widened capture stays uncommitted until the upstream `database.rs` `dev`
+reports DATE / DATETIME column types, raises `1364` for a missing NOT NULL
+default and returns exact `DECIMAL` aggregates. The pin bump, re-verification
+commands and expected counts are in
+[`UPSTREAM.md`](../../../../../UPSTREAM.md#升钉点与扩宽语料验收流程等待上游-sql-元数据线).
