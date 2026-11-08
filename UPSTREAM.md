@@ -180,3 +180,21 @@ git -C E:\数据库研究\MySQL rev-parse origin/dev   # 必须与 HEAD 相同
 - 在 `config.toml` 存在时产生的任何本地数字，一律标注「patch 到脏树，不等于 CI 钉点」，
   不写进验收结论。
 - `truth.json` 只接受 `capture` 产物，本实现输出不得写回语料。
+
+## 已知缺失 SQL 能力清单
+
+下表只登记已确认为缺失、尚未收口的能力。1-3 是上游 SQL 能力缺口，本仓没有解析器或引擎可补。
+4-6 是同一清单中状态不同的条目：上游 SQL 元数据线在修，本仓等 pin 后验收，不是本仓待实现。
+
+| # | 缺失能力 | 现象 | 真实 MySQL 行为 | 证据 | 归属 | 当前状态 |
+|---|---|---|---|---|---|---|
+| 1 | `SELECT ... FOR UPDATE` | 行锁子句不被解析。示例改为在 `BEGIN` 之前读库存、再写计算后的字面量，事务没有锁住读到的行 | 事务内对命中行加排他锁，第二个事务的 `FOR UPDATE` 读阻塞到第一个事务提交或回滚。`FOR SHARE` 加共享锁 | 提交 `73d3e16` 的 `projects/mysql.ts/examples/with-express/readme.md` §Product limitations observed 第 91-92 行。该示例的 `tests/api.mjs` 在绕过该限制后通过 201/400/409/404/204 与库存回滚断言 | 上游 `database.rs`（`database.query` 解析与计划、`database.execution` 锁与事务） | 上游缺失，未排期 |
+| 2 | `UPDATE ... SET col = col - 1` 一类表达式自减 | 被拒绝，驱动报 `ER_NOT_SUPPORTED_YET`，文案 `write values must be simple literals`。示例改成先读当前库存、再用字面量写回 | 服务端按行做算术更新，`affectedRows` 按匹配行数计，并发下依赖行锁 | 同上 readme 第 93-95 行。钉点 `d302887d` 的 `database.query/src/sql_planner.rs` 第 1017-1044 行 `literal_from_expression` 只接受 `Literal` 与二进制 `CAST`，`Binary` / `Unary` 一律报 `SQL gateway write values must be simple literals` | 上游 `database.rs`（`database.query::sql_planner`） | 上游缺失，未排期 |
+| 3 | `CREATE DATABASE` / `USE` | 两者都不支持。连接参数里的库名会被接受，但服务端只有一个隐式 catalog | `CREATE DATABASE` 建库，`USE` 切换当前库，`COM_INIT_DB` 切换默认库，跨库按库名限定访问 | 同上 readme 第 96-97 行与 `src/server.mjs` 第 32 行（`MYSQL_DATABASE` 传给 pool）。钉点 `connection.rs` 第 410-411 行注释写明 gateway keeps a single catalog，`COM_INIT_DB` 只记录默认 schema。钉点源码无 `CREATE DATABASE` 解析 | 上游 `database.rs`（`database.server::yyds::mysql` 与 `database.cluster` catalog） | 上游缺失，未排期 |
+| 4 | DATE / DATETIME 列类型 | 列值以 `"2024-01-02"`、`"2024-01-02 03:04:05"` 字符串返回，wire 列类型是 `VAR_STRING` | 列类型为 `MYSQL_TYPE_DATE` / `MYSQL_TYPE_DATETIME`，`mysql2` 把值转成 JS `Date`，语料序列化为 `2024-01-02T00:00:00.000Z` | 未提交的扩宽语料 `corpus/truth.json` `types` 场景的 `SELECT id, d, dt FROM truth_types ORDER BY id`。等待期观测该条为 FAIL（标注：patch 到脏树，不等于 CI 钉点） | 上游 `database.rs`（`database.query` 的 `field_id` / describe 与 `database.server::yyds::mysql::connection::mysql_field_type`） | 等上游 SQL 元数据线修，本仓待 pin 后验收 |
+| 5 | NOT NULL 无默认值 | `INSERT INTO truth_err (id) VALUES (4)` 被静默插入，`affectedRows=1`，随后 `SELECT COUNT(*)` 为 2 | 缺列且 NOT NULL 无默认值时拒绝，返回 `errno 1364` / `SQLSTATE HY000`，该行不落库，计数仍为 1 | 未提交的扩宽语料 `corpus/truth.json` `errors` 场景的 `INSERT INTO truth_err (id) VALUES (4)` 与最后一条 `SELECT COUNT(*)`。等待期观测同上 | 上游 `database.rs`（`database.query` 写入计划与约束检查） | 等上游 SQL 元数据线修，本仓待 pin 后验收 |
+| 6 | DECIMAL 类型 | 没有 DECIMAL 类型，`SUM(score)` 只能以字符串形式返回，列类型不是 `NEWDECIMAL` | `SUM` 返回 DECIMAL，`mysql2` 按文本返回 `"80"`，列类型码 `NEWDECIMAL` | 未提交的扩宽语料 `corpus/truth.json` `aggregates` 场景的 `SELECT SUM(score) AS s ...` 期望 `"80"`。钉点 `catalog_bind.rs` 的 `SqlFieldType` 只有 Int64 / Int32 / Float64 / String / Bool / Bytes / Optional，无 Decimal，`connection.rs::mysql_field_type` 无 Decimal 映射 | 上游 `database.rs`（`database.query` 类型系统与 `mysql_field_type`） | 等上游 SQL 元数据线修，本仓待 pin 后验收 |
+
+1-3 的证据来自 `73d3e16` 的示例实测，按要求不重跑。4-6 的证据来自扩宽语料与钉点源码审计，
+不把等待期本地数字写成 CI 结论。六条都不在本仓补实现：本仓只有绑定层与服务组合，
+SQL 解析、行锁、约束检查、列类型上报全在上游 `database.rs`。

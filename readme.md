@@ -14,6 +14,10 @@ for a server that persists into `.yyds` / `.yykv`.
   homepage
 - `projects/mysql.py/` — Python package assembled from `mysql-pyo3` and examples
 
+## Docs
+
+- [Upstream reuse audit and known SQL gaps](UPSTREAM.md)
+
 ## Build
 
 ```shell
