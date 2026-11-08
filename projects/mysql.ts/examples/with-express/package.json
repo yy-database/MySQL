@@ -1,0 +1,11 @@
+{
+  "name": "@yydb/mysql-example-with-express",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Express 5 REST API backed by @yydb/mysql through mysql2",
+  "scripts": {
+    "start": "node ./src/server.mjs",
+    "test": "node ./tests/api.mjs"
+  }
+}

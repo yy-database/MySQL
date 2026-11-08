@@ -1,0 +1,11 @@
+{
+  "name": "@yydb/mysql-example-vs-js-libraries",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Protocol conformance and benchmark of @yydb/mysql against mysql2",
+  "scripts": {
+    "test": "node ./tests/conformance.mjs",
+    "benchmark": "node ./tests/benchmark.mjs"
+  }
+}
