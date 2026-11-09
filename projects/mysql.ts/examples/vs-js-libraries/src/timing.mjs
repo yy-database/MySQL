@@ -1,17 +1,23 @@
+// Timing helpers for the cross-library benchmark. Median and p95 are computed
+// by `database.harness` through the napi primitive `harnessBenchSummary`
+// (middle-two median, nearest-rank p95 — the same formulas this file carried
+// before, now pinned to the shared golden vectors).
+
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const timingAddon = require(`../../../platforms/mysql-${process.platform}-${process.arch}`);
+
 export function elapsedMs(start) {
   return Number(process.hrtime.bigint() - start) / 1_000_000;
 }
 
 export function median(samples) {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  return timingAddon.harnessBenchSummary(samples).medianMs;
 }
 
 export function p95(samples) {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
-  return sorted[Math.max(0, index)];
+  return timingAddon.harnessBenchSummary(samples).p95Ms;
 }
 
 export function throughput(ops, ms) {

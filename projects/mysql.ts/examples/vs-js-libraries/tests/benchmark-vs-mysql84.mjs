@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import mysql from "mysql2/promise";
 
+import { elapsedMs, median, p95 } from "../src/timing.mjs";
 import { startMysqlServer } from "../../../packages/mysql/dist/index.js";
 
 const exampleRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -63,21 +64,6 @@ const GROUP_SIZE = Math.floor(DATASET / 10);
 const ID_BASE = 1_000;
 
 const OURS_OPTIONS = { host: "127.0.0.1", user: "yydb", password: "" };
-
-function elapsedMs(start) {
-  return Number(process.hrtime.bigint() - start) / 1_000_000;
-}
-
-function median(samples) {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
-function p95(samples) {
-  const sorted = [...samples].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)];
-}
 
 function seedStatement(startId) {
   // 固定 seed：第 k 行的 uk = k，grp = (k-ID_BASE)/GROUP_SIZE，val = 确定性余数。

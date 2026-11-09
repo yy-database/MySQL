@@ -8,7 +8,7 @@
 mod server;
 
 use database::harness::{
-    Baseline, BaselineIdentity, DifferenceObservation, Digest, ReportEnvelope, check_baseline, render_json,
+    Baseline, BaselineIdentity, DifferenceObservation, Digest, ReportEnvelope, Stats, check_baseline, render_json, summarize,
 };
 use napi::{Error, Result, Status, bindgen_prelude::Buffer};
 use napi_derive::napi;
@@ -87,4 +87,26 @@ pub fn harness_check_baseline(
 pub fn harness_render_report(report_json: String) -> Result<String> {
     let report: ReportEnvelope = serde_json::from_str(&report_json).map_err(harness_error)?;
     render_json(&report).map_err(harness_error)
+}
+
+/// 基准统计的 JS 形态。字段名由本 DTO 负责 camelCase，核心 `Stats` 说 Rust。
+#[napi(object)]
+pub struct BenchStatsJson {
+    pub median_ms: f64,
+    pub p95_ms: f64,
+    pub min_ms: f64,
+    pub max_ms: f64,
+    pub rounds: u32,
+}
+
+impl From<Stats> for BenchStatsJson {
+    fn from(stats: Stats) -> Self {
+        Self { median_ms: stats.median_ms, p95_ms: stats.p95_ms, min_ms: stats.min_ms, max_ms: stats.max_ms, rounds: stats.rounds }
+    }
+}
+
+/// 对一组毫秒样本求 median/p95/极值（中间两值 median、nearest-rank p95，与各仓既有实现逐位一致）。
+#[napi]
+pub fn harness_bench_summary(samples_ms: Vec<f64>) -> BenchStatsJson {
+    summarize(&samples_ms).into()
 }
