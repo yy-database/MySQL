@@ -70,11 +70,7 @@ pub fn harness_digest(bytes: Buffer) -> String {
 
 /// 按已知差异台账判定一次语料运行。
 #[napi]
-pub fn harness_check_baseline(
-    baseline_json: String,
-    current_json: String,
-    observed_json: String,
-) -> Result<String> {
+pub fn harness_check_baseline(baseline_json: String, current_json: String, observed_json: String) -> Result<String> {
     let baseline: Baseline = serde_json::from_str(&baseline_json).map_err(harness_error)?;
     let current: BaselineIdentity = serde_json::from_str(&current_json).map_err(harness_error)?;
     let observed: Vec<DifferenceObservation> = serde_json::from_str(&observed_json).map_err(harness_error)?;
@@ -101,12 +97,18 @@ pub struct BenchStatsJson {
 
 impl From<Stats> for BenchStatsJson {
     fn from(stats: Stats) -> Self {
-        Self { median_ms: stats.median_ms, p95_ms: stats.p95_ms, min_ms: stats.min_ms, max_ms: stats.max_ms, rounds: stats.rounds }
+        Self {
+            median_ms: stats.median_ms,
+            p95_ms: stats.p95_ms,
+            min_ms: stats.min_ms,
+            max_ms: stats.max_ms,
+            rounds: stats.rounds,
+        }
     }
 }
 
 /// 对一组毫秒样本求 median/p95/极值（中间两值 median、nearest-rank p95，与各仓既有实现逐位一致）。
 #[napi]
-pub fn harness_bench_summary(samples_ms: Vec<f64>) -> BenchStatsJson {
-    summarize(&samples_ms).into()
+pub fn harness_bench_summary(samples_ms: Vec<f64>) -> Result<BenchStatsJson> {
+    summarize(&samples_ms).map(Into::into).map_err(harness_error)
 }
