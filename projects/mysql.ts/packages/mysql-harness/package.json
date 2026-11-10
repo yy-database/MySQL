@@ -19,6 +19,7 @@
     ],
     "scripts": {
         "check": "node stages/node.mjs",
+        "api": "node stages/api.mjs",
         "install-state": "node stages/install.mjs"
     },
     "dependencies": {

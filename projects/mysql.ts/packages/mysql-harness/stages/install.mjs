@@ -77,14 +77,17 @@ run(npm, npmEntry, ['install', '--no-audit', '--no-fund', '--no-optional'], {
 });
 
 const installedHarness = join(tempRoot, 'node_modules', '@yydb', 'mysql-harness');
-execFileSync(process.execPath, [join(installedHarness, 'stages', 'node.mjs')], {
-    cwd: tempRoot,
-    env: {
-        ...process.env,
-        MYSQL_PRODUCT_ENTRY: join(tempRoot, 'node_modules', '@yydb', 'mysql', 'dist', 'index.js'),
-    },
-    stdio: 'inherit',
-});
+const installedEntry = join(tempRoot, 'node_modules', '@yydb', 'mysql', 'dist', 'index.js');
+for (const stage of ['node.mjs', 'api.mjs']) {
+    execFileSync(process.execPath, [join(installedHarness, 'stages', stage)], {
+        cwd: tempRoot,
+        env: {
+            ...process.env,
+            MYSQL_PRODUCT_ENTRY: installedEntry,
+        },
+        stdio: 'inherit',
+    });
+}
 
 try {
     rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });

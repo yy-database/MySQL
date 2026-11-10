@@ -35,6 +35,12 @@ export interface MysqlServer {
 /** Single-node shard id used by a MySQL data directory. */
 export const LOCAL_SHARD_ID = 'local-0';
 
+/** `.yyds` catalog file name inside a data directory. */
+export const CATALOG_FILE = 'catalog.yyds';
+
+/** Persisted SQL schema registry file name inside a data directory. */
+export const SCHEMA_FILE = 'sql-schema.v0.json';
+
 /**
  * Starts a MySQL listener over `<dataDir>`.
  *
