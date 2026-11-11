@@ -18,6 +18,7 @@
 //
 // 运行：`pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark:mysql84`
 
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -29,6 +30,8 @@ import { elapsedMs, median, p95 } from "../src/timing.mjs";
 import { startMysqlServer } from "../../../packages/mysql/dist/index.js";
 
 const exampleRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = join(exampleRoot, "..", "..", "..", "..");
+const localUpstreamPatch = existsSync(join(repoRoot, "projects", "mysql.rs", ".cargo", "config.toml"));
 
 const REAL = {
   host: process.env.BENCH_REAL_HOST ?? "127.0.0.1",
@@ -53,6 +56,9 @@ const TX_COUNT = Number(process.env.BENCH_TX ?? 30);
 const TX_ROWS = Number(process.env.BENCH_TX_ROWS ?? 10);
 const CONNECT_OPS = Number(process.env.BENCH_CONNECT ?? 20);
 const BASELINE_OPS = Number(process.env.BENCH_BASELINE ?? 300);
+const AGG_OPS = Number(process.env.BENCH_AGG ?? 20);
+const SUBQUERY_OPS = Number(process.env.BENCH_SUBQUERY ?? 20);
+const JOIN_OPS = Number(process.env.BENCH_JOIN ?? 20);
 
 // 所有引擎共用一张表：主键、唯一索引、分组列、值列、填充列。
 const CREATE_TABLE =
@@ -99,6 +105,25 @@ async function seed(connection, statements) {
 
 function datasetStatements() {
   return Math.floor(DATASET / MULTI_BATCH);
+}
+
+/** `val` 由固定 seed 的 `(id * 137) % 997` 决定。 */
+function expectedSubqueryRows() {
+  let count = 0;
+  for (let offset = 0; offset < DATASET; offset += 1) {
+    const id = ID_BASE + offset;
+    if ((id * 137) % 997 > 500) count += 1;
+  }
+  return count;
+}
+
+function expectedIndexRangeRows() {
+  let count = 0;
+  for (let offset = 0; offset < DATASET; offset += 1) {
+    const uk = ID_BASE + offset;
+    if (uk >= ID_BASE + 100 && uk <= ID_BASE + 199) count += 1;
+  }
+  return count;
 }
 
 const WORKLOADS = [
@@ -299,6 +324,119 @@ const WORKLOADS = [
     },
   },
   {
+    name: "distinct",
+    unit: "statements",
+    ops: GROUP_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      for (let index = 0; index < GROUP_OPS; index += 1) {
+        const [rows] = await connection.query("SELECT DISTINCT grp FROM bench");
+        if (rows.length !== 10) throw new Error(`distinct groups=${rows.length}`);
+      }
+      return GROUP_OPS;
+    },
+  },
+  {
+    name: "aggregate",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const [rows] = await connection.query(
+          "SELECT COUNT(*) AS n, SUM(val) AS s, MIN(val) AS lo, MAX(val) AS hi FROM bench",
+        );
+        if (rows.length !== 1 || Number(rows[0].n) !== DATASET) {
+          throw new Error(`aggregate row=${JSON.stringify(rows[0])}`);
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "subquery",
+    unit: "statements",
+    ops: SUBQUERY_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      const expected = expectedSubqueryRows();
+      for (let index = 0; index < SUBQUERY_OPS; index += 1) {
+        const [rows] = await connection.query(
+          "SELECT COUNT(*) AS n FROM bench WHERE id IN (SELECT id FROM bench WHERE val > 500)",
+        );
+        if (rows.length !== 1 || Number(rows[0].n) !== expected) {
+          throw new Error(`subquery n=${rows[0]?.n} expected=${expected}`);
+        }
+      }
+      return SUBQUERY_OPS;
+    },
+  },
+  {
+    name: "index-range",
+    unit: "statements",
+    ops: RANGE_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      const expected = expectedIndexRangeRows();
+      const lower = ID_BASE + 100;
+      const upper = ID_BASE + 199;
+      for (let index = 0; index < RANGE_OPS; index += 1) {
+        const [rows] = await connection.query(
+          `SELECT id FROM bench WHERE uk BETWEEN ${lower} AND ${upper}`,
+        );
+        if (rows.length !== expected) throw new Error(`index-range rows=${rows.length} expected=${expected}`);
+      }
+      return RANGE_OPS;
+    },
+  },
+  {
+    name: "join",
+    unit: "statements",
+    ops: JOIN_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      for (let index = 0; index < JOIN_OPS; index += 1) {
+        const [rows] = await connection.query(
+          "SELECT COUNT(*) AS n FROM bench b JOIN bench j ON j.id = b.id WHERE b.grp = 0",
+        );
+        if (rows.length !== 1 || Number(rows[0].n) !== GROUP_SIZE) {
+          throw new Error(`join n=${rows[0]?.n} expected=${GROUP_SIZE}`);
+        }
+      }
+      return JOIN_OPS;
+    },
+  },
+  {
+    name: "rollback",
+    unit: "rows",
+    ops: TX_ROWS,
+    async setup(connection) {
+      await connection.query("DROP TABLE IF EXISTS bench");
+      await connection.query(CREATE_TABLE);
+    },
+    async run(connection) {
+      await connection.query("BEGIN");
+      for (let row = 0; row < TX_ROWS; row += 1) {
+        const id = ID_BASE + 500_000 + row;
+        await connection.query(
+          `INSERT INTO bench (id, uk, grp, val, pad) VALUES (${id}, ${id}, 0, 0, 'rollback-${row}')`,
+        );
+      }
+      await connection.query("ROLLBACK");
+      return TX_ROWS;
+    },
+  },
+  {
     name: "connect",
     unit: "connections",
     ops: CONNECT_OPS,
@@ -430,10 +568,19 @@ function markdownReport(samples, version, semantics) {
   lines.push(
     "说明：本机没有 Docker，真实库用本地 MySQL 8.4.9；truth corpus 钉的是 8.4.13。CI 有 `mysql:8.4` 镜像时用 `BENCH_REAL_*` 指向该实例重跑。",
   );
+  if (localUpstreamPatch) {
+    lines.push(
+      "注意：本机存在 `projects/mysql.rs/.cargo/config.toml` path patch，下列数字来自本地 upstream 工作树，不等于 CI 钉点。",
+    );
+  }
   lines.push(
     `轮次：1 轮热身 + ${ROUNDS} 轮测量，取中位数并记 p95；数据集 ${DATASET} 行，固定 seed。`,
   );
   lines.push("比值 = 本仓耗时 / 真实库耗时，小于 1 表示本仓更快。");
+  lines.push("");
+  lines.push(
+    "本轮新增 SQL 特性项：`distinct`、`aggregate`、`subquery`、`index-range`、`join`、`rollback`。`ON DUPLICATE KEY` 尚未进入能力表，暂不作为基准项。",
+  );
   lines.push("");
   lines.push("## 按差距排序");
   lines.push("");
@@ -481,6 +628,11 @@ function markdownReport(samples, version, semantics) {
     "update-many": UPDATE_STATEMENTS,
     "group-by": GROUP_OPS,
     "order-limit": ORDER_OPS,
+    distinct: GROUP_OPS,
+    aggregate: AGG_OPS,
+    subquery: SUBQUERY_OPS,
+    "index-range": RANGE_OPS,
+    join: JOIN_OPS,
   };
   for (const [name, count] of Object.entries(statements)) {
     const real = median(samples.get(name).real) / count - floorReal;
@@ -499,10 +651,15 @@ function markdownReport(samples, version, semantics) {
   const multiOurs = median(samples.get("insert-multi").ours) / (MULTI_BATCH * MULTI_STATEMENTS);
   const multiReal = median(samples.get("insert-multi").real) / (MULTI_BATCH * MULTI_STATEMENTS);
   lines.push(
-    `- **每语句约 ${floorOurs.toFixed(1)}ms 固定地板**：上游 \`database.server::yyds::mysql::connection\` 的 \`CancellableSocket::attempt\` 在 \`WouldBlock\` 时固定 \`sleep(5ms)\`，每个 \`COM_QUERY\` 至少命中一次。\`baseline-select1\` 的 ${floorOurs.toFixed(3)}ms/语句就是这个地板（真库 ${floorReal.toFixed(3)}ms）。修掉后 SELECT 1 预计降到 0.3ms 以内，point-pk、range-limit、connect 同步下降约 5ms/语句。`,
+    floorOurs > 1
+      ? `- **每语句约 ${floorOurs.toFixed(1)}ms 固定地板**：上游 \`database.server::yyds::mysql::connection\` 的 \`CancellableSocket::attempt\` 在 \`WouldBlock\` 时固定 \`sleep(5ms)\`，每个 \`COM_QUERY\` 至少命中一次。\`baseline-select1\` 的 ${floorOurs.toFixed(3)}ms/语句就是这个地板（真库 ${floorReal.toFixed(3)}ms）。修掉后 SELECT 1 预计降到 0.3ms 以内，point-pk、range-limit、connect 同步下降约 5ms/语句。`
+      : `- **每语句地板 ${floorOurs.toFixed(3)}ms**：\`baseline-select1\` 本仓 ${floorOurs.toFixed(3)}ms/语句（真库 ${floorReal.toFixed(3)}ms）。本轮未观测到历史 5ms 轮询地板，point-pk、range-limit、connect 已回到亚毫秒档。`,
   );
+  const ukDelta = ukOurs - pkOurs;
   lines.push(
-    `- **唯一索引未参与点查**：\`point-uk\` ${ukOurs.toFixed(3)}ms/语句，比 \`point-pk\` 的 ${pkOurs.toFixed(3)}ms 多 ${(ukOurs - pkOurs).toFixed(1)}ms，与全表 ${DATASET} 行扫描同量级，说明 \`WHERE uk = ?\` 走的是扫描而不是唯一索引定位。补上索引定位后预计回到与 \`point-pk\` 同档。`,
+    ukDelta > 1
+      ? `- **唯一索引未参与点查**：\`point-uk\` ${ukOurs.toFixed(3)}ms/语句，比 \`point-pk\` 的 ${pkOurs.toFixed(3)}ms 多 ${ukDelta.toFixed(1)}ms，与全表 ${DATASET} 行扫描同量级，说明 \`WHERE uk = ?\` 走的是扫描而不是唯一索引定位。补上索引定位后预计回到与 \`point-pk\` 同档。`
+      : `- **唯一索引点查与主键同档**：\`point-uk\` ${ukOurs.toFixed(3)}ms/语句，\`point-pk\` ${pkOurs.toFixed(3)}ms/语句，差 ${ukDelta.toFixed(3)}ms，本轮不构成唯一索引缺失的证据。`,
   );
   lines.push(
     `- **排序与分组全表扫描**：\`order-limit\` ${orderOurs.toFixed(2)}ms/语句、\`group-by\` ${groupOurs.toFixed(2)}ms/语句，各比地板多约 ${(Math.min(orderOurs, groupOurs) - floorOurs).toFixed(1)}-${(Math.max(orderOurs, groupOurs) - floorOurs).toFixed(1)}ms，等于 ${DATASET} 行扫描成本。索引下推与增量聚合后预计降到亚毫秒级。`,
@@ -513,7 +670,14 @@ function markdownReport(samples, version, semantics) {
   lines.push("");
   lines.push("## 语义差异（不计入性能比值）");
   lines.push("");
-  lines.push("整数列在 1..100 的小值区间上对比 `COUNT(*)`，真库按数值比较，本仓在边界上分叉：");
+  const semanticsEqual = ["between", "betweenSmall", "lowerBound", "greater"].every(
+    (key) => semantics.real[key] === semantics.ours[key],
+  );
+  lines.push(
+    semanticsEqual
+      ? "整数列在 1..100 的小值区间上对比 `COUNT(*)`，本轮四项两库计数一致："
+      : "整数列在 1..100 的小值区间上对比 `COUNT(*)`，两库在边界上分叉：",
+  );
   lines.push("");
   lines.push("| 语句 | 真实库计数 | 本仓计数 |");
   lines.push("|-----:|-----------:|--------:|");

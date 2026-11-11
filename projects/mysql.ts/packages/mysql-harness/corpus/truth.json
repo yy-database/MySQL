@@ -3,7 +3,7 @@
         "image": "mysql:8.4",
         "imageDigest": "mysql@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902",
         "serverVersion": "8.4.13",
-        "capturedAt": "2026-11-07T05:30:37.514Z",
+        "capturedAt": "2026-11-07T21:19:35.553Z",
         "driver": "mysql2",
         "driverVersion": "3.24.6",
         "captureTool": "projects/mysql.ts/packages/mysql-harness/stages/truth.mjs"
@@ -148,6 +148,930 @@
                     ]
                 }
             ]
+        },
+        {
+            "name": "where-order",
+            "restart": false,
+            "steps": [
+                {
+                    "sql": "CREATE TABLE truth_wo (id INT NOT NULL PRIMARY KEY, name VARCHAR(32), score INT, team INT)",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "INSERT INTO truth_wo VALUES (1, 'ann', 10, 1), (2, 'bob', 20, 1), (3, 'cid', 30, 2), (4, 'dan', NULL, 2), (5, 'eve', 20, NULL)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 5
+                },
+                {
+                    "sql": "SELECT id, name FROM truth_wo WHERE score > 15 ORDER BY score DESC, id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            3,
+                            "cid"
+                        ],
+                        [
+                            2,
+                            "bob"
+                        ],
+                        [
+                            5,
+                            "eve"
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE score = 20 ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            2
+                        ],
+                        [
+                            5
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE score IS NULL ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            4
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE score IS NOT NULL ORDER BY id DESC",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            5
+                        ],
+                        [
+                            3
+                        ],
+                        [
+                            2
+                        ],
+                        [
+                            1
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE name LIKE 'a%' ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE id IN (1, 3) ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ],
+                        [
+                            3
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE id BETWEEN 2 AND 4 ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            2
+                        ],
+                        [
+                            3
+                        ],
+                        [
+                            4
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE score > 10 AND team = 1 ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            2
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE score > 25 OR team = 1 ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ],
+                        [
+                            2
+                        ],
+                        [
+                            3
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_wo WHERE team <> 1 ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            3
+                        ],
+                        [
+                            4
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT name FROM truth_wo ORDER BY name DESC LIMIT 2",
+                    "compare": "full",
+                    "columns": [
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            "eve"
+                        ],
+                        [
+                            "dan"
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT name FROM truth_wo ORDER BY name LIMIT 2 OFFSET 1",
+                    "compare": "full",
+                    "columns": [
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            "bob"
+                        ],
+                        [
+                            "cid"
+                        ]
+                    ]
+                },
+                {
+                    "sql": "UPDATE truth_wo SET score = 99 WHERE id = 999",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "UPDATE truth_wo SET score = 99 WHERE id = 2",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "SELECT score FROM truth_wo WHERE id = 2",
+                    "compare": "full",
+                    "columns": [
+                        "score"
+                    ],
+                    "rows": [
+                        [
+                            99
+                        ]
+                    ]
+                },
+                {
+                    "sql": "UPDATE truth_wo SET score = 0 WHERE team = 2",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 2
+                },
+                {
+                    "sql": "DELETE FROM truth_wo WHERE id = 999",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "DELETE FROM truth_wo WHERE team = 2",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 2
+                },
+                {
+                    "sql": "SELECT COUNT(*) AS n FROM truth_wo",
+                    "compare": "full",
+                    "columns": [
+                        "n"
+                    ],
+                    "rows": [
+                        [
+                            3
+                        ]
+                    ]
+                }
+            ],
+            "after": []
+        },
+        {
+            "name": "aggregates",
+            "restart": false,
+            "steps": [
+                {
+                    "sql": "CREATE TABLE truth_agg (id INT NOT NULL PRIMARY KEY, team INT, score INT)",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "INSERT INTO truth_agg VALUES (1, 1, 10), (2, 1, 20), (3, 2, 30), (4, 2, NULL), (5, NULL, 20), (6, 3, NULL)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 6
+                },
+                {
+                    "sql": "SELECT COUNT(*) AS n, COUNT(score) AS ns, COUNT(team) AS nt FROM truth_agg",
+                    "compare": "full",
+                    "columns": [
+                        "n",
+                        "ns",
+                        "nt"
+                    ],
+                    "rows": [
+                        [
+                            6,
+                            4,
+                            5
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT SUM(score) AS s, MIN(score) AS mi, MAX(score) AS ma FROM truth_agg",
+                    "compare": "full",
+                    "columns": [
+                        "s",
+                        "mi",
+                        "ma"
+                    ],
+                    "rows": [
+                        [
+                            "80",
+                            10,
+                            30
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT SUM(score) AS s FROM truth_agg WHERE score > 1000",
+                    "compare": "full",
+                    "columns": [
+                        "s"
+                    ],
+                    "rows": [
+                        [
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT team, COUNT(*) AS n, SUM(score) AS s FROM truth_agg GROUP BY team ORDER BY team",
+                    "compare": "full",
+                    "columns": [
+                        "team",
+                        "n",
+                        "s"
+                    ],
+                    "rows": [
+                        [
+                            null,
+                            1,
+                            "20"
+                        ],
+                        [
+                            1,
+                            2,
+                            "30"
+                        ],
+                        [
+                            2,
+                            2,
+                            "30"
+                        ],
+                        [
+                            3,
+                            1,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT team, COUNT(*) AS n FROM truth_agg GROUP BY team HAVING COUNT(*) > 1 ORDER BY team",
+                    "compare": "full",
+                    "columns": [
+                        "team",
+                        "n"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            2
+                        ],
+                        [
+                            2,
+                            2
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT DISTINCT score FROM truth_agg ORDER BY score",
+                    "compare": "full",
+                    "columns": [
+                        "score"
+                    ],
+                    "rows": [
+                        [
+                            null
+                        ],
+                        [
+                            10
+                        ],
+                        [
+                            20
+                        ],
+                        [
+                            30
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT MAX(score) AS ma FROM truth_agg WHERE team = 3",
+                    "compare": "full",
+                    "columns": [
+                        "ma"
+                    ],
+                    "rows": [
+                        [
+                            null
+                        ]
+                    ]
+                }
+            ],
+            "after": []
+        },
+        {
+            "name": "joins",
+            "restart": false,
+            "steps": [
+                {
+                    "sql": "CREATE TABLE truth_dept (id INT NOT NULL PRIMARY KEY, dname VARCHAR(32))",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "CREATE TABLE truth_emp (id INT NOT NULL PRIMARY KEY, name VARCHAR(32), dept INT, salary INT)",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "INSERT INTO truth_dept VALUES (1, 'red'), (2, 'blue'), (3, 'green')",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 3
+                },
+                {
+                    "sql": "INSERT INTO truth_emp VALUES (1, 'ann', 1, 100), (2, 'bob', 1, 200), (3, 'cid', 2, 300), (4, 'dan', NULL, 400), (5, 'eve', 9, 500)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 5
+                },
+                {
+                    "sql": "SELECT e.id, e.name, d.dname FROM truth_emp e JOIN truth_dept d ON e.dept = d.id ORDER BY e.id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "name",
+                        "dname"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            "ann",
+                            "red"
+                        ],
+                        [
+                            2,
+                            "bob",
+                            "red"
+                        ],
+                        [
+                            3,
+                            "cid",
+                            "blue"
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT e.id, d.dname FROM truth_emp e LEFT JOIN truth_dept d ON e.dept = d.id ORDER BY e.id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "dname"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            "red"
+                        ],
+                        [
+                            2,
+                            "red"
+                        ],
+                        [
+                            3,
+                            "blue"
+                        ],
+                        [
+                            4,
+                            null
+                        ],
+                        [
+                            5,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT d.id, e.name FROM truth_emp e RIGHT JOIN truth_dept d ON e.dept = d.id ORDER BY d.id, e.id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            "ann"
+                        ],
+                        [
+                            1,
+                            "bob"
+                        ],
+                        [
+                            2,
+                            "cid"
+                        ],
+                        [
+                            3,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT COUNT(*) AS n FROM truth_emp e JOIN truth_dept d ON e.dept = d.id",
+                    "compare": "full",
+                    "columns": [
+                        "n"
+                    ],
+                    "rows": [
+                        [
+                            3
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT e.name FROM truth_emp e JOIN truth_dept d ON e.dept = d.id WHERE d.dname = 'red' ORDER BY e.name",
+                    "compare": "full",
+                    "columns": [
+                        "name"
+                    ],
+                    "rows": [
+                        [
+                            "ann"
+                        ],
+                        [
+                            "bob"
+                        ]
+                    ]
+                }
+            ],
+            "after": []
+        },
+        {
+            "name": "types",
+            "restart": false,
+            "steps": [
+                {
+                    "sql": "CREATE TABLE truth_types (id INT NOT NULL PRIMARY KEY, ti TINYINT, si SMALLINT, bi BIGINT, fl FLOAT, db DOUBLE, vc VARCHAR(8), tx TEXT, bo BOOLEAN, d DATE, dt DATETIME)",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "INSERT INTO truth_types VALUES (1, 127, 32767, 9223372036854775807, 1.5, 2.25, 'abc', 'hello', 1, '2024-01-02', '2024-01-02 03:04:05')",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "INSERT INTO truth_types (id, ti, si, bi, fl, db, vc, tx, bo, d, dt) VALUES (2, -128, -32768, -9223372036854775807, -0.5, -2.25, '', '', 0, '1970-01-01', '1970-01-01 00:00:00')",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "INSERT INTO truth_types (id) VALUES (3)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "SELECT id, ti, si, bi FROM truth_types ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "ti",
+                        "si",
+                        "bi"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            127,
+                            32767,
+                            9223372036854776000
+                        ],
+                        [
+                            2,
+                            -128,
+                            -32768,
+                            -9223372036854776000
+                        ],
+                        [
+                            3,
+                            null,
+                            null,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id, fl, db FROM truth_types ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "fl",
+                        "db"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            1.5,
+                            2.25
+                        ],
+                        [
+                            2,
+                            -0.5,
+                            -2.25
+                        ],
+                        [
+                            3,
+                            null,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id, vc, tx, LENGTH(vc) AS vlen FROM truth_types ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "vc",
+                        "tx",
+                        "vlen"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            "abc",
+                            "hello",
+                            3
+                        ],
+                        [
+                            2,
+                            "",
+                            "",
+                            0
+                        ],
+                        [
+                            3,
+                            null,
+                            null,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id, bo FROM truth_types ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "bo"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            1
+                        ],
+                        [
+                            2,
+                            0
+                        ],
+                        [
+                            3,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id, d, dt FROM truth_types ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id",
+                        "d",
+                        "dt"
+                    ],
+                    "rows": [
+                        [
+                            1,
+                            "2024-01-02T00:00:00.000Z",
+                            "2024-01-02T03:04:05.000Z"
+                        ],
+                        [
+                            2,
+                            "1970-01-01T00:00:00.000Z",
+                            "1970-01-01T00:00:00.000Z"
+                        ],
+                        [
+                            3,
+                            null,
+                            null
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_types WHERE bi > 0",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_types WHERE vc = ''",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            2
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_types WHERE vc IS NULL ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            3
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_types WHERE bo = TRUE",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_types WHERE d = '2024-01-02'",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT id FROM truth_types WHERE ti BETWEEN -128 AND 127 ORDER BY id",
+                    "compare": "full",
+                    "columns": [
+                        "id"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ],
+                        [
+                            2
+                        ]
+                    ]
+                },
+                {
+                    "sql": "SELECT COUNT(*) AS n, COUNT(vc) AS nv, COUNT(tx) AS nt FROM truth_types",
+                    "compare": "full",
+                    "columns": [
+                        "n",
+                        "nv",
+                        "nt"
+                    ],
+                    "rows": [
+                        [
+                            3,
+                            2,
+                            2
+                        ]
+                    ]
+                }
+            ],
+            "after": []
+        },
+        {
+            "name": "errors",
+            "restart": false,
+            "steps": [
+                {
+                    "sql": "CREATE TABLE truth_err (id INT NOT NULL PRIMARY KEY, v INT NOT NULL)",
+                    "compare": "columns",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 0
+                },
+                {
+                    "sql": "SELECT id FROM truth_err_missing",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1146,
+                        "sqlState": "42S02"
+                    }
+                },
+                {
+                    "sql": "SELECT missing_col FROM truth_err",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1054,
+                        "sqlState": "42S22"
+                    }
+                },
+                {
+                    "sql": "INSERT INTO truth_err VALUES (1, 5)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "affectedRows": 1
+                },
+                {
+                    "sql": "INSERT INTO truth_err VALUES (1, 6)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1062,
+                        "sqlState": "23000"
+                    }
+                },
+                {
+                    "sql": "INSERT INTO truth_err VALUES (2, NULL)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1048,
+                        "sqlState": "23000"
+                    }
+                },
+                {
+                    "sql": "INSERT INTO truth_err VALUES (3, 'not-a-number')",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1366,
+                        "sqlState": "HY000"
+                    }
+                },
+                {
+                    "sql": "INSERT INTO truth_err (id) VALUES (4)",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1364,
+                        "sqlState": "HY000"
+                    }
+                },
+                {
+                    "sql": "SELEC 1",
+                    "compare": "full",
+                    "columns": null,
+                    "rows": [],
+                    "error": {
+                        "errno": 1064,
+                        "sqlState": "42000"
+                    }
+                },
+                {
+                    "sql": "SELECT COUNT(*) AS n FROM truth_err",
+                    "compare": "full",
+                    "columns": [
+                        "n"
+                    ],
+                    "rows": [
+                        [
+                            1
+                        ]
+                    ]
+                }
+            ],
+            "after": []
         }
     ]
 }

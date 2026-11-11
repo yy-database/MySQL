@@ -210,7 +210,9 @@ async function waitForMysql(port, user, password) {
     let lastError = 'no attempt';
     while (Date.now() < deadline) {
         try {
-            const connection = await mysql.createConnection({ host: '127.0.0.1', port, user, password, database: DATABASE });
+            // `timezone: 'Z'` keeps DATE / DATETIME parsing independent of the
+            // runner's local zone so the frozen ISO values verify anywhere.
+            const connection = await mysql.createConnection({ host: '127.0.0.1', port, user, password, database: DATABASE, timezone: 'Z' });
             await connection.query('SELECT 1');
             await connection.end();
             return;
@@ -275,7 +277,7 @@ async function capture(target) {
             digest = null;
         }
 
-        const connection = await mysql.createConnection({ host: '127.0.0.1', port, user: 'root', password: ROOT_PASSWORD, database: DATABASE });
+        const connection = await mysql.createConnection({ host: '127.0.0.1', port, user: 'root', password: ROOT_PASSWORD, database: DATABASE, timezone: 'Z' });
         const [versionRows] = await connection.query('SELECT VERSION() AS version');
         const scenarios = [];
         let open = connection;
@@ -288,7 +290,7 @@ async function capture(target) {
                 docker(['stop', name]);
                 docker(['start', name]);
                 await waitForMysql(port, 'root', ROOT_PASSWORD);
-                open = await mysql.createConnection({ host: '127.0.0.1', port, user: 'root', password: ROOT_PASSWORD, database: DATABASE });
+                open = await mysql.createConnection({ host: '127.0.0.1', port, user: 'root', password: ROOT_PASSWORD, database: DATABASE, timezone: 'Z' });
                 for (const step of scenario.after) after.push(await runQuery(open, step));
             }
             scenarios.push({ name: scenario.name, restart: scenario.restart, steps, after });
@@ -385,7 +387,7 @@ async function connectWithRetry(address) {
     let lastError = 'no attempt';
     while (Date.now() < deadline) {
         try {
-            return await mysql.createConnection({ host, port, user: 'yydb', password: '', database: DATABASE });
+            return await mysql.createConnection({ host, port, user: 'yydb', password: '', database: DATABASE, timezone: 'Z' });
         } catch (error) {
             lastError = error.message;
             await sleep(200);
