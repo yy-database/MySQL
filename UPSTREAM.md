@@ -11,7 +11,7 @@
    `.yykv` 分片、KV executor、schema registry。
 3. 命中即复用。只有在两处都搜不到、且能写出「上游为何不承载」的理由时，才允许在本仓新增。
 
-## 上游能力边界（pin `d302887d`）
+## 上游能力边界（pin `9180088a`）
 
 | 能力 | 上游位置 | 状态 | 本仓动作 |
 |---|---|---|---|
@@ -100,48 +100,18 @@ venv 单跑。
 - 产物不变：同一组操作前后，`catalog.yyds`（48 字节 `9891c43a…`）、`local-0.yykv`
   （94 字节 `6e167cd2…`）、`sql-schema.v0.json`（820 字节 `8f3d4620…`）的 SHA-256 完全一致。
 
-## 升钉点与扩宽语料验收流程（等待上游 SQL 元数据线）
+## 升钉与扩宽语料（已收口）
 
-状态：扩宽抓取已生成（7 scenario），按裁决**保持未提交**。只有上游 `database.rs` 的 `dev`
-同时具备以下三项后才执行本流程，在此之前不升 pin、不改语料期望。
+上游 `database.rs` 的三项 SQL 元数据能力落地后，扩宽语料（7 scenario）由 `mysql:8.4`
+真库抓取并随 `81b1a83` 冻结提交。`truth` 门禁稳定 `79/79 assertions`、`7 scenarios`、
+`0 skipped`，包含 DATE / DATETIME 列类型、NOT NULL 缺列 `1364 / HY000`、`SUM` 精确
+`DECIMAL` 文本三项。`79` = 78 条语料断言 + 1 条 `mysql` CLI 探针，CLI 缺客户端时整阶段
+失败，不得当作通过。
 
-1. 日期上报：`mysql_field_type` 按 `field_id` 把 DATE / DATETIME 报成
-   `MYSQL_TYPE_DATE` / `MYSQL_TYPE_DATETIME`，驱动侧拿到 JS `Date`。
-2. `1364`：NOT NULL 且无默认值的列在 `INSERT` 缺列时报 `1364 / HY000`。
-3. `Decimal`：精确聚合（`SUM`）按 `DECIMAL` 文本上报，`mysql2` 返回字符串。
+2026-11-13 的查询性能收口把 pin 抬到 `9180088a`（哈希连接、`IN` 列表集合化、阻塞
+`accept`、扫描去复制），`truth` 门禁保持 `79/79`。
 
-### 一次执行
-
-在 `E:\数据库研究\MySQL` 下用 PowerShell 执行。
-
-```powershell
-# 1. 取上游已推送的 dev rev，并逐项确认三项能力在该 rev，而不是只看分支名
-git -C E:\数据库研究\database.rs fetch origin dev
-$rev = (git -C E:\数据库研究\database.rs rev-parse origin/dev).Trim()
-git -C E:\数据库研究\database.rs grep -n "MYSQL_TYPE_DATE\|MYSQL_TYPE_DATETIME" $rev -- projects/database/database.server/src/yyds/mysql/connection.rs
-git -C E:\数据库研究\database.rs grep -n "1364" $rev -- projects/database
-git -C E:\数据库研究\database.rs grep -n "Decimal" $rev -- projects/database/database.server/src/yyds/mysql/connection.rs
-
-# 2. 两处 pin 必须同 rev（Cargo.toml 第 23、28 行）
-$old = 'd302887d5c9d6cefa826a37342ee7a3c55f3ea2f'
-$file = 'E:\数据库研究\MySQL\projects\mysql.rs\Cargo.toml'
-(Get-Content $file -Raw) -replace $old, $rev | Set-Content $file -NoNewline
-(Select-String -Path $file -Pattern $rev -SimpleMatch).Count   # 期望 2
-
-# 3. 测量钉点前先把本地 path patch 移开（未跟踪文件，不提交、不删除）
-Move-Item -LiteralPath E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml -Destination E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml.off
-
-# 4. 构建（Rust 会按 pin 重新解析 git 依赖）
-pnpm run build:napi
-pnpm run build:ts
-
-# 5. 三个运行期门禁
-node projects/mysql.ts/packages/mysql-harness/stages/truth.mjs verify
-node projects/mysql.ts/packages/mysql-harness/stages/install.mjs
-node projects/mysql.ts/packages/mysql-harness/stages/python.mjs
-```
-
-期望数值（必须逐条相等，不能只判退出码）：
+当前三档运行期门禁的期望输出（必须逐条相等，不能只判退出码）：
 
 | 门禁 | 期望输出 |
 |---|---|
@@ -149,33 +119,9 @@ node projects/mysql.ts/packages/mysql-harness/stages/python.mjs
 | install | `25/25 assertions`、`5 cases`、`0 skipped` |
 | python | `25/25 assertions`、`5 cases`、`0 skipped`（pymysql 在 clean venv） |
 
-`79` = 78 条语料断言 + 1 条 `mysql` CLI 探针。CLI 探针缺客户端时整阶段失败
-（`mysql cli: unavailable`），不得当作通过。本机客户端位于
-`C:\Users\Administrator\Tools\MySQLClient\PFiles64\MySQL\MySQL Server 8.4\bin`，已加入用户
-PATH；CI 侧是 `apt install mysql-client` 的 CI-only 步骤。
-
-### 提交与推送
-
-```powershell
-# 6. 恢复本地 patch（保持未跟踪）
-Move-Item -LiteralPath E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml.off -Destination E:\数据库研究\MySQL\projects\mysql.rs\.cargo\config.toml
-
-# 7. 只暂存这几条显式路径
-git -C E:\数据库研究\MySQL add projects/mysql.ts/packages/mysql-harness/corpus/truth.json projects/mysql.rs/Cargo.toml UPSTREAM.md
-git -C E:\数据库研究\MySQL commit -m "✅ Freeze the widened mysql:8.4 truth corpus and bump the upstream pin" -m "Pin `database.rs` to the dev revision that reports DATE and DATETIME column types, raises `1364` for missing NOT NULL defaults and returns exact `DECIMAL` aggregates."
-
-# 8. 拉平后复跑再推
-git -C E:\数据库研究\MySQL -c http.proxy=socks5h://127.0.0.1:7897 -c https.proxy=socks5h://127.0.0.1:7897 -c http.version=HTTP/1.1 fetch origin dev
-git -C E:\数据库研究\MySQL rebase origin/dev
-# 复跑第 5 步三条门禁，数值仍须全等
-git -C E:\数据库研究\MySQL -c http.proxy=socks5h://127.0.0.1:7897 -c https.proxy=socks5h://127.0.0.1:7897 -c http.version=HTTP/1.1 push origin dev
-git -C E:\数据库研究\MySQL rev-parse HEAD
-git -C E:\数据库研究\MySQL rev-parse origin/dev   # 必须与 HEAD 相同
-```
-
 ### 不得做的事
 
-- 不在上游收口前升 pin，不为凑绿改 `truth.json` 期望或删场景。
+- 不为凑绿改 `truth.json` 期望或删场景。
 - 不提交 `projects/mysql.rs/.cargo/config.toml`（它 patch 到本仓 `database.rs` 工作树）。
 - 在 `config.toml` 存在时产生的任何本地数字，一律标注「patch 到脏树，不等于 CI 钉点」，
   不写进验收结论。
@@ -183,34 +129,41 @@ git -C E:\数据库研究\MySQL rev-parse origin/dev   # 必须与 HEAD 相同
 
 ## 已知缺失 SQL 能力清单
 
-下表只登记已确认为缺失、尚未收口的能力。1-3 是上游 SQL 能力缺口，本仓没有解析器或引擎可补。
-4-6 是同一清单中状态不同的条目：上游 SQL 元数据线在修，本仓等 pin 后验收，不是本仓待实现。
+下表登记 SQL 能力缺口及收口状态。1-3 是尚未收口的上游 SQL 能力缺口，本仓没有解析器或
+引擎可补。4-6 已由上游 SQL 元数据线补齐，扩宽语料冻结后 `truth` 门禁 `79/79` 通过，
+保留在表中作为历史证据。
 
 | # | 缺失能力 | 现象 | 真实 MySQL 行为 | 证据 | 归属 | 当前状态 |
 |---|---|---|---|---|---|---|
 | 1 | `SELECT ... FOR UPDATE` | 行锁子句不被解析。示例改为在 `BEGIN` 之前读库存、再写计算后的字面量，事务没有锁住读到的行 | 事务内对命中行加排他锁，第二个事务的 `FOR UPDATE` 读阻塞到第一个事务提交或回滚。`FOR SHARE` 加共享锁 | 提交 `73d3e16` 的 `projects/mysql.ts/examples/with-express/readme.md` §Product limitations observed 第 91-92 行。该示例的 `tests/api.mjs` 在绕过该限制后通过 201/400/409/404/204 与库存回滚断言 | 上游 `database.rs`（`database.query` 解析与计划、`database.execution` 锁与事务） | 上游缺失，未排期 |
 | 2 | `UPDATE ... SET col = col - 1` 一类表达式自减 | 被拒绝，驱动报 `ER_NOT_SUPPORTED_YET`，文案 `write values must be simple literals`。示例改成先读当前库存、再用字面量写回 | 服务端按行做算术更新，`affectedRows` 按匹配行数计，并发下依赖行锁 | 同上 readme 第 93-95 行。钉点 `d302887d` 的 `database.query/src/sql_planner.rs` 第 1017-1044 行 `literal_from_expression` 只接受 `Literal` 与二进制 `CAST`，`Binary` / `Unary` 一律报 `SQL gateway write values must be simple literals` | 上游 `database.rs`（`database.query::sql_planner`） | 上游缺失，未排期 |
 | 3 | `CREATE DATABASE` / `USE` | 两者都不支持。连接参数里的库名会被接受，但服务端只有一个隐式 catalog | `CREATE DATABASE` 建库，`USE` 切换当前库，`COM_INIT_DB` 切换默认库，跨库按库名限定访问 | 同上 readme 第 96-97 行与 `src/server.mjs` 第 32 行（`MYSQL_DATABASE` 传给 pool）。钉点 `connection.rs` 第 410-411 行注释写明 gateway keeps a single catalog，`COM_INIT_DB` 只记录默认 schema。钉点源码无 `CREATE DATABASE` 解析 | 上游 `database.rs`（`database.server::yyds::mysql` 与 `database.cluster` catalog） | 上游缺失，未排期 |
-| 4 | DATE / DATETIME 列类型 | 列值以 `"2024-01-02"`、`"2024-01-02 03:04:05"` 字符串返回，wire 列类型是 `VAR_STRING` | 列类型为 `MYSQL_TYPE_DATE` / `MYSQL_TYPE_DATETIME`，`mysql2` 把值转成 JS `Date`，语料序列化为 `2024-01-02T00:00:00.000Z` | 未提交的扩宽语料 `corpus/truth.json` `types` 场景的 `SELECT id, d, dt FROM truth_types ORDER BY id`。等待期观测该条为 FAIL（标注：patch 到脏树，不等于 CI 钉点） | 上游 `database.rs`（`database.query` 的 `field_id` / describe 与 `database.server::yyds::mysql::connection::mysql_field_type`） | 等上游 SQL 元数据线修，本仓待 pin 后验收 |
-| 5 | NOT NULL 无默认值 | `INSERT INTO truth_err (id) VALUES (4)` 被静默插入，`affectedRows=1`，随后 `SELECT COUNT(*)` 为 2 | 缺列且 NOT NULL 无默认值时拒绝，返回 `errno 1364` / `SQLSTATE HY000`，该行不落库，计数仍为 1 | 未提交的扩宽语料 `corpus/truth.json` `errors` 场景的 `INSERT INTO truth_err (id) VALUES (4)` 与最后一条 `SELECT COUNT(*)`。等待期观测同上 | 上游 `database.rs`（`database.query` 写入计划与约束检查） | 等上游 SQL 元数据线修，本仓待 pin 后验收 |
-| 6 | DECIMAL 类型 | 没有 DECIMAL 类型，`SUM(score)` 只能以字符串形式返回，列类型不是 `NEWDECIMAL` | `SUM` 返回 DECIMAL，`mysql2` 按文本返回 `"80"`，列类型码 `NEWDECIMAL` | 未提交的扩宽语料 `corpus/truth.json` `aggregates` 场景的 `SELECT SUM(score) AS s ...` 期望 `"80"`。钉点 `catalog_bind.rs` 的 `SqlFieldType` 只有 Int64 / Int32 / Float64 / String / Bool / Bytes / Optional，无 Decimal，`connection.rs::mysql_field_type` 无 Decimal 映射 | 上游 `database.rs`（`database.query` 类型系统与 `mysql_field_type`） | 等上游 SQL 元数据线修，本仓待 pin 后验收 |
+| 4 | DATE / DATETIME 列类型 | 曾把列值以字符串返回，wire 列类型是 `VAR_STRING` | 列类型为 `MYSQL_TYPE_DATE` / `MYSQL_TYPE_DATETIME`，`mysql2` 把值转成 JS `Date` | 已冻结语料 `corpus/truth.json` `types` 场景；上游 `4810b98` 上报列类型，`truth` 门禁 79/79 | 上游 `database.rs` | 已收口 |
+| 5 | NOT NULL 无默认值 | 曾把缺列 `INSERT` 静默插入 | 缺列且 NOT NULL 无默认值时拒绝，返回 `errno 1364` / `SQLSTATE HY000`，该行不落库 | 已冻结语料 `errors` 场景的最后一条 `SELECT COUNT(*)`；上游 `plan_insert` 的 `MissingDefault` 守卫，`truth` 门禁 79/79 | 上游 `database.rs` | 已收口 |
+| 6 | DECIMAL 类型 | 曾没有 DECIMAL 类型，`SUM(score)` 列类型不是 `NEWDECIMAL` | `SUM` 返回 DECIMAL，`mysql2` 按文本返回 `"80"`，列类型码 `NEWDECIMAL` | 已冻结语料 `aggregates` 场景期望 `"80"`；上游 `SqlFieldType::Decimal` 与 `mysql_field_type` 映射，`truth` 门禁 79/79 | 上游 `database.rs` | 已收口 |
 
-1-3 的证据来自 `73d3e16` 的示例实测，按要求不重跑。4-6 的证据来自扩宽语料与钉点源码审计，
-不把等待期本地数字写成 CI 结论。六条都不在本仓补实现：本仓只有绑定层与服务组合，
-SQL 解析、行锁、约束检查、列类型上报全在上游 `database.rs`。
+1-3 的证据来自 `73d3e16` 的示例实测，按要求不重跑。六条都不在本仓补实现：本仓只有绑定层与
+服务组合，SQL 解析、行锁、约束检查、列类型上报全在上游 `database.rs`。
 
 ## benchmark 发现的上游性能与语义缺口
 
 证据来自 `projects/mysql.ts/examples/vs-js-libraries/tests/benchmark-vs-mysql84.mjs`
 （真实库 8.4.9，同机、同数据、同语句、5 轮中位数 + p95）。报告
-`reports/benchmark-vs-mysql84.md` 由该脚本生成，不手填数字。下面各项都属于上游，
-本仓不越界实现。
+`reports/benchmark-vs-mysql84.md` 由该脚本生成，不手填数字。数字取自 2026-11-13
+pin `9180088a` 的 release 构建；历史数字来自同脚本在 pin `00c9556` 的 debug 构建。
 
-| # | 缺口 | 现象 | 真实 MySQL 行为 | 证据 | 归属 | 当前状态 |
+| # | 缺口 | 历史现象 | 当前结果 | 证据 | 归属 | 当前状态 |
 |---|---|---|---|---|---|---|
-| 7 | 每语句 5ms 轮询地板 | `SELECT 1` 中位 6.210ms/语句，是真库 0.134ms 的 46.33 倍，且 point-pk、range-limit、connect 的绝对耗时都贴着这个地板 | 单语句往返在亚毫秒级，`SELECT 1` 约 0.13ms | `reports/benchmark-vs-mysql84.md` 的 `baseline-select1` 与阶段差分表。钉点 `connection.rs` 第 1680-1692 行 `CancellableSocket::attempt` 对 `WouldBlock` 固定 `sleep(5ms)` | 上游 `database.rs`（`database.server::yyds::mysql::connection`） | 上游缺失，未排期 |
-| 8 | UNIQUE 索引未参与点查 | `WHERE uk = ?` 中位 18.329ms/语句，比 `WHERE id = ?` 的 6.282ms 多 12.0ms，与全表 1000 行扫描同量级 | 唯一索引定位，约 0.20ms/语句 | 同上 `point-uk` 与 `point-pk` 两行，阶段差分差额 12.054ms/语句 | 上游 `database.rs`（`database.query` 计划与 `database.execution` 读取路径） | 上游缺失，未排期 |
-| 9 | `ORDER BY` / `GROUP BY` 全表扫描 | `order-limit` 23.119ms/语句、`group-by` 19.805ms/语句，各比地板多约 13.6-16.9ms，等于 1000 行扫描成本 | 索引排序与下推聚合，约 0.66ms / 1.11ms/语句 | 同上两行，阶段差分差额 16.384ms / 12.621ms 每语句 | 上游 `database.rs`（`database.query` 计划与 `database.execution` 聚合） | 上游缺失，未排期 |
-| 10 | 整数范围谓词边界错误 | `WHERE id BETWEEN 6 AND 46` 返回 0 行（真库 41 行）；`WHERE id BETWEEN 2 AND 10` 返回 2（真库 9）；`WHERE id >= 50` 返回 55（真库 51）；`WHERE id > 6` 返回 43（真库 94） | 按整数数值比较，边界含等 | 同报告“语义差异”表；探针固定 1..100 与 `COUNT(*)` | 上游 `database.rs`（`database.query` 谓词求值与 `database.execution` 扫描边界） | 上游缺失，未排期 |
-| 11 | 多行 `INSERT` 每行成本 | `insert-multi` 0.174ms/行，是真库 0.094ms/行的 1.86 倍 | 批量写入一次提交，约 0.094ms/行 | 同上 `insert-multi` 行；`insert-single` 本仓 10.529ms/语句、真库 5.613ms/语句，超出地板后的写入成本反而低 1.160ms/语句 | 上游 `database.rs`（`database.execution` 写入批量与存储提交） | 上游缺失，未排期 |
-| 12 | 连接建立开销 | 20 次连接 + `SELECT 1` + 关闭，16.728ms/连接，是真库 1.777ms 的 9.41 倍 | 约 1.8ms/连接 | 同上 `connect` 行；握手期多次读写同样命中第 7 条的 5ms 轮询 | 上游 `database.rs`（`database.server::yyds::mysql::connection` 握手与会话初始化） | 上游缺失，未排期 |
+| 7 | 每语句 5ms 轮询地板 | `SELECT 1` 6.210ms/语句，真库 0.134ms | `baseline-select1` 0.072ms/语句，真库 0.060ms（1.19x） | `4748841` 把 `CancellableSocket` 改为阻塞读写加短超时 | 上游 `database.rs` | 已收口 |
+| 8 | UNIQUE 索引未参与点查 | `WHERE uk = ?` 18.329ms/语句，与全表扫描同量级 | `point-uk` 0.738ms/语句（7.74x），`point-pk` 0.106ms（1.01x），差额 0.63ms 仍是 1000 行扫描 | 报告 `point-uk` 与 `point-pk` 两行与阶段差分表 | 上游 `database.rs`（计划与读取路径） | 未排期，需二级索引或索引下推 |
+| 9 | `ORDER BY` / `GROUP BY` 全表扫描 | `order-limit` 23.119ms/语句、`group-by` 19.805ms/语句 | `order-limit` 1.235ms（3.95x）、`group-by` 1.176ms（2.44x），仍是扫描 + 内存排序/分桶 | 报告两行与阶段差分表 | 上游 `database.rs`（计划与聚合） | 未排期，需索引排序或增量聚合 |
+| 10 | 整数范围谓词边界错误 | `id >= 50` 返回 55、`id > 6` 返回 43 等 | 语义探针四项与真库一致（41 / 9 / 51 / 94） | `e63b469` 按数值序过滤；报告“语义差异”表 | 上游 `database.rs` | 已收口 |
+| 11 | 多行 `INSERT` 每行成本 | `insert-multi` 0.174ms/行，真库 0.094ms/行 | `insert-multi` 0.043ms/行，真库 0.050（0.86x） | 报告 `insert-multi` 行 | 上游 `database.rs` | 已收口 |
+| 12 | 连接建立开销 | 16.728ms/连接，真库 1.777ms | `connect` 0.970ms/连接，真库 0.718ms（1.35x） | `9180088a` 的阻塞 `accept` 与自身空连接唤醒；报告 `connect` 行 | 上游 `database.rs` | 已收口 |
+| 13 | 等值连接嵌套循环 | `join` 1571.296ms/语句（3623x） | `join` 1.932ms/语句（5.03x） | `9180088a` 的哈希连接与基表谓词前置剪枝；报告 `join` 行 | 上游 `database.rs` | 已收口（剩余为扫描成本） |
+| 14 | `IN` 列表逐值比较与栈溢出 | `WHERE id IN (...)` 在 400 项左右耗尽线程栈，subquery 23.426ms/语句 | 900 项列表正常返回，`subquery` 1.486ms/语句（2.12x） | `9180088a` 把等值 `OR` 链折叠回 `InValues`，整数列表归一化后二分查找；报告 `subquery` 行 | 上游 `database.rs` | 已收口 |
+| 15 | 扫描逐行复制与无谓解码 | 1000 行扫描 5-8ms | 扫描类 workload 1-2ms，`COUNT(*)` 不再解码行 | `9180088a` 的单分片结果接管、免解码聚合、按字段线性匹配 | 上游 `database.rs` | 已收口 |
+
+剩余差距集中在三处：二级索引点查与范围（8）、排序/分组下推（9）、以及单条写入路径
+（`insert-single` 1.68x，差距来自每语句地板与逐行落盘）。这三处都需要上游新增索引结构
+或写入批量语义，本仓不越界实现。
