@@ -12,7 +12,7 @@
 //
 // Run: `pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark`
 // Env: BENCH_ROWS (200), BENCH_POINT (500), BENCH_SCAN (1000), BENCH_ROUNDS (3),
-//      BENCH_TX (10), BENCH_TX_ROWS (10)
+//      BENCH_TX (10), BENCH_TX_ROWS (10), BENCH_MUTATE (100), BENCH_ERROR (100)
 
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -29,6 +29,8 @@ const SCAN_ROWS = Number(process.env.BENCH_SCAN ?? 1_000);
 const ROUNDS = Number(process.env.BENCH_ROUNDS ?? 3);
 const TX_COUNT = Number(process.env.BENCH_TX ?? 10);
 const TX_ROWS = Number(process.env.BENCH_TX_ROWS ?? 10);
+const MUTATE_OPS = Number(process.env.BENCH_MUTATE ?? 100);
+const ERROR_OPS = Number(process.env.BENCH_ERROR ?? 100);
 const CURSOR_PAGE_SIZE = 20;
 
 const CLIENTS = [
@@ -77,6 +79,20 @@ async function seedLarge(client, rows) {
 
 function cellAt(result, row, index) {
   return Array.isArray(row) ? row[index] : row[result.columns[index]];
+}
+
+// Both clients surface the server error number as `errno`; a successful call
+// means the gateway stopped rejecting the statement, so the run must fail.
+async function expectError(client, sql, errno) {
+  try {
+    await client.query(sql);
+  } catch (error) {
+    if (error.errno !== errno) {
+      throw new Error(`expected errno ${errno}, got ${error.errno}: ${error.message}`, { cause: error });
+    }
+    return;
+  }
+  throw new Error(`expected errno ${errno} but the statement succeeded: ${sql}`);
 }
 
 const WORKLOADS = [
@@ -235,6 +251,111 @@ const WORKLOADS = [
       return TX_COUNT * TX_ROWS;
     },
   },
+  {
+    name: "update-multi",
+    unit: "statements",
+    ops: MUTATE_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // Each statement updates a four-row primary-key range; the range source
+      // cycles over the same seed so both clients issue identical SQL.
+      const groups = Math.max(1, Math.floor(ROWS / 4));
+      for (let index = 0; index < MUTATE_OPS; index += 1) {
+        const low = (index % groups) * 4 + 1;
+        await client.query(
+          `UPDATE bench_items SET label = 'upd-${index}' WHERE id BETWEEN ${low} AND ${low + 3}`,
+        );
+      }
+      return MUTATE_OPS;
+    },
+  },
+  {
+    name: "delete-where",
+    unit: "rows",
+    ops: Math.min(MUTATE_OPS, Math.floor(ROWS / 2)) * 2,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // Two-row range deletes walk the whole seed once; the unit is rows removed.
+      const statements = Math.min(MUTATE_OPS, Math.floor(ROWS / 2));
+      for (let index = 0; index < statements; index += 1) {
+        const low = index * 2 + 1;
+        await client.query(`DELETE FROM bench_items WHERE id BETWEEN ${low} AND ${low + 1}`);
+      }
+      return statements * 2;
+    },
+  },
+  {
+    name: "binary-prepared-rows",
+    unit: "statements",
+    ops: POINT_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // Same point cardinality as `select-point`, but the row comes back over
+      // the binary protocol with a prepare-time column description.
+      const statement = await client.prepare("SELECT id, label FROM bench_items WHERE id = ?");
+      try {
+        for (let index = 0; index < POINT_OPS; index += 1) {
+          const id = (index % ROWS) + 1;
+          const result = await statement.execute([id]);
+          if (result.rows.length !== 1) throw new Error(`binary point miss id=${id}`);
+        }
+      } finally {
+        await statement.close();
+      }
+      return POINT_OPS;
+    },
+  },
+  {
+    name: "error-path",
+    unit: "statements",
+    ops: ERROR_OPS * 2,
+    async setup(client) {
+      await client.query(CREATE_TABLE);
+      await client.query("INSERT INTO bench_items (id, label, score) VALUES (1, 'row-1', 0.25)");
+    },
+    async run(client) {
+      // One duplicate-primary-key and one unknown-table round trip per
+      // iteration; the connection must stay usable after both errors.
+      for (let index = 0; index < ERROR_OPS; index += 1) {
+        await expectError(
+          client,
+          "INSERT INTO bench_items (id, label, score) VALUES (1, 'dup', 0.25)",
+          1062,
+        );
+        await expectError(client, "SELECT id FROM bench_missing WHERE id = 1", 1146);
+      }
+      return ERROR_OPS * 2;
+    },
+  },
+  {
+    name: "rollback-bulk",
+    unit: "rows",
+    ops: TX_COUNT * TX_ROWS,
+    async setup(client) {
+      await client.query(CREATE_TABLE);
+    },
+    async run(client) {
+      // Same shape as `tx-commit`, but every transaction rolls back instead of
+      // committing, so the store must discard the whole buffered batch.
+      for (let tx = 0; tx < TX_COUNT; tx += 1) {
+        await client.query("BEGIN");
+        for (let row = 0; row < TX_ROWS; row += 1) {
+          const id = row + 1;
+          await client.query(
+            `INSERT INTO bench_items (id, label, score) VALUES (${id}, 'row-${id}', ${id / 4})`,
+          );
+        }
+        await client.query("ROLLBACK");
+      }
+      return TX_COUNT * TX_ROWS;
+    },
+  },
 ];
 
 async function measure(workload, client) {
@@ -273,7 +394,7 @@ async function main() {
   console.log("mysql vs-js-libraries benchmark");
   console.log(`Loopback 127.0.0.1, one text-protocol connection per client, fresh server + seed per measurement`);
   console.log(
-    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}`,
+    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}, BENCH_MUTATE=${MUTATE_OPS}, BENCH_ERROR=${ERROR_OPS}`,
   );
   console.log("Warmup: 1 untimed round");
   for (const workload of WORKLOADS) {

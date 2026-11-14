@@ -70,14 +70,26 @@ There is one untimed warmup round followed by three measured rounds.
 - `select-null-blob` — one scan over `BENCH_SCAN` rows with a `NULL` note every
   third row and a 2 KiB payload every fifth row; the unit is rows
 - `tx-commit` — `BENCH_TX` transactions of `BENCH_TX_ROWS` inserts, one `COMMIT` each
+- `update-multi` — `BENCH_MUTATE` statements, each updating the same four-row
+  primary-key range (`WHERE id BETWEEN lo AND hi`) of the `BENCH_ROWS` seed
+- `delete-where` — `BENCH_MUTATE` paired-range `DELETE ... WHERE id BETWEEN lo
+  AND hi` statements over the same seed; the unit is rows removed
+- `binary-prepared-rows` — one `SELECT id, label FROM bench_items WHERE id = ?`
+  prepared per client, then `BENCH_POINT` binary-protocol executes over the
+  same `BENCH_ROWS` seed as `select-point`
+- `error-path` — `BENCH_ERROR` duplicate-primary-key inserts (errno 1062) and
+  `BENCH_ERROR` unknown-table selects (errno 1146) on one connection, verifying
+  the gateway keeps the stream synchronised after an error
+- `rollback-bulk` — `BENCH_TX` transactions of `BENCH_TX_ROWS` inserts, one
+  `ROLLBACK` each; the same row ids are reinserted every transaction
 
 ```shell
 pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark
 ```
 
 Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`,
-`BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`. Override them through the
-environment. The report is in
+`BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`, `BENCH_MUTATE=100`,
+`BENCH_ERROR=100`. Override them through the environment. The report is in
 [`reports/benchmark.md`](./reports/benchmark.md).
 
 ## Intentional deltas
@@ -87,8 +99,15 @@ environment. The report is in
   is the full driver with JS-side row parsing.
 - No pooling or TLS on either side.
 - A fresh server plus untimed seed precedes every measurement.
-- Only `insert-prepared` uses the binary protocol; every other workload uses
-  `COM_QUERY` with the same SQL for both clients.
+- Only `insert-prepared` and `binary-prepared-rows` use the binary protocol;
+  every other workload uses `COM_QUERY` with the same SQL for both clients.
 - `select-scan` and `select-null-blob` throughput is reported in rows, and
   `select-cursor-page` in pages, because each measurement is one statement over
   many rows or several statements over one query shape.
+- `update-multi` and `delete-where` cycle over the same seed ranges so both
+  clients issue identical SQL and touch identical rows.
+- `error-path` asserts the exact MySQL errno (`1062`, `1146`) on both clients and
+  keeps using the connection afterwards; a desynchronised stream fails the run
+  instead of being timed.
+- `binary-prepared-rows` uses the same 200-row seed and 500 point lookups as
+  `select-point`; only the protocol and prepare-time description change.
