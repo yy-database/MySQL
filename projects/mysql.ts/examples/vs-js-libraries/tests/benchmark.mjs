@@ -4,12 +4,15 @@
 // - every (round × workload × client) starts a fresh `startMysqlServer` with a
 //   fresh `mkdtemp` data directory;
 // - table creation and seeding are untimed;
-// - both clients use one connection, text protocol, no pooling, no prepared
-//   statements, no TLS;
+// - both clients use one connection, no pooling, no TLS;
+// - text-protocol workloads share one SQL and one seed size across clients;
+// - `insert-prepared` is the exception: both clients prepare once and execute
+//   the same binary-protocol statement `BENCH_ROWS` times;
 // - the server and client are stopped after each measurement.
 //
 // Run: `pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark`
-// Env: BENCH_ROWS (200), BENCH_POINT (500), BENCH_SCAN (1000), BENCH_ROUNDS (3)
+// Env: BENCH_ROWS (200), BENCH_POINT (500), BENCH_SCAN (1000), BENCH_ROUNDS (3),
+//      BENCH_TX (10), BENCH_TX_ROWS (10)
 
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,6 +27,9 @@ const ROWS = Number(process.env.BENCH_ROWS ?? 200);
 const POINT_OPS = Number(process.env.BENCH_POINT ?? 500);
 const SCAN_ROWS = Number(process.env.BENCH_SCAN ?? 1_000);
 const ROUNDS = Number(process.env.BENCH_ROUNDS ?? 3);
+const TX_COUNT = Number(process.env.BENCH_TX ?? 10);
+const TX_ROWS = Number(process.env.BENCH_TX_ROWS ?? 10);
+const CURSOR_PAGE_SIZE = 20;
 
 const CLIENTS = [
   { name: "mysql2", connect: connectMysql2 },
@@ -31,6 +37,9 @@ const CLIENTS = [
 ];
 
 const CREATE_TABLE = "CREATE TABLE bench_items (id INT PRIMARY KEY, label VARCHAR(40), score DOUBLE)";
+const CREATE_TABLE_UK =
+  "CREATE TABLE bench_items_uk (id INT PRIMARY KEY, uk INT UNIQUE, label VARCHAR(40), score DOUBLE)";
+const CREATE_TABLE_LARGE = "CREATE TABLE bench_large (id INT PRIMARY KEY, note VARCHAR(40) NULL, payload TEXT)";
 
 async function seed(client, rows) {
   await client.query(CREATE_TABLE);
@@ -39,6 +48,35 @@ async function seed(client, rows) {
       `INSERT INTO bench_items (id, label, score) VALUES (${id}, 'row-${id}', ${id / 4})`,
     );
   }
+}
+
+async function seedUnique(client, rows) {
+  await client.query(CREATE_TABLE_UK);
+  for (let id = 1; id <= rows; id += 1) {
+    await client.query(
+      `INSERT INTO bench_items_uk (id, uk, label, score) VALUES (${id}, ${id}, 'row-${id}', ${id / 4})`,
+    );
+  }
+}
+
+// Large/NULL mix: every third row has a NULL note, every fifth row carries a
+// 2 KiB payload. Batched seed keeps untimed setup bounded at 1,000 rows.
+async function seedLarge(client, rows) {
+  await client.query(CREATE_TABLE_LARGE);
+  const batch = 100;
+  for (let start = 1; start <= rows; start += batch) {
+    const values = [];
+    for (let id = start; id < Math.min(start + batch, rows + 1); id += 1) {
+      const note = id % 3 === 0 ? "NULL" : `'note-${id}'`;
+      const payload = id % 5 === 0 ? "x".repeat(2048) : "small";
+      values.push(`(${id}, ${note}, '${payload}')`);
+    }
+    await client.query(`INSERT INTO bench_large (id, note, payload) VALUES ${values.join(", ")}`);
+  }
+}
+
+function cellAt(result, row, index) {
+  return Array.isArray(row) ? row[index] : row[result.columns[index]];
 }
 
 const WORKLOADS = [
@@ -54,6 +92,29 @@ const WORKLOADS = [
         await client.query(
           `INSERT INTO bench_items (id, label, score) VALUES (${id}, 'row-${id}', ${id / 4})`,
         );
+      }
+      return ROWS;
+    },
+  },
+  {
+    name: "insert-prepared",
+    unit: "rows",
+    ops: ROWS,
+    async setup(client) {
+      await client.query(CREATE_TABLE);
+    },
+    async run(client) {
+      // Same SQL and row count as `insert`, but one prepare followed by
+      // `ROWS` binary-protocol executes.
+      const statement = await client.prepare(
+        "INSERT INTO bench_items (id, label, score) VALUES (?, ?, ?)",
+      );
+      try {
+        for (let id = 1; id <= ROWS; id += 1) {
+          await statement.execute([id, `row-${id}`, id / 4]);
+        }
+      } finally {
+        await statement.close();
       }
       return ROWS;
     },
@@ -75,6 +136,26 @@ const WORKLOADS = [
     },
   },
   {
+    name: "select-point-uk",
+    unit: "statements",
+    ops: POINT_OPS,
+    async setup(client) {
+      await seedUnique(client, ROWS);
+    },
+    async run(client) {
+      // Same cardinality as `select-point`; only the predicate moves from the
+      // primary key to a UNIQUE secondary index.
+      for (let index = 0; index < POINT_OPS; index += 1) {
+        const uk = (index % ROWS) + 1;
+        const result = await client.query(
+          `SELECT label FROM bench_items_uk WHERE uk = ${uk}`,
+        );
+        if (result.rows.length !== 1) throw new Error(`point-uk miss uk=${uk}`);
+      }
+      return POINT_OPS;
+    },
+  },
+  {
     name: "select-scan",
     unit: "rows",
     ops: SCAN_ROWS,
@@ -87,6 +168,71 @@ const WORKLOADS = [
         throw new Error(`${result.rows.length} rows, expected ${SCAN_ROWS}`);
       }
       return SCAN_ROWS;
+    },
+  },
+  {
+    name: "select-cursor-page",
+    unit: "pages",
+    ops: Math.ceil(SCAN_ROWS / CURSOR_PAGE_SIZE),
+    async setup(client) {
+      await seed(client, SCAN_ROWS);
+    },
+    async run(client) {
+      // Keyset pagination over the same 1,000 seeded rows as `select-scan`.
+      // Each page is one statement; the unit is pages, not rows.
+      const pages = Math.ceil(SCAN_ROWS / CURSOR_PAGE_SIZE);
+      let last = 0;
+      for (let page = 0; page < pages; page += 1) {
+        const result = await client.query(
+          `SELECT id, label FROM bench_items WHERE id > ${last} ORDER BY id LIMIT ${CURSOR_PAGE_SIZE}`,
+        );
+        const expected = Math.min(CURSOR_PAGE_SIZE, SCAN_ROWS - page * CURSOR_PAGE_SIZE);
+        if (result.rows.length !== expected) {
+          throw new Error(`cursor page ${page} rows=${result.rows.length}, expected=${expected}`);
+        }
+        last = Number(cellAt(result, result.rows[result.rows.length - 1], 0));
+      }
+      return pages;
+    },
+  },
+  {
+    name: "select-null-blob",
+    unit: "rows",
+    ops: SCAN_ROWS,
+    async setup(client) {
+      await seedLarge(client, SCAN_ROWS);
+    },
+    async run(client) {
+      // One statement over the same 1,000 row count as `select-scan`, with a
+      // NULL every third row and a 2 KiB payload every fifth row.
+      const result = await client.query("SELECT id, note, payload FROM bench_large ORDER BY id");
+      if (result.rows.length !== SCAN_ROWS) {
+        throw new Error(`${result.rows.length} rows, expected ${SCAN_ROWS}`);
+      }
+      return SCAN_ROWS;
+    },
+  },
+  {
+    name: "tx-commit",
+    unit: "rows",
+    ops: TX_COUNT * TX_ROWS,
+    async setup(client) {
+      await client.query(CREATE_TABLE);
+    },
+    async run(client) {
+      // Same shape as the MySQL 8.4 comparison: N transactions of 10 inserts,
+      // one COMMIT each.
+      for (let tx = 0; tx < TX_COUNT; tx += 1) {
+        await client.query("BEGIN");
+        for (let row = 0; row < TX_ROWS; row += 1) {
+          const id = tx * TX_ROWS + row + 1;
+          await client.query(
+            `INSERT INTO bench_items (id, label, score) VALUES (${id}, 'row-${id}', ${id / 4})`,
+          );
+        }
+        await client.query("COMMIT");
+      }
+      return TX_COUNT * TX_ROWS;
     },
   },
 ];
@@ -126,7 +272,9 @@ async function main() {
 
   console.log("mysql vs-js-libraries benchmark");
   console.log(`Loopback 127.0.0.1, one text-protocol connection per client, fresh server + seed per measurement`);
-  console.log(`Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}`);
+  console.log(
+    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}`,
+  );
   console.log("Warmup: 1 untimed round");
   for (const workload of WORKLOADS) {
     for (const client of CLIENTS) await measure(workload, client);

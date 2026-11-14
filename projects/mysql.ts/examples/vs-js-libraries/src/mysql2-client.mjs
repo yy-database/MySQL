@@ -1,14 +1,15 @@
 import mysql from "mysql2/promise";
 
 // Thin wrapper so both benchmark paths issue the same SQL and expose the
-// same shape: `query(sql)` returns `{ columns, rows }` with raw driver rows.
+// same shape: `query(sql)` returns `{ columns, rows }` with raw driver rows and
+// `prepare(sql)` mirrors the minimal client's binary-protocol handle.
 export async function connectMysql2(port, host = "127.0.0.1") {
   const connection = await mysql.createConnection({
     host,
     port,
     user: "yydb",
     password: "",
-    // One text-protocol connection, no pooling, no prepared statements, no TLS.
+    // One text-protocol connection, no pooling, no TLS.
     disableEval: true,
   });
 
@@ -17,6 +18,19 @@ export async function connectMysql2(port, host = "127.0.0.1") {
       const [rows, fields] = await connection.query(sql);
       const columns = Array.isArray(fields) ? fields.map((field) => field.name) : [];
       return { columns, rows };
+    },
+    async prepare(sql) {
+      const statement = await connection.prepare(sql);
+      return {
+        async execute(parameters = []) {
+          const [rows, fields] = await statement.execute(parameters);
+          const columns = Array.isArray(fields) ? fields.map((field) => field.name) : [];
+          return { columns, rows, affectedRows: Array.isArray(rows) ? rows.length : rows.affectedRows };
+        },
+        async close() {
+          await statement.close();
+        },
+      };
     },
     async close() {
       await connection.end();

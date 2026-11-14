@@ -3,8 +3,9 @@ import net from "node:net";
 import { loadNative } from "../../../packages/mysql/dist/index.js";
 
 // Hand-written classic-protocol client: handshake v10, mysql_native_password
-// with an empty password, COM_QUERY, text results with EOF packets, COM_QUIT.
-// Frames are produced by the product's native packet codec.
+// with an empty password, COM_QUERY, COM_STMT_PREPARE / COM_STMT_EXECUTE with
+// text and binary rows, and COM_QUIT. Frames are produced by the product's
+// native packet codec.
 
 const CLIENT_LONG_PASSWORD = 0x00000001;
 const CLIENT_LONG_FLAG = 0x00000004;
@@ -25,6 +26,26 @@ const CLIENT_CAPABILITIES =
 
 const COM_QUIT = 0x01;
 const COM_QUERY = 0x03;
+const COM_STMT_PREPARE = 0x16;
+const COM_STMT_EXECUTE = 0x17;
+const COM_STMT_CLOSE = 0x19;
+
+const MYSQL_TYPE_TINY = 0x01;
+const MYSQL_TYPE_SHORT = 0x02;
+const MYSQL_TYPE_LONG = 0x03;
+const MYSQL_TYPE_FLOAT = 0x04;
+const MYSQL_TYPE_DOUBLE = 0x05;
+const MYSQL_TYPE_NULL = 0x06;
+const MYSQL_TYPE_LONGLONG = 0x08;
+const MYSQL_TYPE_INT24 = 0x09;
+const MYSQL_TYPE_DATE = 0x0a;
+const MYSQL_TYPE_DATETIME = 0x0c;
+const MYSQL_TYPE_TINY_BLOB = 0xf9;
+const MYSQL_TYPE_MEDIUM_BLOB = 0xfa;
+const MYSQL_TYPE_LONG_BLOB = 0xfb;
+const MYSQL_TYPE_BLOB = 0xfc;
+const MYSQL_TYPE_VAR_STRING = 0xfd;
+const MYSQL_TYPE_STRING = 0xfe;
 
 const OK_PACKET = 0x00;
 const ERROR_PACKET = 0xff;
@@ -71,6 +92,136 @@ function parseColumnName(payload) {
     cursor = lengthEncodedString(payload, cursor).next;
   }
   return lengthEncodedString(payload, cursor).value;
+}
+
+// ColumnDefinition: six length-encoded strings, a fixed-length marker (0x0C),
+// then charset(2), column_length(4), type(1), flags(2), decimals(1).
+function parseColumnDefinition(payload) {
+  let cursor = 0;
+  let name = "";
+  for (let index = 0; index < 6; index += 1) {
+    const item = lengthEncodedString(payload, cursor);
+    if (index === 4) name = item.value;
+    cursor = item.next;
+  }
+  cursor += 1 + 2 + 4;
+  const type = payload[cursor];
+  cursor += 1;
+  const flags = payload.readUInt16LE(cursor);
+  return { name, type, unsigned: (flags & 0x20) !== 0 };
+}
+
+function readBinaryValue(payload, cursor, type, unsigned) {
+  switch (type) {
+    case MYSQL_TYPE_TINY: {
+      const raw = payload[cursor];
+      return { value: unsigned ? raw : (raw << 24) >> 24, next: cursor + 1 };
+    }
+    case MYSQL_TYPE_SHORT: {
+      const raw = payload.readUInt16LE(cursor);
+      return { value: unsigned ? raw : (raw << 16) >> 16, next: cursor + 2 };
+    }
+    case MYSQL_TYPE_LONG: {
+      const raw = payload.readUInt32LE(cursor);
+      return { value: unsigned ? raw : raw | 0, next: cursor + 4 };
+    }
+    case MYSQL_TYPE_INT24: {
+      const raw = payload.readUIntLE(cursor, 3);
+      return { value: unsigned ? raw : (raw << 8) >> 8, next: cursor + 3 };
+    }
+    case MYSQL_TYPE_LONGLONG: {
+      const raw = payload.readBigUInt64LE(cursor);
+      return { value: unsigned ? Number(raw) : Number(BigInt.asIntN(64, raw)), next: cursor + 8 };
+    }
+    case MYSQL_TYPE_FLOAT:
+      return { value: payload.readFloatLE(cursor), next: cursor + 4 };
+    case MYSQL_TYPE_DOUBLE:
+      return { value: payload.readDoubleLE(cursor), next: cursor + 8 };
+    case MYSQL_TYPE_DATE:
+    case MYSQL_TYPE_DATETIME:
+      return readBinaryDate(payload, cursor);
+    default: {
+      const item = lengthEncoded(payload, cursor);
+      const bytes = payload.subarray(item.next, item.next + item.value);
+      const value = type === MYSQL_TYPE_BLOB || type === MYSQL_TYPE_TINY_BLOB || type === MYSQL_TYPE_MEDIUM_BLOB || type === MYSQL_TYPE_LONG_BLOB
+        ? Buffer.from(bytes)
+        : bytes.toString("utf8");
+      return { value, next: item.next + item.value };
+    }
+  }
+}
+
+function readBinaryDate(payload, cursor) {
+  const length = payload[cursor];
+  if (length === 0) return { value: "0000-00-00", next: cursor + 1 };
+  const year = payload.readUInt16LE(cursor + 1);
+  const month = payload[cursor + 3];
+  const day = payload[cursor + 4];
+  let value = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  if (length > 4) {
+    const hour = payload[cursor + 5];
+    const minute = payload[cursor + 6];
+    const second = payload[cursor + 7];
+    value += ` ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
+  }
+  return { value, next: cursor + 1 + length };
+}
+
+function parameterType(value) {
+  if (typeof value === "number") return Number.isInteger(value) ? MYSQL_TYPE_LONGLONG : MYSQL_TYPE_DOUBLE;
+  if (Buffer.isBuffer(value)) return MYSQL_TYPE_BLOB;
+  return MYSQL_TYPE_VAR_STRING;
+}
+
+function encodeParameterValue(out, value) {
+  if (typeof value === "number") {
+    const bytes = Buffer.alloc(8);
+    if (Number.isInteger(value)) bytes.writeBigInt64LE(BigInt(value));
+    else bytes.writeDoubleLE(value);
+    appendBytes(out, bytes);
+    return;
+  }
+  if (Buffer.isBuffer(value)) {
+    encodeLengthEncoded(out, value.length);
+    appendBytes(out, value);
+    return;
+  }
+  const bytes = Buffer.from(String(value), "utf8");
+  encodeLengthEncoded(out, bytes.length);
+  appendBytes(out, bytes);
+}
+
+function appendBytes(out, bytes) {
+  for (let index = 0; index < bytes.length; index += 1) out.push(bytes[index]);
+}
+
+function encodeLengthEncoded(out, value) {
+  if (value < 251) out.push(value);
+  else if (value < 0x10000) out.push(252, value & 0xff, (value >> 8) & 0xff);
+  else if (value < 0x1000000) out.push(253, value & 0xff, (value >> 8) & 0xff, (value >> 16) & 0xff);
+  else {
+    const bytes = Buffer.alloc(9);
+    bytes[0] = 254;
+    bytes.writeBigUInt64LE(BigInt(value), 1);
+    out.push(...bytes);
+  }
+}
+
+function parseBinaryRow(payload, columns) {
+  const bitmapLength = Math.ceil((columns.length + 2) / 8);
+  let cursor = 1 + bitmapLength;
+  const row = [];
+  for (let index = 0; index < columns.length; index += 1) {
+    const bit = index + 2;
+    if ((payload[1 + (bit >> 3)] & (1 << (bit & 7))) !== 0) {
+      row.push(null);
+      continue;
+    }
+    const item = readBinaryValue(payload, cursor, columns[index].type, columns[index].unsigned);
+    row.push(item.value);
+    cursor = item.next;
+  }
+  return row;
 }
 
 function parseError(payload) {
@@ -215,6 +366,85 @@ export async function connectMysql(port, host = "127.0.0.1") {
     return { columns, rows, affectedRows: rows.length, insertId: 0 };
   }
 
+  async function prepare(sql) {
+    const request = Buffer.concat([Buffer.from([COM_STMT_PREPARE]), Buffer.from(sql, "utf8")]);
+    send(0, request);
+    const first = await read();
+    if (first.payload[0] === ERROR_PACKET) throw parseError(first.payload);
+    if (first.payload[0] !== OK_PACKET) throw new Error("malformed COM_STMT_PREPARE response");
+    const statementId = first.payload.readUInt32LE(1);
+    const columnCount = first.payload.readUInt16LE(5);
+    const parameterCount = first.payload.readUInt16LE(7);
+    for (let index = 0; index < parameterCount; index += 1) await read();
+    if (parameterCount > 0) await read(); // EOF after parameter definitions
+    const columns = [];
+    for (let index = 0; index < columnCount; index += 1) columns.push(parseColumnDefinition((await read()).payload));
+    if (columnCount > 0) await read(); // EOF after column definitions
+
+    async function execute(parameters = []) {
+      const request = [COM_STMT_EXECUTE];
+      const id = Buffer.alloc(4);
+      id.writeUInt32LE(statementId);
+      appendBytes(request, id);
+      request.push(0); // flags
+      request.push(1, 0, 0, 0); // iteration count
+      if (parameterCount > 0) {
+        const bitmap = Buffer.alloc(Math.ceil(parameterCount / 8));
+        for (let index = 0; index < parameterCount; index += 1) {
+          if (parameters[index] === null || parameters[index] === undefined) {
+            bitmap[index >> 3] |= 1 << (index & 7);
+          }
+        }
+        appendBytes(request, bitmap);
+        request.push(1); // parameter types are bound on every execute
+        for (let index = 0; index < parameterCount; index += 1) {
+          const value = parameters[index];
+          request.push(value === null || value === undefined ? MYSQL_TYPE_NULL : parameterType(value), 0);
+        }
+        for (let index = 0; index < parameterCount; index += 1) {
+          const value = parameters[index];
+          if (value === null || value === undefined) continue;
+          encodeParameterValue(request, value);
+        }
+      }
+      send(0, Buffer.from(request));
+      const header = await read();
+      const marker = header.payload[0];
+      if (marker === ERROR_PACKET) throw parseError(header.payload);
+      if (marker === OK_PACKET) {
+        const affectedRows = lengthEncoded(header.payload, 1);
+        const insertId = lengthEncoded(header.payload, affectedRows.next);
+        return { columns: [], rows: [], affectedRows: Number(affectedRows.value), insertId: Number(insertId.value) };
+      }
+      const resultColumns = [];
+      const resultTypes = [];
+      for (let index = 0; index < columnCount; index += 1) {
+        const definition = parseColumnDefinition((await read()).payload);
+        resultColumns.push(definition.name);
+        resultTypes.push(definition);
+      }
+      await read(); // EOF after column definitions
+      const rows = [];
+      while (true) {
+        const packet = await read();
+        const payload = packet.payload;
+        if (payload[0] === EOF_PACKET && payload.length < 9) break;
+        if (payload[0] === ERROR_PACKET) throw parseError(payload);
+        rows.push(parseBinaryRow(payload, resultTypes));
+      }
+      return { columns: resultColumns, rows, affectedRows: rows.length, insertId: 0 };
+    }
+
+    function closeStatement() {
+      const request = Buffer.alloc(5);
+      request[0] = COM_STMT_CLOSE;
+      request.writeUInt32LE(statementId, 1);
+      send(0, request);
+    }
+
+    return { execute, close: closeStatement };
+  }
+
   async function close() {
     if (closed) return;
     closed = true;
@@ -225,5 +455,5 @@ export async function connectMysql(port, host = "127.0.0.1") {
     });
   }
 
-  return { query, close };
+  return { query, prepare, close };
 }
