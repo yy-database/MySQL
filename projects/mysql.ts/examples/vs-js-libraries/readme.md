@@ -141,6 +141,8 @@ There is one untimed warmup round followed by three measured rounds.
   pairs, measuring only transaction round trips
 - `window-row-number` — `BENCH_WINDOW` `ROW_NUMBER() OVER (ORDER BY id)`
   projections limited to 20 rows over the `BENCH_ROWS` seed
+- `window-rank` — `BENCH_WINDOW` `RANK()` / `DENSE_RANK()` projections over the
+  unique `score` column, asserting `rank = dense_rank = id` on every row
 
 ```shell
 pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark

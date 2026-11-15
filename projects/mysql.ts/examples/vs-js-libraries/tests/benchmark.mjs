@@ -1026,6 +1026,32 @@ const ALL_WORKLOADS = [
     },
   },
   {
+    name: "window-rank",
+    unit: "statements",
+    ops: WINDOW_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // `score` is unique per row, so `RANK` and `DENSE_RANK` agree and the row
+      // with id `n` must carry rank `n`; a plan that ignores the window order or
+      // drops rows fails before timing.
+      for (let index = 0; index < WINDOW_OPS; index += 1) {
+        const result = await client.query(
+          "SELECT id, RANK() OVER (ORDER BY score) AS r, DENSE_RANK() OVER (ORDER BY score) AS d FROM bench_items ORDER BY id LIMIT 20",
+        );
+        if (result.rows.length !== 20) throw new Error(`window-rank rows=${result.rows.length}`);
+        for (let row = 0; row < result.rows.length; row += 1) {
+          const id = Number(cellAt(result, result.rows[row], 0));
+          const rank = Number(cellAt(result, result.rows[row], 1));
+          const dense = Number(cellAt(result, result.rows[row], 2));
+          if (rank !== id || dense !== id) throw new Error(`window-rank id=${id} rank=${rank} dense=${dense}`);
+        }
+      }
+      return WINDOW_OPS;
+    },
+  },
+  {
     name: "rollback-bulk",
     unit: "rows",
     ops: TX_COUNT * TX_ROWS,
