@@ -112,6 +112,9 @@ There is one untimed warmup round followed by three measured rounds.
   the gateway keeps the stream synchronised after an error
 - `rollback-bulk` — `BENCH_TX` transactions of `BENCH_TX_ROWS` inserts, one
   `ROLLBACK` each; the same row ids are reinserted every transaction
+- `savepoint-rollback` — `BENCH_SAVEPOINT` transactions that insert, update, roll
+  the update back to a savepoint, insert again and commit; the surviving two rows
+  per transaction and the rolled-back value are asserted
 - `upsert-pk` — `BENCH_ROWS` `INSERT ... ON DUPLICATE KEY UPDATE` statements
   whose primary key always collides, so every statement rewrites one seeded row
   and `VALUES(label)` must win

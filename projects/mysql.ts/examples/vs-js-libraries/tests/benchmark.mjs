@@ -44,6 +44,7 @@ const CONNECT_OPS = Number(process.env.BENCH_CONNECT ?? 20);
 const CURSOR_PAGE_SIZE = 20;
 const RANGE_ROWS = 20;
 const WINDOW_OPS = Number(process.env.BENCH_WINDOW ?? 20);
+const SAVEPOINT_OPS = Number(process.env.BENCH_SAVEPOINT ?? 20);
 // Fixed predicate shapes so every client issues identical SQL.
 const LIKE_PREFIX_ROWS = (() => {
   let matched = 0;
@@ -793,6 +794,35 @@ const ALL_WORKLOADS = [
       return TX_COUNT * TX_ROWS;
     },
   },
+  {
+    name: "savepoint-rollback",
+    unit: "statements",
+    ops: SAVEPOINT_OPS * 8,
+    async setup(client) {
+      await client.query("CREATE TABLE bench_sp (id INT PRIMARY KEY, val INT)");
+    },
+    async run(client) {
+      // `ROLLBACK TO SAVEPOINT` 只撤销保存点之后的写入，保存点仍需可释放。
+      for (let index = 0; index < SAVEPOINT_OPS; index += 1) {
+        const base = index * 2;
+        await client.query("BEGIN");
+        await client.query(`INSERT INTO bench_sp VALUES (${base + 1}, ${index})`);
+        await client.query("SAVEPOINT sp1");
+        await client.query(`UPDATE bench_sp SET val = val + 1 WHERE id = ${base + 1}`);
+        await client.query("ROLLBACK TO SAVEPOINT sp1");
+        await client.query(`INSERT INTO bench_sp VALUES (${base + 2}, ${index})`);
+        await client.query("RELEASE SAVEPOINT sp1");
+        await client.query("COMMIT");
+      }
+      const count = await client.query("SELECT COUNT(*) FROM bench_sp");
+      const kept = Number(cellAt(count, count.rows[0], 0));
+      if (kept !== SAVEPOINT_OPS * 2) throw new Error(`savepoint-rollback rows=${kept}`);
+      const rolledBack = await client.query("SELECT val FROM bench_sp WHERE id = 1");
+      const value = Number(cellAt(rolledBack, rolledBack.rows[0], 0));
+      if (value !== 0) throw new Error(`savepoint-rollback val=${value} expected=0`);
+      return SAVEPOINT_OPS * 8;
+    },
+  },
 ];
 
 // `BENCH_ONLY` keeps the report shape identical while letting a focused run
@@ -841,7 +871,7 @@ async function main() {
   console.log("mysql vs-js-libraries benchmark");
   console.log(`Loopback 127.0.0.1, one text-protocol connection per client, fresh server + seed per measurement`);
   console.log(
-    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}, BENCH_MUTATE=${MUTATE_OPS}, BENCH_ERROR=${ERROR_OPS}, BENCH_PAGE=${PAGE_OPS}, BENCH_JOIN=${JOIN_OPS}, BENCH_SHOW=${SHOW_OPS}, BENCH_BATCH_ROWS=${BATCH_ROWS}, BENCH_AGG=${AGG_OPS}, BENCH_CONNECT=${CONNECT_OPS}, BENCH_WINDOW=${WINDOW_OPS}`,
+    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}, BENCH_MUTATE=${MUTATE_OPS}, BENCH_ERROR=${ERROR_OPS}, BENCH_PAGE=${PAGE_OPS}, BENCH_JOIN=${JOIN_OPS}, BENCH_SHOW=${SHOW_OPS}, BENCH_BATCH_ROWS=${BATCH_ROWS}, BENCH_AGG=${AGG_OPS}, BENCH_CONNECT=${CONNECT_OPS}, BENCH_WINDOW=${WINDOW_OPS}, BENCH_SAVEPOINT=${SAVEPOINT_OPS}`,
   );
   console.log("Warmup: 1 untimed round");
   if (ONLY.length > 0) console.log(`BENCH_ONLY: ${WORKLOADS.map((workload) => workload.name).join(", ")}`);

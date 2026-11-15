@@ -49,6 +49,9 @@ binary protocol; every other workload uses `COM_QUERY` for both clients.
 - `tx-roundtrip` — 20 `BEGIN` / `SELECT` / `COMMIT` round trips
 - `window-row-number` — 20 `row_number() OVER (ORDER BY id)` statements
 - `rollback-bulk` — 10 transactions of 10 inserts, one `ROLLBACK` each
+- `savepoint-rollback` — `BENCH_SAVEPOINT` transactions that insert, update, roll the
+  update back to a savepoint, insert again and commit; the surviving rows and the
+  rolled-back value are asserted
 
 `SHOW STATUS` is not implemented by the gateway (`1064`), so the session-command item is
 `SHOW VARIABLES`. MySQL has no `PRAGMA synchronous` equivalent, so `commit-sync-on` is not
@@ -58,112 +61,115 @@ applicable to this product.
 
 | Workload | mysql2 | @yydb/mysql |
 |---------:|-------:|------------:|
-| connect-handshake | 1.00x | **0.68x** |
-| insert | 1.00x | **0.94x** |
-| insert-prepared | 1.00x | **0.93x** |
-| insert-batch | 1.00x | **0.83x** |
-| insert-autoinc | 1.00x | **0.82x** |
-| select-point | 1.00x | **0.50x** |
-| select-point-uk | **1.00x** | 1.14x |
-| index-range | **1.00x** | 1.08x |
-| select-range | 1.00x | **0.69x** |
-| select-scan | 1.00x | **0.75x** |
-| aggregate | 1.00x | **0.88x** |
-| select-group-by | 1.00x | **0.63x** |
-| select-distinct | 1.00x | **0.64x** |
-| select-like-prefix | 1.00x | **0.93x** |
-| select-in-list | 1.00x | **0.93x** |
-| select-subquery-in | 1.00x | **0.83x** |
-| select-union-all | **1.00x** | 1.21x |
-| select-cursor-page | 1.00x | **0.91x** |
-| select-limit-offset | 1.00x | **0.88x** |
-| multi-table-join | 1.00x | **0.89x** |
-| show-session | 1.00x | **0.64x** |
-| select-null-blob | 1.00x | **0.63x** |
-| tx-commit | **1.00x** | 1.05x |
-| update-multi | 1.00x | **0.98x** |
-| delete-where | 1.00x | **0.89x** |
-| binary-prepared-rows | 1.00x | **0.65x** |
-| error-path | 1.00x | **0.49x** |
-| upsert-pk | 1.00x | **0.96x** |
-| insert-select | 1.00x | **0.87x** |
-| tx-roundtrip | 1.00x | **0.91x** |
-| window-row-number | **1.00x** | 1.09x |
-| rollback-bulk | 1.00x | **0.92x** |
+| connect-handshake | 1.00x | **0.92x** |
+| insert | 1.00x | **0.99x** |
+| insert-prepared | 1.00x | **0.94x** |
+| insert-batch | 1.00x | **0.98x** |
+| insert-autoinc | **1.00x** | 1.01x |
+| select-point | 1.00x | **0.88x** |
+| select-point-uk | 1.00x | **0.94x** |
+| index-range | **1.00x** | 1.05x |
+| select-range | 1.00x | **0.84x** |
+| select-scan | 1.00x | **0.93x** |
+| aggregate | 1.00x | **0.99x** |
+| select-group-by | 1.00x | **0.79x** |
+| select-distinct | 1.00x | **0.83x** |
+| select-like-prefix | 1.00x | **0.98x** |
+| select-in-list | 1.00x | **0.92x** |
+| select-subquery-in | **1.00x** | 1.01x |
+| select-union-all | **1.00x** | 1.12x |
+| select-cursor-page | **1.00x** | 1.05x |
+| select-limit-offset | 1.00x | **0.99x** |
+| multi-table-join | **1.00x** | 1.04x |
+| show-session | 1.00x | **0.90x** |
+| select-null-blob | 1.00x | **0.62x** |
+| tx-commit | 1.00x | **0.94x** |
+| update-multi | 1.00x | **0.71x** |
+| delete-where | 1.00x | **0.94x** |
+| binary-prepared-rows | 1.00x | **0.83x** |
+| error-path | 1.00x | **0.81x** |
+| upsert-pk | **1.00x** | 1.01x |
+| insert-select | 1.00x | **0.98x** |
+| tx-roundtrip | 1.00x | **0.81x** |
+| window-row-number | 1.00x | **0.98x** |
+| rollback-bulk | 1.00x | **1.00x** |
+| savepoint-rollback | 1.00x | **0.97x** |
 
 ## Absolute (median per-round totals normalised per op)
 
 | Workload | Unit | mysql2 ms/op | mysql2 ops/s | @yydb/mysql ms/op | @yydb/mysql ops/s |
 |---------:|-----:|-------------:|-------------:|------------------:|------------------:|
-| connect-handshake | connections | 0.72 | 1,395/s | 0.49 | 2,046/s |
-| insert | statements | 2.51 | 399/s | 2.35 | 426/s |
-| insert-prepared | rows | 2.56 | 391/s | 2.38 | 421/s |
-| insert-batch | rows | 0.15 | 6,706/s | 0.12 | 8,082/s |
-| insert-autoinc | rows | 4.91 | 204/s | 4.01 | 249/s |
-| select-point | statements | 0.09 | 10,673/s | 0.05 | 21,501/s |
-| select-point-uk | statements | 0.19 | 5,362/s | 0.21 | 4,720/s |
-| index-range | statements | 0.23 | 4,403/s | 0.25 | 4,075/s |
-| select-range | statements | 0.15 | 6,678/s | 0.10 | 9,676/s |
-| select-scan | rows | 0.00 | 269,898/s | 0.00 | 360,724/s |
-| aggregate | statements | 0.21 | 4,756/s | 0.18 | 5,421/s |
-| select-group-by | statements | 0.64 | 1,552/s | 0.40 | 2,479/s |
-| select-distinct | statements | 0.56 | 1,779/s | 0.36 | 2,782/s |
-| select-like-prefix | statements | 0.27 | 3,739/s | 0.25 | 4,001/s |
-| select-in-list | statements | 0.14 | 7,043/s | 0.13 | 7,598/s |
-| select-subquery-in | statements | 0.29 | 3,508/s | 0.24 | 4,239/s |
-| select-union-all | statements | 0.32 | 3,144/s | 0.38 | 2,605/s |
-| select-cursor-page | pages | 0.79 | 1,259/s | 0.73 | 1,376/s |
-| select-limit-offset | statements | 0.85 | 1,175/s | 0.75 | 1,330/s |
-| multi-table-join | statements | 3.31 | 302/s | 2.95 | 339/s |
-| show-session | statements | 0.08 | 12,720/s | 0.05 | 19,861/s |
-| select-null-blob | rows | 0.01 | 178,083/s | 0.00 | 282,438/s |
-| tx-commit | rows | 0.40 | 2,475/s | 0.42 | 2,361/s |
-| update-multi | statements | 2.57 | 389/s | 2.53 | 396/s |
-| delete-where | rows | 1.32 | 756/s | 1.18 | 847/s |
-| binary-prepared-rows | statements | 0.07 | 14,135/s | 0.05 | 21,768/s |
-| error-path | statements | 0.11 | 9,127/s | 0.05 | 18,566/s |
-| upsert-pk | statements | 2.82 | 354/s | 2.71 | 369/s |
-| insert-select | rows | 0.02 | 46,420/s | 0.02 | 53,532/s |
-| tx-roundtrip | transactions | 0.36 | 2,789/s | 0.33 | 3,061/s |
-| window-row-number | statements | 0.25 | 4,074/s | 0.27 | 3,727/s |
-| rollback-bulk | rows | 0.11 | 8,989/s | 0.10 | 9,764/s |
+| connect-handshake | connections | 0.81 | 1,241/s | 0.74 | 1,348/s |
+| insert | statements | 3.08 | 325/s | 3.04 | 329/s |
+| insert-prepared | rows | 3.27 | 306/s | 3.08 | 325/s |
+| insert-batch | rows | 0.21 | 4,856/s | 0.20 | 4,953/s |
+| insert-autoinc | rows | 4.02 | 249/s | 4.05 | 247/s |
+| select-point | statements | 0.14 | 7,393/s | 0.12 | 8,411/s |
+| select-point-uk | statements | 0.15 | 6,461/s | 0.15 | 6,839/s |
+| index-range | statements | 0.33 | 2,992/s | 0.35 | 2,856/s |
+| select-range | statements | 0.40 | 2,498/s | 0.34 | 2,968/s |
+| select-scan | rows | 0.01 | 177,322/s | 0.01 | 189,959/s |
+| aggregate | statements | 0.64 | 1,567/s | 0.63 | 1,581/s |
+| select-group-by | statements | 1.39 | 721/s | 1.10 | 907/s |
+| select-distinct | statements | 2.14 | 467/s | 1.78 | 561/s |
+| select-like-prefix | statements | 1.06 | 942/s | 1.04 | 964/s |
+| select-in-list | statements | 0.55 | 1,834/s | 0.50 | 1,990/s |
+| select-subquery-in | statements | 0.99 | 1,011/s | 1.00 | 1,002/s |
+| select-union-all | statements | 0.98 | 1,018/s | 1.10 | 912/s |
+| select-cursor-page | pages | 2.96 | 338/s | 3.10 | 323/s |
+| select-limit-offset | statements | 3.53 | 283/s | 3.51 | 285/s |
+| multi-table-join | statements | 6.61 | 151/s | 6.85 | 146/s |
+| show-session | statements | 0.11 | 9,221/s | 0.10 | 10,249/s |
+| select-null-blob | rows | 0.01 | 118,571/s | 0.01 | 192,036/s |
+| tx-commit | rows | 0.55 | 1,810/s | 0.52 | 1,930/s |
+| update-multi | statements | 4.91 | 204/s | 3.50 | 286/s |
+| delete-where | rows | 1.74 | 575/s | 1.63 | 613/s |
+| binary-prepared-rows | statements | 0.16 | 6,137/s | 0.14 | 7,373/s |
+| error-path | statements | 0.21 | 4,775/s | 0.17 | 5,922/s |
+| upsert-pk | statements | 3.97 | 252/s | 4.03 | 248/s |
+| insert-select | rows | 0.04 | 23,721/s | 0.04 | 24,170/s |
+| tx-roundtrip | transactions | 0.40 | 2,496/s | 0.32 | 3,092/s |
+| window-row-number | statements | 1.05 | 954/s | 1.02 | 978/s |
+| rollback-bulk | rows | 0.28 | 3,517/s | 0.28 | 3,526/s |
+| savepoint-rollback | statements | 0.58 | 1,738/s | 0.56 | 1,794/s |
 
 ## p95 per-round total (ms)
 
 | Workload | mysql2 | @yydb/mysql |
 |---------:|-------:|------------:|
-| connect-handshake | 16.10 | 9.85 |
-| insert | 512.21 | 474.88 |
-| insert-prepared | 523.00 | 478.95 |
-| insert-batch | 30.33 | 26.75 |
-| insert-autoinc | 1120.09 | 908.59 |
-| select-point | 60.89 | 25.53 |
-| select-point-uk | 105.37 | 117.44 |
-| index-range | 119.28 | 135.78 |
-| select-range | 78.33 | 53.34 |
-| select-scan | 4.04 | 3.84 |
-| aggregate | 21.77 | 18.80 |
-| select-group-by | 65.34 | 43.64 |
-| select-distinct | 59.25 | 37.35 |
-| select-like-prefix | 27.64 | 25.89 |
-| select-in-list | 15.35 | 13.22 |
-| select-subquery-in | 29.92 | 23.62 |
-| select-union-all | 32.15 | 38.47 |
-| select-cursor-page | 40.56 | 36.46 |
-| select-limit-offset | 17.59 | 15.89 |
-| multi-table-join | 418.64 | 398.34 |
-| show-session | 21.51 | 14.06 |
-| select-null-blob | 5.77 | 4.32 |
-| tx-commit | 41.95 | 42.46 |
-| update-multi | 279.68 | 263.60 |
-| delete-where | 294.66 | 237.88 |
-| binary-prepared-rows | 38.65 | 23.41 |
-| error-path | 25.63 | 11.02 |
-| upsert-pk | 586.02 | 548.19 |
-| insert-select | 4.39 | 4.02 |
-| tx-roundtrip | 7.72 | 8.34 |
-| window-row-number | 5.83 | 5.97 |
-| rollback-bulk | 11.22 | 10.39 |
+| connect-handshake | 18.50 | 16.14 |
+| insert | 642.26 | 612.62 |
+| insert-prepared | 686.06 | 624.84 |
+| insert-batch | 42.35 | 40.55 |
+| insert-autoinc | 805.79 | 813.84 |
+| select-point | 71.07 | 63.98 |
+| select-point-uk | 79.97 | 74.83 |
+| index-range | 167.79 | 183.84 |
+| select-range | 203.01 | 169.33 |
+| select-scan | 6.25 | 5.39 |
+| aggregate | 64.90 | 65.52 |
+| select-group-by | 140.60 | 110.74 |
+| select-distinct | 214.81 | 184.30 |
+| select-like-prefix | 113.75 | 108.84 |
+| select-in-list | 56.50 | 50.41 |
+| select-subquery-in | 101.13 | 100.20 |
+| select-union-all | 100.04 | 112.83 |
+| select-cursor-page | 148.32 | 168.86 |
+| select-limit-offset | 71.63 | 71.22 |
+| multi-table-join | 671.38 | 705.94 |
+| show-session | 23.06 | 20.59 |
+| select-null-blob | 8.62 | 5.25 |
+| tx-commit | 58.49 | 52.76 |
+| update-multi | 628.07 | 357.94 |
+| delete-where | 349.69 | 341.91 |
+| binary-prepared-rows | 81.53 | 68.40 |
+| error-path | 42.46 | 33.83 |
+| upsert-pk | 795.83 | 818.40 |
+| insert-select | 8.50 | 8.53 |
+| tx-roundtrip | 8.36 | 7.28 |
+| window-row-number | 21.01 | 20.74 |
+| rollback-bulk | 28.64 | 31.88 |
+| savepoint-rollback | 94.45 | 89.28 |
 
 ## Alternating legacy / current AB
 
