@@ -1,7 +1,8 @@
 # Benchmark report
 
 Command: `pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark`
-Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`, `BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`, `BENCH_MUTATE=100`, `BENCH_ERROR=100`, `BENCH_PAGE=20`, `BENCH_JOIN=100`, `BENCH_SHOW=200`
+Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`, `BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`, `BENCH_MUTATE=100`, `BENCH_ERROR=100`, `BENCH_PAGE=20`, `BENCH_JOIN=100`, `BENCH_SHOW=200`, `BENCH_BATCH_ROWS=20`, `BENCH_AGG=100`, `BENCH_CONNECT=20`, `BENCH_WINDOW=20`
+Captured with `BENCH_ROUNDS=2`.
 Baseline: `mysql2` (`createConnection` + `query()` / prepared `execute()`) = `1.00x`
 Ratio: subject_time / baseline_time (smaller is faster). Fastest cell in each row is bold.
 Each measurement starts a fresh `startMysqlServer` with a fresh `mkdtemp` data directory,
@@ -13,13 +14,19 @@ Text workloads share one SQL and one seed size across clients. `insert-prepared`
 `binary-prepared-rows` prepare the same statement once per client and execute it over the
 binary protocol; every other workload uses `COM_QUERY` for both clients.
 
+- `connect-handshake` — open and close one extra connection per op against the same fresh
+  server while the measurement connection stays open
 - `insert` — 200 sequential text inserts into an empty table
 - `insert-prepared` — one prepared insert, 200 `COM_STMT_EXECUTE` calls
+- `insert-batch` — one multi-row `INSERT` of `BENCH_BATCH_ROWS` rows per statement
 - `insert-autoinc` — 200 text inserts that omit the `AUTO_INCREMENT` primary key; the
   generated id reported in the OK packet must be `1..200`
 - `select-point` — 500 primary-key equality selects over 200 seeded rows
 - `select-point-uk` — 500 equality selects over 200 rows, predicate on a `UNIQUE` secondary index
+- `index-range` — ranged reads on the `UNIQUE` secondary index, 20 adjacent keys per statement
+- `select-range` — 500 primary-key range reads of 20 adjacent ids per statement
 - `select-scan` — one `SELECT ... ORDER BY id` over 1,000 rows
+- `aggregate` — 100 `count`/`sum`/`min`/`max` aggregates over the 200-row seed
 - `select-cursor-page` — keyset pagination over the same 1,000 rows, 20 rows per page
 - `select-limit-offset` — 20 deep `LIMIT 10 OFFSET n` pages over the same 1,000 rows
 - `multi-table-join` — 100 joins of two physical tables (`bench_items JOIN bench_side`),
@@ -31,6 +38,10 @@ binary protocol; every other workload uses `COM_QUERY` for both clients.
 - `delete-where` — 100 paired-range `DELETE` statements removing the whole 200-row seed; the unit is rows
 - `binary-prepared-rows` — one `SELECT id, label ... WHERE id = ?` prepared per client, then 500 `COM_STMT_EXECUTE` calls over the same 200-row seed as `select-point`
 - `error-path` — 100 duplicate-primary-key inserts (errno 1062) and 100 unknown-table selects (errno 1146) on one connection
+- `upsert-pk` — 200 `INSERT ... ON DUPLICATE KEY UPDATE` statements on the same primary keys
+- `insert-select` — `INSERT ... SELECT` copies over the seeded table
+- `tx-roundtrip` — 20 `BEGIN` / `SELECT` / `COMMIT` round trips
+- `window-row-number` — 20 `row_number() OVER (ORDER BY id)` statements
 - `rollback-bulk` — 10 transactions of 10 inserts, one `ROLLBACK` each
 
 `SHOW STATUS` is not implemented by the gateway (`1064`), so the session-command item is
@@ -41,67 +52,94 @@ applicable to this product.
 
 | Workload | mysql2 | @yydb/mysql |
 |---------:|-------:|------------:|
-| insert | 1.00x | **0.96x** |
-| insert-prepared | 1.00x | **0.73x** |
-| insert-autoinc | 1.00x | **0.86x** |
-| select-point | 1.00x | **0.65x** |
-| select-point-uk | 1.00x | **0.89x** |
-| select-scan | 1.00x | **0.96x** |
-| select-cursor-page | 1.00x | **0.89x** |
-| select-limit-offset | **1.00x** | 1.18x |
-| multi-table-join | **1.00x** | 1.03x |
-| show-session | 1.00x | **0.73x** |
+| connect-handshake | 1.00x | **0.62x** |
+| insert | 1.00x | **0.86x** |
+| insert-prepared | 1.00x | **0.92x** |
+| insert-batch | 1.00x | **0.96x** |
+| insert-autoinc | 1.00x | **0.99x** |
+| select-point | 1.00x | **0.74x** |
+| select-point-uk | 1.00x | **0.82x** |
+| index-range | 1.00x | **0.76x** |
+| select-range | 1.00x | **0.68x** |
+| select-scan | 1.00x | **0.59x** |
+| aggregate | 1.00x | **0.77x** |
+| select-cursor-page | **1.00x** | 1.11x |
+| select-limit-offset | 1.00x | **0.94x** |
+| multi-table-join | 1.00x | **0.81x** |
+| show-session | 1.00x | **0.76x** |
 | select-null-blob | 1.00x | **0.54x** |
-| tx-commit | 1.00x | **0.95x** |
-| update-multi | 1.00x | **0.99x** |
-| delete-where | 1.00x | **0.97x** |
-| binary-prepared-rows | 1.00x | **0.60x** |
-| error-path | 1.00x | **0.75x** |
-| rollback-bulk | 1.00x | **0.87x** |
+| tx-commit | 1.00x | **0.89x** |
+| update-multi | 1.00x | **0.89x** |
+| delete-where | 1.00x | **0.87x** |
+| binary-prepared-rows | 1.00x | **0.56x** |
+| error-path | 1.00x | **0.64x** |
+| upsert-pk | 1.00x | **0.99x** |
+| insert-select | 1.00x | **0.85x** |
+| tx-roundtrip | 1.00x | **0.79x** |
+| window-row-number | 1.00x | **0.94x** |
+| rollback-bulk | 1.00x | **0.93x** |
 
 ## Absolute (median per-round totals normalised per op)
 
 | Workload | Unit | mysql2 ms/op | mysql2 ops/s | @yydb/mysql ms/op | @yydb/mysql ops/s |
 |---------:|-----:|-------------:|-------------:|------------------:|------------------:|
-| insert | statements | 6.70 | 149/s | 6.40 | 156/s |
-| insert-prepared | rows | 8.11 | 123/s | 5.90 | 169/s |
-| insert-autoinc | rows | 7.75 | 129/s | 6.68 | 150/s |
-| select-point | statements | 0.15 | 6,505/s | 0.10 | 9,947/s |
-| select-point-uk | statements | 0.39 | 2,534/s | 0.35 | 2,840/s |
-| select-scan | rows | 0.01 | 190,255/s | 0.01 | 198,831/s |
-| select-cursor-page | pages | 1.98 | 506/s | 1.76 | 569/s |
-| select-limit-offset | statements | 2.03 | 492/s | 2.40 | 416/s |
-| multi-table-join | statements | 3.99 | 251/s | 4.13 | 242/s |
-| show-session | statements | 0.16 | 6,359/s | 0.12 | 8,694/s |
-| select-null-blob | rows | 0.01 | 80,815/s | 0.01 | 149,779/s |
-| tx-commit | rows | 0.86 | 1,157/s | 0.82 | 1,224/s |
-| update-multi | statements | 6.63 | 151/s | 6.54 | 153/s |
-| delete-where | rows | 3.12 | 320/s | 3.03 | 330/s |
-| binary-prepared-rows | statements | 0.19 | 5,337/s | 0.11 | 8,831/s |
-| error-path | statements | 0.22 | 4,497/s | 0.17 | 6,015/s |
-| rollback-bulk | rows | 0.31 | 3,260/s | 0.27 | 3,733/s |
+| connect-handshake | connections | 1.42 | 703/s | 0.88 | 1,134/s |
+| insert | statements | 3.65 | 274/s | 3.13 | 320/s |
+| insert-prepared | rows | 3.50 | 286/s | 3.23 | 310/s |
+| insert-batch | rows | 0.18 | 5,627/s | 0.17 | 5,839/s |
+| insert-autoinc | rows | 4.12 | 243/s | 4.08 | 245/s |
+| select-point | statements | 0.13 | 7,833/s | 0.09 | 10,632/s |
+| select-point-uk | statements | 0.31 | 3,213/s | 0.26 | 3,910/s |
+| index-range | statements | 0.35 | 2,840/s | 0.27 | 3,724/s |
+| select-range | statements | 0.22 | 4,475/s | 0.15 | 6,547/s |
+| select-scan | rows | 0.00 | 283,776/s | 0.00 | 480,480/s |
+| aggregate | statements | 0.28 | 3,538/s | 0.22 | 4,588/s |
+| select-cursor-page | pages | 1.17 | 853/s | 1.30 | 766/s |
+| select-limit-offset | statements | 1.38 | 723/s | 1.31 | 766/s |
+| multi-table-join | statements | 3.91 | 256/s | 3.17 | 315/s |
+| show-session | statements | 0.09 | 11,346/s | 0.07 | 14,927/s |
+| select-null-blob | rows | 0.01 | 114,712/s | 0.00 | 210,699/s |
+| tx-commit | rows | 0.45 | 2,198/s | 0.41 | 2,462/s |
+| update-multi | statements | 3.44 | 291/s | 3.07 | 325/s |
+| delete-where | rows | 1.75 | 570/s | 1.52 | 656/s |
+| binary-prepared-rows | statements | 0.15 | 6,750/s | 0.08 | 12,115/s |
+| error-path | statements | 0.16 | 6,317/s | 0.10 | 9,815/s |
+| upsert-pk | statements | 3.94 | 254/s | 3.90 | 256/s |
+| insert-select | rows | 0.03 | 34,519/s | 0.02 | 40,544/s |
+| tx-roundtrip | transactions | 0.56 | 1,777/s | 0.44 | 2,252/s |
+| window-row-number | statements | 0.45 | 2,238/s | 0.42 | 2,386/s |
+| rollback-bulk | rows | 0.23 | 4,433/s | 0.21 | 4,772/s |
 
 ## p95 per-round total (ms)
 
 | Workload | mysql2 | @yydb/mysql |
 |---------:|-------:|------------:|
-| insert | 1374.55 | 1354.08 |
-| insert-prepared | 2151.57 | 1296.79 |
-| insert-autoinc | 1902.80 | 1562.85 |
-| select-point | 82.51 | 60.03 |
-| select-point-uk | 259.99 | 177.17 |
-| select-scan | 16.61 | 5.38 |
-| select-cursor-page | 99.77 | 88.44 |
-| select-limit-offset | 40.98 | 49.59 |
-| multi-table-join | 468.82 | 428.80 |
-| show-session | 32.12 | 25.95 |
-| select-null-blob | 14.10 | 7.18 |
-| tx-commit | 106.26 | 82.93 |
-| update-multi | 693.28 | 741.22 |
-| delete-where | 840.60 | 629.78 |
-| binary-prepared-rows | 95.71 | 57.69 |
-| error-path | 50.99 | 36.58 |
-| rollback-bulk | 38.70 | 29.52 |
+| connect-handshake | 35.60 | 20.31 |
+| insert | 768.24 | 638.88 |
+| insert-prepared | 732.21 | 683.09 |
+| insert-batch | 37.91 | 36.63 |
+| insert-autoinc | 827.81 | 844.33 |
+| select-point | 64.90 | 52.54 |
+| select-point-uk | 165.10 | 143.36 |
+| index-range | 189.58 | 154.84 |
+| select-range | 131.65 | 96.29 |
+| select-scan | 4.18 | 2.16 |
+| aggregate | 31.39 | 26.97 |
+| select-cursor-page | 59.93 | 71.43 |
+| select-limit-offset | 30.64 | 26.40 |
+| multi-table-join | 439.65 | 323.44 |
+| show-session | 22.33 | 13.50 |
+| select-null-blob | 8.95 | 5.34 |
+| tx-commit | 47.63 | 40.77 |
+| update-multi | 358.22 | 332.47 |
+| delete-where | 367.73 | 315.13 |
+| binary-prepared-rows | 74.21 | 44.78 |
+| error-path | 34.24 | 22.21 |
+| upsert-pk | 792.42 | 811.81 |
+| insert-select | 5.99 | 5.88 |
+| tx-roundtrip | 11.33 | 9.18 |
+| window-row-number | 9.23 | 8.57 |
+| rollback-bulk | 25.79 | 22.25 |
 
 ## Alternating legacy / current AB
 
@@ -146,17 +184,16 @@ What the current path changes:
 
 ## Known production gaps
 
-- `select-point-uk` still scans every row of the table because the unique constraint is
-  only enforced on writes; there is no secondary KV index to push an equality lookup into.
-  The gateway can only cache the plan, not change execution.
-- `select-cursor-page` still scans the table per page: integer primary keys are stored as
+- `select-point-uk` and `index-range` still scan every row of the table because the unique
+  constraint is only enforced on writes; there is no secondary KV index to push the
+  predicate into. The gateway can only cache the plan, not change execution.
+- `select-cursor-page` is 1.11x slower than `mysql2`: integer primary keys are stored as
   unpadded decimal ASCII, so `rowid_after` cannot express `id > last` without a scan and a
   row-level filter. Early-stop pagination needs an execution-layer rowid predicate.
-- `select-limit-offset` is 1.18x slower than `mysql2` for the same reason at the execution
-  layer: a deep `OFFSET` walks and sorts the whole table per page. The gateway has no place
-  to add an early stop.
-- `multi-table-join` is at parity/slightly slower because the execution-layer join is a
-  nested-loop scan; the protocol layer only caches the identical SQL plan.
+- `select-limit-offset` is now at parity on two measured rounds, but a deep `OFFSET` still
+  walks and sorts the whole table per page; the ratio moves with run-to-run noise.
+- `multi-table-join` is now faster than `mysql2` (0.81x), but the execution-layer join is
+  still a nested-loop scan; the protocol layer only caches the identical SQL plan.
 - `update-multi` and `delete-where` still scan the namespace per statement inside the
   execution layer. The gateway caches plans only for catalog-stable SELECTs.
 - `SHOW STATUS` is rejected with `1064`; only `SHOW VARIABLES` is implemented.
@@ -181,6 +218,8 @@ What the current path changes:
   drops `insertId` fails the run before timing.
 - `select-point-uk` moves only the predicate to a `UNIQUE` index while keeping the point
   count and seed size of `select-point`; it exposes secondary-index lookup, not index DDL.
+- `index-range` reads 20 adjacent `uk` values per statement in `ORDER BY id` order, so a
+  row reorder or a missed range fails the run before timing.
 - `select-limit-offset` cycles the offset deterministically so the page never runs past the
   seed and both clients issue identical SQL.
 - `multi-table-join` reads two physical tables; the second table holds exactly one row per

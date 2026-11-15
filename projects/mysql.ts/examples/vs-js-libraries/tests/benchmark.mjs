@@ -16,7 +16,7 @@
 // Env: BENCH_ROWS (200), BENCH_POINT (500), BENCH_SCAN (1000), BENCH_ROUNDS (3),
 //      BENCH_TX (10), BENCH_TX_ROWS (10), BENCH_MUTATE (100), BENCH_ERROR (100),
 //      BENCH_PAGE (20), BENCH_JOIN (100), BENCH_SHOW (200), BENCH_BATCH_ROWS (20),
-//      BENCH_AGG (100), BENCH_CONNECT (20)
+//      BENCH_AGG (100), BENCH_CONNECT (20), BENCH_ONLY (comma-separated names)
 
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -44,6 +44,11 @@ const CONNECT_OPS = Number(process.env.BENCH_CONNECT ?? 20);
 const CURSOR_PAGE_SIZE = 20;
 const RANGE_ROWS = 20;
 const WINDOW_OPS = Number(process.env.BENCH_WINDOW ?? 20);
+// Narrow the run to a subset of workloads, e.g. `BENCH_ONLY=select-point-uk,index-range`.
+const ONLY = (process.env.BENCH_ONLY ?? "")
+  .split(",")
+  .map((name) => name.trim())
+  .filter(Boolean);
 
 const CLIENTS = [
   { name: "mysql2", connect: connectMysql2 },
@@ -122,7 +127,7 @@ async function expectError(client, sql, errno) {
   throw new Error(`expected errno ${errno} but the statement succeeded: ${sql}`);
 }
 
-const WORKLOADS = [
+const ALL_WORKLOADS = [
   {
     name: "connect-handshake",
     unit: "connections",
@@ -257,6 +262,34 @@ const WORKLOADS = [
           `SELECT label FROM bench_items_uk WHERE uk = ${uk}`,
         );
         if (result.rows.length !== 1) throw new Error(`point-uk miss uk=${uk}`);
+      }
+      return POINT_OPS;
+    },
+  },
+  {
+    name: "index-range",
+    unit: "statements",
+    ops: POINT_OPS,
+    async setup(client) {
+      await seedUnique(client, ROWS);
+    },
+    async run(client) {
+      // `RANGE_ROWS` of the seeded `uk` values per statement, the shape a
+      // secondary-index range scan serves. `ORDER BY id` keeps both clients on
+      // identical SQL and fails if the index scan reorders rows.
+      const span = Math.max(1, ROWS - RANGE_ROWS);
+      for (let index = 0; index < POINT_OPS; index += 1) {
+        const from = (index % span) + 1;
+        const result = await client.query(
+          `SELECT id FROM bench_items_uk WHERE uk BETWEEN ${from} AND ${from + RANGE_ROWS - 1} ORDER BY id`,
+        );
+        if (result.rows.length !== RANGE_ROWS) {
+          throw new Error(`index-range from=${from} rows=${result.rows.length}`);
+        }
+        const first = Number(cellAt(result, result.rows[0], 0));
+        if (first !== from) {
+          throw new Error(`index-range from=${from} first=${first}`);
+        }
       }
       return POINT_OPS;
     },
@@ -642,6 +675,16 @@ const WORKLOADS = [
   },
 ];
 
+// `BENCH_ONLY` keeps the report shape identical while letting a focused run
+// measure a few workloads repeatedly.
+const WORKLOADS =
+  ONLY.length === 0
+    ? ALL_WORKLOADS
+    : ALL_WORKLOADS.filter((workload) => ONLY.includes(workload.name));
+if (WORKLOADS.length === 0) {
+  throw new Error(`BENCH_ONLY matched no workload: ${ONLY.join(", ")}`);
+}
+
 async function measure(workload, client) {
   const dataDir = await mkdtemp(join(tmpdir(), "mysql-bench-"));
   const server = startMysqlServer({ dataDir, port: 0 });
@@ -681,6 +724,7 @@ async function main() {
     `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}, BENCH_MUTATE=${MUTATE_OPS}, BENCH_ERROR=${ERROR_OPS}, BENCH_PAGE=${PAGE_OPS}, BENCH_JOIN=${JOIN_OPS}, BENCH_SHOW=${SHOW_OPS}, BENCH_BATCH_ROWS=${BATCH_ROWS}, BENCH_AGG=${AGG_OPS}, BENCH_CONNECT=${CONNECT_OPS}, BENCH_WINDOW=${WINDOW_OPS}`,
   );
   console.log("Warmup: 1 untimed round");
+  if (ONLY.length > 0) console.log(`BENCH_ONLY: ${WORKLOADS.map((workload) => workload.name).join(", ")}`);
   for (const workload of WORKLOADS) {
     for (const client of CLIENTS) await measure(workload, client);
   }

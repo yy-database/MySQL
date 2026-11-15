@@ -11,11 +11,12 @@ time-travel.*
 
 # Rust
 target/
+target-rel/
 Cargo.lock
 **/*.rs.bk
 
 # Local dependency overrides (CI resolves pinned git revisions only)
-.cargo/config.toml
+**/.cargo/config.toml
 
 # Node
 node_modules/

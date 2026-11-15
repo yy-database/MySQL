@@ -58,16 +58,26 @@ Text workloads share the same SQL and seed size; `insert-prepared` prepares the
 same statement once on each client and executes it over the binary protocol.
 There is one untimed warmup round followed by three measured rounds.
 
+- `connect-handshake` — `BENCH_CONNECT` extra connections opened and closed
+  against the same fresh server while the measurement connection stays open
 - `insert` — `BENCH_ROWS` sequential `INSERT` statements (text protocol)
 - `insert-prepared` — one `INSERT ... VALUES (?, ?, ?)` prepared per client,
   then `BENCH_ROWS` `COM_STMT_EXECUTE` calls over a `BENCH_ROWS`-row table
 - `insert-autoinc` — `BENCH_ROWS` inserts that omit the `AUTO_INCREMENT` primary
   key, so the server allocates the id and reports it as `insertId`; same row
   count and values as `insert`
+- `insert-batch` — multi-row `INSERT` statements of `BENCH_BATCH_ROWS` rows each;
+  the unit is rows
 - `select-point` — `BENCH_POINT` primary-key equality `SELECT`s over `BENCH_ROWS` rows
 - `select-point-uk` — the same `BENCH_POINT` count, same seed size, predicate
   moved to a `UNIQUE` secondary index (`uk`)
+- `index-range` — `BENCH_POINT` ranged reads of 20 adjacent `uk` values per
+  statement on the `UNIQUE` secondary index, ordered by `id`
+- `select-range` — `BENCH_POINT` primary-key range reads of 20 adjacent ids per
+  statement
 - `select-scan` — one `SELECT ... ORDER BY id` over `BENCH_SCAN` rows
+- `aggregate` — `BENCH_AGG` `COUNT`/`SUM`/`MIN`/`MAX` aggregates over the
+  `BENCH_ROWS` seed
 - `select-cursor-page` — keyset pagination (`WHERE id > last ORDER BY id LIMIT 20`)
   over the same `BENCH_SCAN` rows; the unit is pages
 - `select-limit-offset` — `BENCH_PAGE` deep `LIMIT 10 OFFSET n` pages over the
@@ -111,7 +121,8 @@ Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`,
 `BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`, `BENCH_MUTATE=100`,
 `BENCH_ERROR=100`, `BENCH_PAGE=20`, `BENCH_JOIN=100`, `BENCH_SHOW=200`,
 `BENCH_WINDOW=20`.
-Override them through the environment. The report is in
+Override them through the environment. `BENCH_ONLY=name1,name2` narrows a run to
+the named workloads. The report is in
 [`reports/benchmark.md`](./reports/benchmark.md).
 
 `SHOW STATUS` is not part of the gateway surface (`1064`), so the session-command
