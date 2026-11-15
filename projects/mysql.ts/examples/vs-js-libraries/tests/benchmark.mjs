@@ -44,6 +44,16 @@ const CONNECT_OPS = Number(process.env.BENCH_CONNECT ?? 20);
 const CURSOR_PAGE_SIZE = 20;
 const RANGE_ROWS = 20;
 const WINDOW_OPS = Number(process.env.BENCH_WINDOW ?? 20);
+// Fixed predicate shapes so every client issues identical SQL.
+const LIKE_PREFIX_ROWS = (() => {
+  let matched = 0;
+  for (let id = 1; id <= ROWS; id += 1) if (String(id).startsWith("1")) matched += 1;
+  return matched;
+})();
+const IN_LIST_VALUES = Array.from({ length: 17 }, (_, index) => index * 11 + 3).filter((id) => id <= ROWS);
+const IN_LIST_IDS = IN_LIST_VALUES.join(", ");
+const IN_LIST_ROWS = IN_LIST_VALUES.length;
+const SUBQUERY_BOUND = Math.floor(ROWS * 0.6);
 // Narrow the run to a subset of workloads, e.g. `BENCH_ONLY=select-point-uk,index-range`.
 const ONLY = (process.env.BENCH_ONLY ?? "")
   .split(",")
@@ -357,6 +367,116 @@ const ALL_WORKLOADS = [
         const count = Number(cellAt(result, result.rows[0], 0));
         if (count !== ROWS) {
           throw new Error(`aggregate count=${count}, expected=${ROWS}`);
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-group-by",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // `label` is unique, so this is the worst case for the grouping map:
+      // `ROWS` groups over `ROWS` rows and nothing collapses.
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query("SELECT label, COUNT(*) AS n FROM bench_items GROUP BY label");
+        if (result.rows.length !== ROWS) {
+          throw new Error(`group-by groups=${result.rows.length}, expected ${ROWS}`);
+        }
+        let total = 0;
+        for (const row of result.rows) total += Number(cellAt(result, row, 1));
+        if (total !== ROWS) throw new Error(`group-by total=${total}, expected ${ROWS}`);
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-distinct",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query("SELECT DISTINCT label FROM bench_items");
+        if (result.rows.length !== ROWS) {
+          throw new Error(`distinct rows=${result.rows.length}, expected ${ROWS}`);
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-like-prefix",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query("SELECT COUNT(*) AS n FROM bench_items WHERE label LIKE 'row-1%'");
+        const matched = Number(cellAt(result, result.rows[0], 0));
+        if (matched !== LIKE_PREFIX_ROWS) throw new Error(`like-prefix matched=${matched}, expected=${LIKE_PREFIX_ROWS}`);
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-in-list",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query(`SELECT COUNT(*) AS n FROM bench_items WHERE id IN (${IN_LIST_IDS})`);
+        const matched = Number(cellAt(result, result.rows[0], 0));
+        if (matched !== IN_LIST_ROWS) throw new Error(`in-list matched=${matched}, expected=${IN_LIST_ROWS}`);
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-subquery-in",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      const expected = ROWS - SUBQUERY_BOUND;
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query(
+          `SELECT COUNT(*) AS n FROM bench_items WHERE id IN (SELECT id FROM bench_items WHERE score > ${SUBQUERY_BOUND / 4})`,
+        );
+        const matched = Number(cellAt(result, result.rows[0], 0));
+        if (matched !== expected) throw new Error(`subquery-in matched=${matched}, expected=${expected}`);
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-union-all",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      const half = Math.floor(ROWS / 2);
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query(
+          `SELECT id FROM bench_items WHERE id <= ${half} UNION ALL SELECT id FROM bench_items WHERE id > ${half}`,
+        );
+        if (result.rows.length !== ROWS) {
+          throw new Error(`union-all rows=${result.rows.length}, expected ${ROWS}`);
         }
       }
       return AGG_OPS;

@@ -27,6 +27,12 @@ binary protocol; every other workload uses `COM_QUERY` for both clients.
 - `select-range` — 500 primary-key range reads of 20 adjacent ids per statement
 - `select-scan` — one `SELECT ... ORDER BY id` over 1,000 rows
 - `aggregate` — 100 `count`/`sum`/`min`/`max` aggregates over the 200-row seed
+- `select-group-by` — 100 `GROUP BY label` queries; `label` is unique, so every row is its own group
+- `select-distinct` — 100 `SELECT DISTINCT label` queries over the same seed
+- `select-like-prefix` — 100 prefix filters (`label LIKE 'row-1%'`), asserting the exact match count
+- `select-in-list` — 100 fixed 17-value `IN` lists over the primary key
+- `select-subquery-in` — 100 uncorrelated `IN (SELECT ...)` subqueries
+- `select-union-all` — 100 `UNION ALL` pairs over disjoint key halves, asserting the full row count
 - `select-cursor-page` — keyset pagination over the same 1,000 rows, 20 rows per page
 - `select-limit-offset` — 20 deep `LIMIT 10 OFFSET n` pages over the same 1,000 rows
 - `multi-table-join` — 100 joins of two physical tables (`bench_items JOIN bench_side`),
@@ -52,94 +58,112 @@ applicable to this product.
 
 | Workload | mysql2 | @yydb/mysql |
 |---------:|-------:|------------:|
-| connect-handshake | 1.00x | **0.62x** |
-| insert | 1.00x | **0.86x** |
-| insert-prepared | 1.00x | **0.92x** |
-| insert-batch | 1.00x | **0.96x** |
-| insert-autoinc | 1.00x | **0.99x** |
-| select-point | 1.00x | **0.74x** |
-| select-point-uk | 1.00x | **0.82x** |
-| index-range | 1.00x | **0.76x** |
-| select-range | 1.00x | **0.68x** |
-| select-scan | 1.00x | **0.59x** |
-| aggregate | 1.00x | **0.77x** |
-| select-cursor-page | **1.00x** | 1.11x |
-| select-limit-offset | 1.00x | **0.94x** |
-| multi-table-join | 1.00x | **0.81x** |
-| show-session | 1.00x | **0.76x** |
-| select-null-blob | 1.00x | **0.54x** |
-| tx-commit | 1.00x | **0.89x** |
-| update-multi | 1.00x | **0.89x** |
-| delete-where | 1.00x | **0.87x** |
-| binary-prepared-rows | 1.00x | **0.56x** |
-| error-path | 1.00x | **0.64x** |
-| upsert-pk | 1.00x | **0.99x** |
-| insert-select | 1.00x | **0.85x** |
-| tx-roundtrip | 1.00x | **0.79x** |
-| window-row-number | 1.00x | **0.94x** |
-| rollback-bulk | 1.00x | **0.93x** |
+| connect-handshake | 1.00x | **0.68x** |
+| insert | 1.00x | **0.94x** |
+| insert-prepared | 1.00x | **0.93x** |
+| insert-batch | 1.00x | **0.83x** |
+| insert-autoinc | 1.00x | **0.82x** |
+| select-point | 1.00x | **0.50x** |
+| select-point-uk | **1.00x** | 1.14x |
+| index-range | **1.00x** | 1.08x |
+| select-range | 1.00x | **0.69x** |
+| select-scan | 1.00x | **0.75x** |
+| aggregate | 1.00x | **0.88x** |
+| select-group-by | 1.00x | **0.63x** |
+| select-distinct | 1.00x | **0.64x** |
+| select-like-prefix | 1.00x | **0.93x** |
+| select-in-list | 1.00x | **0.93x** |
+| select-subquery-in | 1.00x | **0.83x** |
+| select-union-all | **1.00x** | 1.21x |
+| select-cursor-page | 1.00x | **0.91x** |
+| select-limit-offset | 1.00x | **0.88x** |
+| multi-table-join | 1.00x | **0.89x** |
+| show-session | 1.00x | **0.64x** |
+| select-null-blob | 1.00x | **0.63x** |
+| tx-commit | **1.00x** | 1.05x |
+| update-multi | 1.00x | **0.98x** |
+| delete-where | 1.00x | **0.89x** |
+| binary-prepared-rows | 1.00x | **0.65x** |
+| error-path | 1.00x | **0.49x** |
+| upsert-pk | 1.00x | **0.96x** |
+| insert-select | 1.00x | **0.87x** |
+| tx-roundtrip | 1.00x | **0.91x** |
+| window-row-number | **1.00x** | 1.09x |
+| rollback-bulk | 1.00x | **0.92x** |
 
 ## Absolute (median per-round totals normalised per op)
 
 | Workload | Unit | mysql2 ms/op | mysql2 ops/s | @yydb/mysql ms/op | @yydb/mysql ops/s |
 |---------:|-----:|-------------:|-------------:|------------------:|------------------:|
-| connect-handshake | connections | 1.42 | 703/s | 0.88 | 1,134/s |
-| insert | statements | 3.65 | 274/s | 3.13 | 320/s |
-| insert-prepared | rows | 3.50 | 286/s | 3.23 | 310/s |
-| insert-batch | rows | 0.18 | 5,627/s | 0.17 | 5,839/s |
-| insert-autoinc | rows | 4.12 | 243/s | 4.08 | 245/s |
-| select-point | statements | 0.13 | 7,833/s | 0.09 | 10,632/s |
-| select-point-uk | statements | 0.31 | 3,213/s | 0.26 | 3,910/s |
-| index-range | statements | 0.35 | 2,840/s | 0.27 | 3,724/s |
-| select-range | statements | 0.22 | 4,475/s | 0.15 | 6,547/s |
-| select-scan | rows | 0.00 | 283,776/s | 0.00 | 480,480/s |
-| aggregate | statements | 0.28 | 3,538/s | 0.22 | 4,588/s |
-| select-cursor-page | pages | 1.17 | 853/s | 1.30 | 766/s |
-| select-limit-offset | statements | 1.38 | 723/s | 1.31 | 766/s |
-| multi-table-join | statements | 3.91 | 256/s | 3.17 | 315/s |
-| show-session | statements | 0.09 | 11,346/s | 0.07 | 14,927/s |
-| select-null-blob | rows | 0.01 | 114,712/s | 0.00 | 210,699/s |
-| tx-commit | rows | 0.45 | 2,198/s | 0.41 | 2,462/s |
-| update-multi | statements | 3.44 | 291/s | 3.07 | 325/s |
-| delete-where | rows | 1.75 | 570/s | 1.52 | 656/s |
-| binary-prepared-rows | statements | 0.15 | 6,750/s | 0.08 | 12,115/s |
-| error-path | statements | 0.16 | 6,317/s | 0.10 | 9,815/s |
-| upsert-pk | statements | 3.94 | 254/s | 3.90 | 256/s |
-| insert-select | rows | 0.03 | 34,519/s | 0.02 | 40,544/s |
-| tx-roundtrip | transactions | 0.56 | 1,777/s | 0.44 | 2,252/s |
-| window-row-number | statements | 0.45 | 2,238/s | 0.42 | 2,386/s |
-| rollback-bulk | rows | 0.23 | 4,433/s | 0.21 | 4,772/s |
+| connect-handshake | connections | 0.72 | 1,395/s | 0.49 | 2,046/s |
+| insert | statements | 2.51 | 399/s | 2.35 | 426/s |
+| insert-prepared | rows | 2.56 | 391/s | 2.38 | 421/s |
+| insert-batch | rows | 0.15 | 6,706/s | 0.12 | 8,082/s |
+| insert-autoinc | rows | 4.91 | 204/s | 4.01 | 249/s |
+| select-point | statements | 0.09 | 10,673/s | 0.05 | 21,501/s |
+| select-point-uk | statements | 0.19 | 5,362/s | 0.21 | 4,720/s |
+| index-range | statements | 0.23 | 4,403/s | 0.25 | 4,075/s |
+| select-range | statements | 0.15 | 6,678/s | 0.10 | 9,676/s |
+| select-scan | rows | 0.00 | 269,898/s | 0.00 | 360,724/s |
+| aggregate | statements | 0.21 | 4,756/s | 0.18 | 5,421/s |
+| select-group-by | statements | 0.64 | 1,552/s | 0.40 | 2,479/s |
+| select-distinct | statements | 0.56 | 1,779/s | 0.36 | 2,782/s |
+| select-like-prefix | statements | 0.27 | 3,739/s | 0.25 | 4,001/s |
+| select-in-list | statements | 0.14 | 7,043/s | 0.13 | 7,598/s |
+| select-subquery-in | statements | 0.29 | 3,508/s | 0.24 | 4,239/s |
+| select-union-all | statements | 0.32 | 3,144/s | 0.38 | 2,605/s |
+| select-cursor-page | pages | 0.79 | 1,259/s | 0.73 | 1,376/s |
+| select-limit-offset | statements | 0.85 | 1,175/s | 0.75 | 1,330/s |
+| multi-table-join | statements | 3.31 | 302/s | 2.95 | 339/s |
+| show-session | statements | 0.08 | 12,720/s | 0.05 | 19,861/s |
+| select-null-blob | rows | 0.01 | 178,083/s | 0.00 | 282,438/s |
+| tx-commit | rows | 0.40 | 2,475/s | 0.42 | 2,361/s |
+| update-multi | statements | 2.57 | 389/s | 2.53 | 396/s |
+| delete-where | rows | 1.32 | 756/s | 1.18 | 847/s |
+| binary-prepared-rows | statements | 0.07 | 14,135/s | 0.05 | 21,768/s |
+| error-path | statements | 0.11 | 9,127/s | 0.05 | 18,566/s |
+| upsert-pk | statements | 2.82 | 354/s | 2.71 | 369/s |
+| insert-select | rows | 0.02 | 46,420/s | 0.02 | 53,532/s |
+| tx-roundtrip | transactions | 0.36 | 2,789/s | 0.33 | 3,061/s |
+| window-row-number | statements | 0.25 | 4,074/s | 0.27 | 3,727/s |
+| rollback-bulk | rows | 0.11 | 8,989/s | 0.10 | 9,764/s |
 
 ## p95 per-round total (ms)
 
 | Workload | mysql2 | @yydb/mysql |
 |---------:|-------:|------------:|
-| connect-handshake | 35.60 | 20.31 |
-| insert | 768.24 | 638.88 |
-| insert-prepared | 732.21 | 683.09 |
-| insert-batch | 37.91 | 36.63 |
-| insert-autoinc | 827.81 | 844.33 |
-| select-point | 64.90 | 52.54 |
-| select-point-uk | 165.10 | 143.36 |
-| index-range | 189.58 | 154.84 |
-| select-range | 131.65 | 96.29 |
-| select-scan | 4.18 | 2.16 |
-| aggregate | 31.39 | 26.97 |
-| select-cursor-page | 59.93 | 71.43 |
-| select-limit-offset | 30.64 | 26.40 |
-| multi-table-join | 439.65 | 323.44 |
-| show-session | 22.33 | 13.50 |
-| select-null-blob | 8.95 | 5.34 |
-| tx-commit | 47.63 | 40.77 |
-| update-multi | 358.22 | 332.47 |
-| delete-where | 367.73 | 315.13 |
-| binary-prepared-rows | 74.21 | 44.78 |
-| error-path | 34.24 | 22.21 |
-| upsert-pk | 792.42 | 811.81 |
-| insert-select | 5.99 | 5.88 |
-| tx-roundtrip | 11.33 | 9.18 |
-| window-row-number | 9.23 | 8.57 |
-| rollback-bulk | 25.79 | 22.25 |
+| connect-handshake | 16.10 | 9.85 |
+| insert | 512.21 | 474.88 |
+| insert-prepared | 523.00 | 478.95 |
+| insert-batch | 30.33 | 26.75 |
+| insert-autoinc | 1120.09 | 908.59 |
+| select-point | 60.89 | 25.53 |
+| select-point-uk | 105.37 | 117.44 |
+| index-range | 119.28 | 135.78 |
+| select-range | 78.33 | 53.34 |
+| select-scan | 4.04 | 3.84 |
+| aggregate | 21.77 | 18.80 |
+| select-group-by | 65.34 | 43.64 |
+| select-distinct | 59.25 | 37.35 |
+| select-like-prefix | 27.64 | 25.89 |
+| select-in-list | 15.35 | 13.22 |
+| select-subquery-in | 29.92 | 23.62 |
+| select-union-all | 32.15 | 38.47 |
+| select-cursor-page | 40.56 | 36.46 |
+| select-limit-offset | 17.59 | 15.89 |
+| multi-table-join | 418.64 | 398.34 |
+| show-session | 21.51 | 14.06 |
+| select-null-blob | 5.77 | 4.32 |
+| tx-commit | 41.95 | 42.46 |
+| update-multi | 279.68 | 263.60 |
+| delete-where | 294.66 | 237.88 |
+| binary-prepared-rows | 38.65 | 23.41 |
+| error-path | 25.63 | 11.02 |
+| upsert-pk | 586.02 | 548.19 |
+| insert-select | 4.39 | 4.02 |
+| tx-roundtrip | 7.72 | 8.34 |
+| window-row-number | 5.83 | 5.97 |
+| rollback-bulk | 11.22 | 10.39 |
 
 ## Alternating legacy / current AB
 

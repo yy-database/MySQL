@@ -78,6 +78,15 @@ There is one untimed warmup round followed by three measured rounds.
 - `select-scan` — one `SELECT ... ORDER BY id` over `BENCH_SCAN` rows
 - `aggregate` — `BENCH_AGG` `COUNT`/`SUM`/`MIN`/`MAX` aggregates over the
   `BENCH_ROWS` seed
+- `select-group-by` — `BENCH_AGG` `GROUP BY label` queries; `label` is unique,
+  so every row is its own group
+- `select-distinct` — `BENCH_AGG` `SELECT DISTINCT label` queries over the same seed
+- `select-like-prefix` — `BENCH_AGG` prefix filters (`label LIKE 'row-1%'`),
+  asserting the exact match count
+- `select-in-list` — `BENCH_AGG` fixed 17-value `IN` lists over the primary key
+- `select-subquery-in` — `BENCH_AGG` `IN (SELECT ...)` uncorrelated subqueries
+- `select-union-all` — `BENCH_AGG` two `SELECT`s over disjoint key halves joined
+  with `UNION ALL`, asserting the full row count
 - `select-cursor-page` — keyset pagination (`WHERE id > last ORDER BY id LIMIT 20`)
   over the same `BENCH_SCAN` rows; the unit is pages
 - `select-limit-offset` — `BENCH_PAGE` deep `LIMIT 10 OFFSET n` pages over the
