@@ -59,6 +59,16 @@ const BASELINE_OPS = Number(process.env.BENCH_BASELINE ?? 300);
 const AGG_OPS = Number(process.env.BENCH_AGG ?? 20);
 const SUBQUERY_OPS = Number(process.env.BENCH_SUBQUERY ?? 20);
 const JOIN_OPS = Number(process.env.BENCH_JOIN ?? 20);
+const IN_LIST_OPS = Number(process.env.BENCH_IN ?? 20);
+const IN_LIST_SIZE = Number(process.env.BENCH_IN_SIZE ?? 400);
+const OFFSET_OPS = Number(process.env.BENCH_OFFSET ?? 30);
+const LIKE_OPS = Number(process.env.BENCH_LIKE ?? 30);
+const WIDE_OPS = Number(process.env.BENCH_WIDE ?? 30);
+const UPSERT_OPS = Number(process.env.BENCH_UPSERT ?? 30);
+const INSERT_SELECT_STATEMENTS = Number(process.env.BENCH_INSERT_SELECT ?? 10);
+const INSERT_SELECT_BATCH = Number(process.env.BENCH_INSERT_SELECT_BATCH ?? 100);
+const TX_ROUNDTRIPS = Number(process.env.BENCH_TX_ROUNDTRIP ?? 30);
+const WINDOW_OPS = Number(process.env.BENCH_WINDOW ?? 20);
 
 // 所有引擎共用一张表：主键、唯一索引、分组列、值列、填充列。
 const CREATE_TABLE =
@@ -417,6 +427,170 @@ const WORKLOADS = [
     },
   },
   {
+    name: "in-list",
+    unit: "statements",
+    ops: IN_LIST_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // 400 个字面量与 IN_LIST_SIZE 对齐：历史上逐值展开成 OR 链会在这里栈溢出。
+      const ids = Array.from({ length: IN_LIST_SIZE }, (_, index) => ID_BASE + index);
+      const sql = `SELECT COUNT(*) AS n FROM bench WHERE id IN (${ids.join(", ")})`;
+      for (let index = 0; index < IN_LIST_OPS; index += 1) {
+        const [rows] = await connection.query(sql);
+        if (rows.length !== 1 || Number(rows[0].n) !== IN_LIST_SIZE) {
+          throw new Error(`in-list n=${rows[0]?.n} expected=${IN_LIST_SIZE}`);
+        }
+      }
+      return IN_LIST_OPS;
+    },
+  },
+  {
+    name: "offset-limit",
+    unit: "statements",
+    ops: OFFSET_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      const offset = DATASET - 20;
+      for (let index = 0; index < OFFSET_OPS; index += 1) {
+        const [rows] = await connection.query(`SELECT id FROM bench ORDER BY id LIMIT 20 OFFSET ${offset}`);
+        if (rows.length !== 20 || Number(rows[0].id) !== ID_BASE + offset) {
+          throw new Error(`offset-limit rows=${rows.length} first=${rows[0]?.id}`);
+        }
+      }
+      return OFFSET_OPS;
+    },
+  },
+  {
+    name: "like-prefix",
+    unit: "statements",
+    ops: LIKE_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      const expected = Math.min(100, DATASET);
+      for (let index = 0; index < LIKE_OPS; index += 1) {
+        const [rows] = await connection.query("SELECT COUNT(*) AS n FROM bench WHERE pad LIKE 'row-19%'");
+        if (rows.length !== 1 || Number(rows[0].n) !== expected) {
+          throw new Error(`like-prefix n=${rows[0]?.n} expected=${expected}`);
+        }
+      }
+      return LIKE_OPS;
+    },
+  },
+  {
+    name: "wide-select",
+    unit: "statements",
+    ops: WIDE_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      for (let index = 0; index < WIDE_OPS; index += 1) {
+        const [rows] = await connection.query("SELECT * FROM bench ORDER BY id LIMIT 20");
+        if (rows.length !== 20 || Object.keys(rows[0]).length !== 5) {
+          throw new Error(`wide-select rows=${rows.length}`);
+        }
+      }
+      return WIDE_OPS;
+    },
+  },
+  {
+    name: "upsert-pk",
+    unit: "statements",
+    ops: UPSERT_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // 主键冲突的 `INSERT ... ON DUPLICATE KEY UPDATE`：每轮覆盖最近 20 个 id，
+      // 两个引擎都必须落到「改写既有行」并让 `VALUES(col)` 取到提议行的值。
+      const cycle = 20;
+      for (let index = 0; index < UPSERT_OPS; index += 1) {
+        const id = ID_BASE + (index % cycle);
+        const grp = Math.floor((id - ID_BASE) / GROUP_SIZE);
+        const val = 2_000 + index;
+        const [result] = await connection.query(
+          `INSERT INTO bench (id, uk, grp, val, pad) VALUES (${id}, ${id}, ${grp}, ${val}, 'upsert-${index}') ON DUPLICATE KEY UPDATE val = VALUES(val), pad = VALUES(pad)`,
+        );
+        if ((result.affectedRows ?? 0) < 1) {
+          throw new Error(`upsert-pk affectedRows=${result.affectedRows}`);
+        }
+      }
+      const lastId = ID_BASE + ((UPSERT_OPS - 1) % cycle);
+      const [rows] = await connection.query(`SELECT val, pad FROM bench WHERE id = ${lastId}`);
+      if (rows.length !== 1 || Number(rows[0].val) !== 2_000 + UPSERT_OPS - 1 || rows[0].pad !== `upsert-${UPSERT_OPS - 1}`) {
+        throw new Error(`upsert-pk readback=${JSON.stringify(rows[0])}`);
+      }
+      return UPSERT_OPS;
+    },
+  },
+  {
+    name: "insert-select",
+    unit: "rows",
+    ops: INSERT_SELECT_STATEMENTS * INSERT_SELECT_BATCH,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+      await connection.query("DROP TABLE IF EXISTS bench_dst");
+      await connection.query("CREATE TABLE bench_dst (id INT NOT NULL PRIMARY KEY, uk INT UNIQUE, grp INT, val INT, pad VARCHAR(40))");
+    },
+    async run(connection) {
+      // 10 条互不重叠的 `INSERT ... SELECT` 各搬 100 行，目标表在 setup 里新建。
+      for (let statement = 0; statement < INSERT_SELECT_STATEMENTS; statement += 1) {
+        const from = ID_BASE + statement * INSERT_SELECT_BATCH;
+        const to = from + INSERT_SELECT_BATCH - 1;
+        await connection.query(
+          `INSERT INTO bench_dst (id, uk, grp, val, pad) SELECT id, uk, grp, val, pad FROM bench WHERE id > ${from - 1} AND id <= ${to}`,
+        );
+      }
+      const [[{ n }]] = await connection.query("SELECT COUNT(*) AS n FROM bench_dst");
+      if (Number(n) !== INSERT_SELECT_STATEMENTS * INSERT_SELECT_BATCH) {
+        throw new Error(`insert-select rows=${n}`);
+      }
+      return Number(n);
+    },
+  },
+  {
+    name: "tx-commit-rollback",
+    unit: "transactions",
+    ops: TX_ROUNDTRIPS * 2,
+    async setup() {},
+    async run(connection) {
+      // 空事务的一条提交和一条回滚，只测 BEGIN/COMMIT/ROLLBACK 的协议往返。
+      for (let index = 0; index < TX_ROUNDTRIPS; index += 1) {
+        await connection.query("BEGIN");
+        await connection.query("COMMIT");
+        await connection.query("BEGIN");
+        await connection.query("ROLLBACK");
+      }
+      return TX_ROUNDTRIPS * 2;
+    },
+  },
+  {
+    name: "window-row-number",
+    unit: "statements",
+    ops: WINDOW_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // 已支持的窗口语法：`ROW_NUMBER() OVER (ORDER BY id)` 全量求值后取前 20 行。
+      for (let index = 0; index < WINDOW_OPS; index += 1) {
+        const [rows] = await connection.query(
+          "SELECT id, ROW_NUMBER() OVER (ORDER BY id) AS rn FROM bench ORDER BY id LIMIT 20",
+        );
+        if (rows.length !== 20 || Number(rows[0].rn) !== 1 || Number(rows[19].rn) !== 20) {
+          throw new Error(`window-row-number rows=${rows.length}`);
+        }
+      }
+      return WINDOW_OPS;
+    },
+  },
+  {
     name: "rollback",
     unit: "rows",
     ops: TX_ROWS,
@@ -579,7 +753,7 @@ function markdownReport(samples, version, semantics) {
   lines.push("比值 = 本仓耗时 / 真实库耗时，小于 1 表示本仓更快。");
   lines.push("");
   lines.push(
-    "本轮新增 SQL 特性项：`distinct`、`aggregate`、`subquery`、`index-range`、`join`、`rollback`。`ON DUPLICATE KEY` 尚未进入能力表，暂不作为基准项。",
+    "本轮新增 SQL 特性项：`INSERT ... ON DUPLICATE KEY UPDATE`（含 `VALUES(col)`）、`INSERT ... SELECT`、空事务提交/回滚往返、`ROW_NUMBER()` 窗口函数；`LIMIT ... OFFSET` 沿用上一轮。",
   );
   lines.push("");
   lines.push("## 按差距排序");
@@ -633,6 +807,14 @@ function markdownReport(samples, version, semantics) {
     subquery: SUBQUERY_OPS,
     "index-range": RANGE_OPS,
     join: JOIN_OPS,
+    "in-list": IN_LIST_OPS,
+    "offset-limit": OFFSET_OPS,
+    "like-prefix": LIKE_OPS,
+    "wide-select": WIDE_OPS,
+    "upsert-pk": UPSERT_OPS,
+    "insert-select": INSERT_SELECT_STATEMENTS,
+    "tx-commit-rollback": TX_ROUNDTRIPS * 2,
+    "window-row-number": WINDOW_OPS,
   };
   for (const [name, count] of Object.entries(statements)) {
     const real = median(samples.get(name).real) / count - floorReal;

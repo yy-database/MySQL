@@ -7,53 +7,61 @@
 轮次：1 轮热身 + 5 轮测量，取中位数并记 p95；数据集 1000 行，固定 seed。
 比值 = 本仓耗时 / 真实库耗时，小于 1 表示本仓更快。
 
-本轮新增 SQL 特性项：`distinct`、`aggregate`、`subquery`、`index-range`、`join`、`rollback`。`ON DUPLICATE KEY` 尚未进入能力表，暂不作为基准项。
+本轮新增 SQL 特性项：400 项 `IN` 列表、深 `OFFSET` 分页、`LIKE` 前缀、宽投影（`SELECT *`）。`ON DUPLICATE KEY` 仍在解析层缺失，暂不作为基准项。
 
 ## 按差距排序
 
 | 工作负载 | 单位 | 真实库 ms/op | 本仓 ms/op | 倍数 |
 |---------:|-----:|-------------:|-----------:|-----:|
-| index-range | statements | 0.171 | 1.368 | 8.01x |
-| point-uk | statements | 0.095 | 0.738 | 7.74x |
-| range-limit | statements | 0.133 | 0.908 | 6.84x |
-| join | statements | 0.384 | 1.932 | 5.03x |
-| order-limit | statements | 0.313 | 1.235 | 3.95x |
-| aggregate | statements | 0.314 | 0.919 | 2.92x |
-| group-by | statements | 0.481 | 1.176 | 2.44x |
-| distinct | statements | 0.331 | 0.745 | 2.25x |
-| subquery | statements | 0.699 | 1.486 | 2.12x |
-| insert-single | statements | 2.344 | 3.929 | 1.68x |
-| connect | connections | 0.718 | 0.970 | 1.35x |
-| baseline-select1 | statements | 0.060 | 0.072 | 1.19x |
-| update-many | rows | 0.041 | 0.049 | 1.19x |
-| delete-many | rows | 0.040 | 0.044 | 1.10x |
-| point-pk | statements | 0.105 | 0.106 | 1.01x |
-| tx-commit | rows | 0.453 | 0.443 | 0.98x |
-| insert-multi | rows | 0.050 | 0.043 | 0.86x |
-| rollback | rows | 0.568 | 0.181 | 0.32x |
+| update-many | rows | 0.040 | 0.531 | 13.19x |
+| wide-select | statements | 0.115 | 1.418 | 12.36x |
+| index-range | statements | 0.142 | 1.211 | 8.52x |
+| range-limit | statements | 0.128 | 0.801 | 6.24x |
+| like-prefix | statements | 0.321 | 1.345 | 4.19x |
+| offset-limit | statements | 0.192 | 0.793 | 4.12x |
+| join | statements | 0.388 | 1.589 | 4.09x |
+| point-uk | statements | 0.082 | 0.322 | 3.94x |
+| order-limit | statements | 0.291 | 1.076 | 3.69x |
+| insert-multi | rows | 0.045 | 0.116 | 2.58x |
+| aggregate | statements | 0.316 | 0.796 | 2.52x |
+| group-by | statements | 0.454 | 1.082 | 2.38x |
+| distinct | statements | 0.283 | 0.653 | 2.31x |
+| in-list | statements | 0.537 | 1.147 | 2.14x |
+| subquery | statements | 0.654 | 1.219 | 1.86x |
+| insert-single | statements | 2.099 | 3.823 | 1.82x |
+| tx-commit | rows | 0.419 | 0.541 | 1.29x |
+| connect | connections | 0.636 | 0.797 | 1.25x |
+| delete-many | rows | 0.040 | 0.042 | 1.05x |
+| point-pk | statements | 0.085 | 0.083 | 0.98x |
+| baseline-select1 | statements | 0.064 | 0.052 | 0.82x |
+| rollback | rows | 0.521 | 0.178 | 0.34x |
 
 ## 绝对耗时与 p95
 
 | 工作负载 | 真实库中位总耗时 ms | 本仓中位总耗时 ms | 真实库 p95 ms | 本仓 p95 ms |
 |---------:|--------------------:|------------------:|--------------:|------------:|
-| insert-single | 703.18 | 1178.65 | 779.86 | 1202.35 |
-| insert-multi | 19.90 | 17.09 | 80.56 | 19.80 |
-| point-pk | 31.51 | 31.92 | 59.91 | 32.37 |
-| point-uk | 28.58 | 221.25 | 51.06 | 279.35 |
-| range-limit | 13.27 | 90.77 | 15.01 | 98.68 |
-| update-many | 82.08 | 97.46 | 93.82 | 115.00 |
-| delete-many | 39.97 | 43.84 | 63.79 | 46.53 |
-| order-limit | 15.63 | 61.76 | 20.95 | 74.51 |
-| group-by | 24.07 | 58.80 | 26.82 | 73.10 |
-| tx-commit | 135.96 | 132.80 | 158.48 | 145.29 |
-| baseline-select1 | 18.03 | 21.49 | 23.81 | 29.01 |
-| distinct | 16.53 | 37.26 | 19.54 | 37.66 |
-| aggregate | 6.28 | 18.38 | 7.22 | 21.27 |
-| subquery | 13.99 | 29.72 | 14.95 | 39.27 |
-| index-range | 17.08 | 136.75 | 20.24 | 142.77 |
-| join | 7.67 | 38.64 | 14.83 | 52.33 |
-| rollback | 5.68 | 1.81 | 9.31 | 2.37 |
-| connect | 14.36 | 19.40 | 27.90 | 32.64 |
+| insert-single | 629.85 | 1146.86 | 685.82 | 1152.64 |
+| insert-multi | 17.94 | 46.29 | 21.23 | 52.11 |
+| point-pk | 25.55 | 24.93 | 30.66 | 52.57 |
+| point-uk | 24.52 | 96.62 | 53.36 | 132.43 |
+| range-limit | 12.84 | 80.15 | 13.26 | 86.54 |
+| update-many | 80.56 | 1062.33 | 83.77 | 1087.45 |
+| delete-many | 40.01 | 41.84 | 42.00 | 42.13 |
+| order-limit | 14.56 | 53.78 | 14.64 | 61.70 |
+| group-by | 22.68 | 54.09 | 28.92 | 60.09 |
+| tx-commit | 125.80 | 162.42 | 126.44 | 172.96 |
+| baseline-select1 | 19.06 | 15.70 | 23.35 | 23.45 |
+| distinct | 14.17 | 32.66 | 15.13 | 38.48 |
+| aggregate | 6.32 | 15.92 | 8.05 | 17.37 |
+| subquery | 13.09 | 24.38 | 17.63 | 27.07 |
+| index-range | 14.22 | 121.11 | 20.28 | 148.66 |
+| join | 7.76 | 31.78 | 8.50 | 34.11 |
+| in-list | 10.73 | 22.94 | 16.19 | 34.22 |
+| offset-limit | 5.77 | 23.78 | 13.08 | 28.46 |
+| like-prefix | 9.63 | 40.34 | 16.49 | 42.66 |
+| wide-select | 3.44 | 42.55 | 5.47 | 51.06 |
+| rollback | 5.21 | 1.78 | 7.31 | 2.95 |
+| connect | 12.73 | 15.94 | 23.20 | 24.81 |
 
 ## 粗粒度阶段差分
 
@@ -61,25 +69,29 @@
 
 | 路径 | 真实库额外 ms/语句 | 本仓额外 ms/语句 | 差额 ms/语句 |
 |-----:|-------------------:|-----------------:|-------------:|
-| insert-single | 2.284 | 3.857 | 1.573 |
-| point-pk | 0.045 | 0.035 | -0.010 |
-| point-uk | 0.035 | 0.666 | 0.631 |
-| range-limit | 0.073 | 0.836 | 0.764 |
-| update-many | 4.044 | 4.801 | 0.757 |
-| group-by | 0.421 | 1.104 | 0.683 |
-| order-limit | 0.252 | 1.164 | 0.911 |
-| distinct | 0.270 | 0.673 | 0.403 |
-| aggregate | 0.254 | 0.847 | 0.593 |
-| subquery | 0.639 | 1.414 | 0.775 |
-| index-range | 0.111 | 1.296 | 1.185 |
-| join | 0.324 | 1.860 | 1.537 |
+| insert-single | 2.036 | 3.771 | 1.735 |
+| point-pk | 0.022 | 0.031 | 0.009 |
+| point-uk | 0.018 | 0.270 | 0.252 |
+| range-limit | 0.065 | 0.749 | 0.684 |
+| update-many | 3.964 | 53.064 | 49.100 |
+| group-by | 0.390 | 1.029 | 0.639 |
+| order-limit | 0.228 | 1.023 | 0.796 |
+| distinct | 0.220 | 0.601 | 0.381 |
+| aggregate | 0.252 | 0.744 | 0.491 |
+| subquery | 0.591 | 1.167 | 0.576 |
+| index-range | 0.079 | 1.159 | 1.080 |
+| join | 0.325 | 1.536 | 1.212 |
+| in-list | 0.473 | 1.095 | 0.622 |
+| offset-limit | 0.129 | 0.740 | 0.611 |
+| like-prefix | 0.258 | 1.292 | 1.035 |
+| wide-select | 0.051 | 1.366 | 1.315 |
 
 ## 根因假设与预计收益
 
-- **每语句地板 0.072ms**：`baseline-select1` 本仓 0.072ms/语句（真库 0.060ms）。本轮未观测到历史 5ms 轮询地板，point-pk、range-limit、connect 已回到亚毫秒档。
-- **唯一索引点查与主键同档**：`point-uk` 0.738ms/语句，`point-pk` 0.106ms/语句，差 0.631ms，本轮不构成唯一索引缺失的证据。
-- **排序与分组全表扫描**：`order-limit` 1.24ms/语句、`group-by` 1.18ms/语句，各比地板多约 1.1-1.2ms，等于 1000 行扫描成本。索引下推与增量聚合后预计降到亚毫秒级。
-- **单条写入不慢**：`insert-single` 本仓 3.93ms/语句、真库 2.34ms/语句，差距来自每语句地板与多行插入的逐行落盘（`insert-multi` 0.043 vs 0.050ms/行，0.86x）。批量路径改为一次提交可把每行成本压到真库同档。
+- **每语句地板 0.052ms**：`baseline-select1` 本仓 0.052ms/语句（真库 0.064ms）。本轮未观测到历史 5ms 轮询地板，point-pk、range-limit、connect 已回到亚毫秒档。
+- **唯一索引点查与主键同档**：`point-uk` 0.322ms/语句，`point-pk` 0.083ms/语句，差 0.239ms，本轮不构成唯一索引缺失的证据。
+- **排序与分组全表扫描**：`order-limit` 1.08ms/语句、`group-by` 1.08ms/语句，各比地板多约 1.0-1.0ms，等于 1000 行扫描成本。索引下推与增量聚合后预计降到亚毫秒级。
+- **单条写入不慢**：`insert-single` 本仓 3.82ms/语句、真库 2.10ms/语句，差距来自每语句地板与多行插入的逐行落盘（`insert-multi` 0.116 vs 0.045ms/行，2.58x）。批量路径改为一次提交可把每行成本压到真库同档。
 
 ## 语义差异（不计入性能比值）
 

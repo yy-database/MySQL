@@ -17,7 +17,16 @@ export async function connectMysql2(port, host = "127.0.0.1") {
     async query(sql) {
       const [rows, fields] = await connection.query(sql);
       const columns = Array.isArray(fields) ? fields.map((field) => field.name) : [];
-      return { columns, rows };
+      // DML answers with a ResultSetHeader instead of a row array; surface its
+      // fields so benchmarks can assert generated ids the same way as the
+      // minimal client.
+      const header = !Array.isArray(rows) && rows !== null && typeof rows === "object" ? rows : undefined;
+      return {
+        columns,
+        rows,
+        affectedRows: header?.affectedRows ?? (Array.isArray(rows) ? rows.length : 0),
+        insertId: header?.insertId ?? 0,
+      };
     },
     async prepare(sql) {
       const statement = await connection.prepare(sql);

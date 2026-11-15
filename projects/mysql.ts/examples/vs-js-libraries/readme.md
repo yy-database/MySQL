@@ -61,12 +61,23 @@ There is one untimed warmup round followed by three measured rounds.
 - `insert` — `BENCH_ROWS` sequential `INSERT` statements (text protocol)
 - `insert-prepared` — one `INSERT ... VALUES (?, ?, ?)` prepared per client,
   then `BENCH_ROWS` `COM_STMT_EXECUTE` calls over a `BENCH_ROWS`-row table
+- `insert-autoinc` — `BENCH_ROWS` inserts that omit the `AUTO_INCREMENT` primary
+  key, so the server allocates the id and reports it as `insertId`; same row
+  count and values as `insert`
 - `select-point` — `BENCH_POINT` primary-key equality `SELECT`s over `BENCH_ROWS` rows
 - `select-point-uk` — the same `BENCH_POINT` count, same seed size, predicate
   moved to a `UNIQUE` secondary index (`uk`)
 - `select-scan` — one `SELECT ... ORDER BY id` over `BENCH_SCAN` rows
 - `select-cursor-page` — keyset pagination (`WHERE id > last ORDER BY id LIMIT 20`)
   over the same `BENCH_SCAN` rows; the unit is pages
+- `select-limit-offset` — `BENCH_PAGE` deep `LIMIT 10 OFFSET n` pages over the
+  same `BENCH_SCAN` rows, with the offset cycling so both clients issue
+  identical SQL
+- `multi-table-join` — `BENCH_JOIN` joins of two physical tables
+  (`bench_items JOIN bench_side ON item_id = id`) returning 20 rows, over the
+  same `BENCH_ROWS` seed
+- `show-session` — `BENCH_SHOW` `SHOW VARIABLES LIKE 'version'` round trips,
+  covering the session-command path that returns a synthesized result set
 - `select-null-blob` — one scan over `BENCH_SCAN` rows with a `NULL` note every
   third row and a 2 KiB payload every fifth row; the unit is rows
 - `tx-commit` — `BENCH_TX` transactions of `BENCH_TX_ROWS` inserts, one `COMMIT` each
@@ -82,6 +93,15 @@ There is one untimed warmup round followed by three measured rounds.
   the gateway keeps the stream synchronised after an error
 - `rollback-bulk` — `BENCH_TX` transactions of `BENCH_TX_ROWS` inserts, one
   `ROLLBACK` each; the same row ids are reinserted every transaction
+- `upsert-pk` — `BENCH_ROWS` `INSERT ... ON DUPLICATE KEY UPDATE` statements
+  whose primary key always collides, so every statement rewrites one seeded row
+  and `VALUES(label)` must win
+- `insert-select` — one `INSERT ... SELECT` copying the `BENCH_ROWS` seed into a
+  fresh table, then a `COUNT(*)` assertion; the unit is rows
+- `tx-roundtrip` — `BENCH_TX` empty `BEGIN`/`COMMIT` plus `BEGIN`/`ROLLBACK`
+  pairs, measuring only transaction round trips
+- `window-row-number` — `BENCH_WINDOW` `ROW_NUMBER() OVER (ORDER BY id)`
+  projections limited to 20 rows over the `BENCH_ROWS` seed
 
 ```shell
 pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark
@@ -89,8 +109,15 @@ pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark
 
 Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`,
 `BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`, `BENCH_MUTATE=100`,
-`BENCH_ERROR=100`. Override them through the environment. The report is in
+`BENCH_ERROR=100`, `BENCH_PAGE=20`, `BENCH_JOIN=100`, `BENCH_SHOW=200`,
+`BENCH_WINDOW=20`.
+Override them through the environment. The report is in
 [`reports/benchmark.md`](./reports/benchmark.md).
+
+`SHOW STATUS` is not part of the gateway surface (`1064`), so the session-command
+round trip uses `SHOW VARIABLES` instead. MySQL has no `PRAGMA synchronous`
+equivalent, so `commit-sync-on` is not applicable to this product and is not
+benchmarked.
 
 ## Intentional deltas
 
@@ -111,3 +138,11 @@ Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`,
   instead of being timed.
 - `binary-prepared-rows` uses the same 200-row seed and 500 point lookups as
   `select-point`; only the protocol and prepare-time description change.
+- `insert-autoinc` asserts the generated id reported by both clients; a client
+  that drops `insertId` fails the run before it is timed.
+- `select-limit-offset` cycles the offset deterministically so the page never
+  runs past the seed and both clients issue the same statements.
+- `multi-table-join` reads two physical tables; the second table holds exactly
+  one row per item id, so the join cardinality is 20 for both clients.
+- `show-session` is a text-protocol round trip on the session-command path. It
+  uses `SHOW VARIABLES` because `SHOW STATUS` is rejected with `1064`.
