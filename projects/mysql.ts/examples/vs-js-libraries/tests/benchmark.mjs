@@ -150,8 +150,13 @@ async function seedSide(client, rows) {
 }
 
 // Only odd item ids get a side row, so `LEFT JOIN` has a fixed NULL count.
-async function seedSparseSide(client, rows) {
+async function seedSparseSide(client, rows, indexed = false) {
   await client.query(CREATE_TABLE_SPARSE_SIDE);
+  // 索引必须先于任何数据行建立：建索引后的首次写入负责回填并打 `READY` 标记，
+  // 相关子查询的等值探针才会生效（对已有行建索引不会补建条目）。
+  if (indexed) {
+    await client.query("CREATE UNIQUE INDEX bench_side_item ON bench_side_sparse (item_id)");
+  }
   const batch = 100;
   for (let start = 1; start <= rows; start += batch) {
     const values = [];
@@ -162,6 +167,27 @@ async function seedSparseSide(client, rows) {
       await client.query(`INSERT INTO bench_side_sparse (id, item_id, weight) VALUES ${values.join(", ")}`);
     }
   }
+}
+
+// 相关 `EXISTS` 的正反两式；两个工作负载共享同一组断言。
+async function runExistsProbes(client) {
+  for (let index = 0; index < AGG_OPS; index += 1) {
+    const hit = await client.query(
+      "SELECT COUNT(*) AS n FROM bench_items i WHERE EXISTS (SELECT 1 FROM bench_side_sparse s WHERE s.item_id = i.id)",
+    );
+    const matched = Number(cellAt(hit, hit.rows[0], 0));
+    if (matched !== SIDE_HIT_ROWS) {
+      throw new Error(`exists matched=${matched}, expected=${SIDE_HIT_ROWS}`);
+    }
+    const miss = await client.query(
+      "SELECT COUNT(*) AS n FROM bench_items i WHERE NOT EXISTS (SELECT 1 FROM bench_side_sparse s WHERE s.item_id = i.id)",
+    );
+    const missing = Number(cellAt(miss, miss.rows[0], 0));
+    if (missing !== SIDE_NULL_ROWS) {
+      throw new Error(`not-exists matched=${missing}, expected=${SIDE_NULL_ROWS}`);
+    }
+  }
+  return AGG_OPS * 2;
 }
 
 // `grp = id % 8` and `val = id`, so `HAVING SUM(val) > median(group sums)` is
@@ -599,25 +625,19 @@ const ALL_WORKLOADS = [
       await seedSparseSide(client, ROWS);
     },
     async run(client) {
-      // Correlated `EXISTS` against the sparse side table: exactly the odd ids
-      // hit, so both the positive and the negated form have fixed counts.
-      for (let index = 0; index < AGG_OPS; index += 1) {
-        const hit = await client.query(
-          "SELECT COUNT(*) AS n FROM bench_items i WHERE EXISTS (SELECT 1 FROM bench_side_sparse s WHERE s.item_id = i.id)",
-        );
-        const matched = Number(cellAt(hit, hit.rows[0], 0));
-        if (matched !== SIDE_HIT_ROWS) {
-          throw new Error(`exists matched=${matched}, expected=${SIDE_HIT_ROWS}`);
-        }
-        const miss = await client.query(
-          "SELECT COUNT(*) AS n FROM bench_items i WHERE NOT EXISTS (SELECT 1 FROM bench_side_sparse s WHERE s.item_id = i.id)",
-        );
-        const missing = Number(cellAt(miss, miss.rows[0], 0));
-        if (missing !== SIDE_NULL_ROWS) {
-          throw new Error(`not-exists matched=${missing}, expected=${SIDE_NULL_ROWS}`);
-        }
-      }
-      return AGG_OPS * 2;
+      return runExistsProbes(client);
+    },
+  },
+  {
+    name: "select-exists-indexed",
+    unit: "statements",
+    ops: AGG_OPS * 2,
+    async setup(client) {
+      await seed(client, ROWS);
+      await seedSparseSide(client, ROWS, true);
+    },
+    async run(client) {
+      return runExistsProbes(client);
     },
   },
   {

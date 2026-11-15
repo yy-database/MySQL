@@ -93,6 +93,9 @@ There is one untimed warmup round followed by three measured rounds.
 - `select-subquery-in` — `BENCH_AGG` `IN (SELECT ...)` uncorrelated subqueries
 - `select-exists` — `BENCH_AGG` correlated `EXISTS` / `NOT EXISTS` pairs against
   a side table that only holds odd item ids, so both counts are exact
+- `select-exists-indexed` — the same pair of statements, but the side table carries
+  a `UNIQUE(item_id)` index created before the seed, so the executor can fold the
+  correlated equality into a point probe
 - `select-union-all` — `BENCH_AGG` two `SELECT`s over disjoint key halves joined
   with `UNION ALL`, asserting the full row count
 - `select-cursor-page` — keyset pagination (`WHERE id > last ORDER BY id LIMIT 20`)
