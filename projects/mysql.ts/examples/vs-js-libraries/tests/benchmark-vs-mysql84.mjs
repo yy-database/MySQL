@@ -69,6 +69,7 @@ const INSERT_SELECT_STATEMENTS = Number(process.env.BENCH_INSERT_SELECT ?? 10);
 const INSERT_SELECT_BATCH = Number(process.env.BENCH_INSERT_SELECT_BATCH ?? 100);
 const TX_ROUNDTRIPS = Number(process.env.BENCH_TX_ROUNDTRIP ?? 30);
 const WINDOW_OPS = Number(process.env.BENCH_WINDOW ?? 20);
+const ALTER_OPS = Number(process.env.BENCH_ALTER ?? 10);
 
 // 所有引擎共用一张表：主键、唯一索引、分组列、值列、填充列。
 const CREATE_TABLE =
@@ -134,6 +135,44 @@ function expectedIndexRangeRows() {
     if (uk >= ID_BASE + 100 && uk <= ID_BASE + 199) count += 1;
   }
   return count;
+}
+
+/** 与 seed 同源的 `grp` / `val` 分组统计。 */
+function groupAggregates() {
+  const groups = new Map();
+  for (let offset = 0; offset < DATASET; offset += 1) {
+    const id = ID_BASE + offset;
+    const grp = Math.floor((id - ID_BASE) / GROUP_SIZE);
+    const entry = groups.get(grp) ?? { count: 0, sum: 0 };
+    entry.count += 1;
+    entry.sum += (id * 137) % 997;
+    groups.set(grp, entry);
+  }
+  return [...groups.entries()]
+    .map(([grp, entry]) => ({ grp, count: entry.count, sum: entry.sum }))
+    .sort((first, second) => first.grp - second.grp);
+}
+
+const GROUP_TOTALS = groupAggregates();
+// 取分组和的中位数作阈值：固定 seed 下两组引擎得到同一组幸存分组。
+const HAVING_SUM_MIN = (() => {
+  const sums = GROUP_TOTALS.map((group) => group.sum).sort((first, second) => first - second);
+  return sums.length === 0 ? 0 : sums[Math.floor(sums.length / 2)];
+})();
+const HAVING_GROUPS = GROUP_TOTALS.filter((group) => group.sum > HAVING_SUM_MIN);
+
+// 侧表只为奇数 item id 建行，`LEFT JOIN` 的 NULL 数因此固定。
+const SIDE_JOIN_ROWS = 20;
+const SIDE_HIT_ROWS = SIDE_JOIN_ROWS / 2;
+
+async function seedSide(connection) {
+  await connection.query("DROP TABLE IF EXISTS bench_side");
+  await connection.query("CREATE TABLE bench_side (id INT NOT NULL PRIMARY KEY, item_id INT, w DOUBLE)");
+  const rows = [];
+  for (let offset = 1; offset <= SIDE_JOIN_ROWS; offset += 2) {
+    rows.push(`(${offset}, ${ID_BASE + offset}, ${offset / 4})`);
+  }
+  await connection.query(`INSERT INTO bench_side (id, item_id, w) VALUES ${rows.join(", ")}`);
 }
 
 const WORKLOADS = [
@@ -294,6 +333,53 @@ const WORKLOADS = [
     },
   },
   {
+    name: "having",
+    unit: "statements",
+    ops: GROUP_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // 与 `group-by` 同一批分组，但分组后在 `HAVING SUM(val)` 上过滤：
+      // 阈值取分组和的中位数，直播两库应留下同一批分组与同一批计数。
+      for (let index = 0; index < GROUP_OPS; index += 1) {
+        const [rows] = await connection.query(
+          `SELECT grp, COUNT(*) AS n FROM bench GROUP BY grp HAVING SUM(val) > ${HAVING_SUM_MIN} ORDER BY grp`,
+        );
+        if (rows.length !== HAVING_GROUPS.length) {
+          throw new Error(`having groups=${rows.length} expected=${HAVING_GROUPS.length}`);
+        }
+        for (let row = 0; row < rows.length; row += 1) {
+          if (Number(rows[row].grp) !== HAVING_GROUPS[row].grp || Number(rows[row].n) !== HAVING_GROUPS[row].count) {
+            throw new Error(`having row=${JSON.stringify(rows[row])} expected=${JSON.stringify(HAVING_GROUPS[row])}`);
+          }
+        }
+      }
+      return GROUP_OPS;
+    },
+  },
+  {
+    name: "case-scan",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // select 列表里的 `CASE` 走全表：`val > 500` 的计数由固定 seed 决定。
+      const expected = expectedSubqueryRows();
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const [rows] = await connection.query(
+          "SELECT id, CASE WHEN val > 500 THEN 'hi' ELSE 'lo' END AS band FROM bench ORDER BY id",
+        );
+        if (rows.length !== DATASET) throw new Error(`case-scan rows=${rows.length} expected=${DATASET}`);
+        const high = rows.filter((row) => row.band === "hi").length;
+        if (high !== expected) throw new Error(`case-scan high=${high} expected=${expected}`);
+      }
+      return AGG_OPS;
+    },
+  },
+  {
     name: "tx-commit",
     unit: "rows",
     ops: TX_COUNT * TX_ROWS,
@@ -388,6 +474,30 @@ const WORKLOADS = [
     },
   },
   {
+    name: "exists",
+    unit: "statements",
+    ops: SUBQUERY_OPS * 2,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+      await seedSide(connection);
+    },
+    async run(connection) {
+      // 相关子查询：前 20 个 id 里只有奇数 id 在侧表有行，正反两式都是固定计数。
+      const upper = ID_BASE + SIDE_JOIN_ROWS;
+      for (let index = 0; index < SUBQUERY_OPS; index += 1) {
+        const [[hit]] = await connection.query(
+          `SELECT COUNT(*) AS n FROM bench b WHERE b.id > ${ID_BASE} AND b.id <= ${upper} AND EXISTS (SELECT 1 FROM bench_side s WHERE s.item_id = b.id)`,
+        );
+        if (Number(hit.n) !== SIDE_HIT_ROWS) throw new Error(`exists n=${hit.n} expected=${SIDE_HIT_ROWS}`);
+        const [[miss]] = await connection.query(
+          `SELECT COUNT(*) AS n FROM bench b WHERE b.id > ${ID_BASE} AND b.id <= ${upper} AND NOT EXISTS (SELECT 1 FROM bench_side s WHERE s.item_id = b.id)`,
+        );
+        if (Number(miss.n) !== SIDE_HIT_ROWS) throw new Error(`not-exists n=${miss.n} expected=${SIDE_HIT_ROWS}`);
+      }
+      return SUBQUERY_OPS * 2;
+    },
+  },
+  {
     name: "index-range",
     unit: "statements",
     ops: RANGE_OPS,
@@ -422,6 +532,37 @@ const WORKLOADS = [
         if (rows.length !== 1 || Number(rows[0].n) !== GROUP_SIZE) {
           throw new Error(`join n=${rows[0]?.n} expected=${GROUP_SIZE}`);
         }
+      }
+      return JOIN_OPS;
+    },
+  },
+  {
+    name: "left-join",
+    unit: "statements",
+    ops: JOIN_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+      await seedSide(connection);
+    },
+    async run(connection) {
+      // 侧表稀疏：前 20 个 id 里偶数项必须补 NULL，奇数项必须带上 `offset / 4`。
+      const upper = ID_BASE + SIDE_JOIN_ROWS;
+      for (let index = 0; index < JOIN_OPS; index += 1) {
+        const [rows] = await connection.query(
+          `SELECT b.id, s.w FROM bench b LEFT JOIN bench_side s ON s.item_id = b.id WHERE b.id > ${ID_BASE} AND b.id <= ${upper} ORDER BY b.id`,
+        );
+        if (rows.length !== SIDE_JOIN_ROWS) throw new Error(`left-join rows=${rows.length} expected=${SIDE_JOIN_ROWS}`);
+        let nulls = 0;
+        for (const row of rows) {
+          const offset = Number(row.id) - ID_BASE;
+          if (row.w === null) {
+            nulls += 1;
+            if (offset % 2 !== 0) throw new Error(`left-join unexpected NULL id=${row.id}`);
+          } else if (Number(row.w) !== offset / 4) {
+            throw new Error(`left-join id=${row.id} w=${row.w} expected=${offset / 4}`);
+          }
+        }
+        if (nulls !== SIDE_HIT_ROWS) throw new Error(`left-join nulls=${nulls} expected=${SIDE_HIT_ROWS}`);
       }
       return JOIN_OPS;
     },
@@ -462,6 +603,25 @@ const WORKLOADS = [
         }
       }
       return OFFSET_OPS;
+    },
+  },
+  {
+    name: "order-index-desc",
+    unit: "statements",
+    ops: ORDER_OPS,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // 主键索引反向扫描：首行必须是被种子数据的最后一个 id。
+      const last = ID_BASE + DATASET - 1;
+      for (let index = 0; index < ORDER_OPS; index += 1) {
+        const [rows] = await connection.query("SELECT id, val FROM bench ORDER BY id DESC LIMIT 20");
+        if (rows.length !== 20) throw new Error(`order-index-desc rows=${rows.length}`);
+        if (Number(rows[0].id) !== last) throw new Error(`order-index-desc first=${rows[0].id} expected=${last}`);
+        if (Number(rows[19].id) !== last - 19) throw new Error(`order-index-desc last=${rows[19].id} expected=${last - 19}`);
+      }
+      return ORDER_OPS;
     },
   },
   {
@@ -552,6 +712,28 @@ const WORKLOADS = [
         throw new Error(`insert-select rows=${n}`);
       }
       return Number(n);
+    },
+  },
+  {
+    name: "alter-add-column",
+    unit: "statements",
+    ops: ALTER_OPS * 2,
+    async setup(connection) {
+      await seed(connection, datasetStatements());
+    },
+    async run(connection) {
+      // 每次追加一列固定 DEFAULT，并回读种子里的第一行：默认值必须落到既有行。
+      for (let index = 0; index < ALTER_OPS; index += 1) {
+        const column = `c${index}`;
+        const fallback = index % 7;
+        await connection.query(`ALTER TABLE bench ADD COLUMN ${column} INT DEFAULT ${fallback}`);
+        const [rows] = await connection.query(`SELECT id, ${column} FROM bench WHERE id = ${ID_BASE}`);
+        if (rows.length !== 1) throw new Error(`alter-add-column ${column} rows=${rows.length}`);
+        if (Number(rows[0][column]) !== fallback) {
+          throw new Error(`alter-add-column ${column} value=${rows[0][column]} expected=${fallback}`);
+        }
+      }
+      return ALTER_OPS * 2;
     },
   },
   {
@@ -753,7 +935,7 @@ function markdownReport(samples, version, semantics) {
   lines.push("比值 = 本仓耗时 / 真实库耗时，小于 1 表示本仓更快。");
   lines.push("");
   lines.push(
-    "本轮新增 SQL 特性项：`INSERT ... ON DUPLICATE KEY UPDATE`（含 `VALUES(col)`）、`INSERT ... SELECT`、空事务提交/回滚往返、`ROW_NUMBER()` 窗口函数；`LIMIT ... OFFSET` 沿用上一轮。",
+    "本轮新增 SQL 特性项：`LEFT JOIN` 稀疏侧表、`HAVING`、相关 `EXISTS` / `NOT EXISTS`、主键倒序扫描、`ALTER TABLE ... ADD COLUMN` 默认值回填、select 列表 `CASE`；`INSERT ... ON DUPLICATE KEY UPDATE`（含 `VALUES(col)`）、`INSERT ... SELECT`、空事务提交/回滚往返、`ROW_NUMBER()` 窗口函数与沿用项保持不变。",
   );
   lines.push("");
   lines.push("## 按差距排序");
@@ -815,6 +997,12 @@ function markdownReport(samples, version, semantics) {
     "insert-select": INSERT_SELECT_STATEMENTS,
     "tx-commit-rollback": TX_ROUNDTRIPS * 2,
     "window-row-number": WINDOW_OPS,
+    having: GROUP_OPS,
+    "case-scan": AGG_OPS,
+    exists: SUBQUERY_OPS * 2,
+    "left-join": JOIN_OPS,
+    "order-index-desc": ORDER_OPS,
+    "alter-add-column": ALTER_OPS * 2,
   };
   for (const [name, count] of Object.entries(statements)) {
     const real = median(samples.get(name).real) / count - floorReal;

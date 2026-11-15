@@ -80,11 +80,19 @@ There is one untimed warmup round followed by three measured rounds.
   `BENCH_ROWS` seed
 - `select-group-by` — `BENCH_AGG` `GROUP BY label` queries; `label` is unique,
   so every row is its own group
+- `select-having` — `BENCH_AGG` `GROUP BY grp HAVING SUM(val) >` queries over an
+  eight-slot seed (`grp = id % 8`, `val = id`); the threshold is the median group
+  sum, so the surviving group set and per-group counts are asserted
+- `select-case` — `BENCH_AGG` select-list `CASE WHEN score > t THEN 'hi' ELSE
+  'lo' END` scans over the `BENCH_ROWS` seed; `t` cycles `1..4` and every row's
+  band plus the `hi` count is asserted
 - `select-distinct` — `BENCH_AGG` `SELECT DISTINCT label` queries over the same seed
 - `select-like-prefix` — `BENCH_AGG` prefix filters (`label LIKE 'row-1%'`),
   asserting the exact match count
 - `select-in-list` — `BENCH_AGG` fixed 17-value `IN` lists over the primary key
 - `select-subquery-in` — `BENCH_AGG` `IN (SELECT ...)` uncorrelated subqueries
+- `select-exists` — `BENCH_AGG` correlated `EXISTS` / `NOT EXISTS` pairs against
+  a side table that only holds odd item ids, so both counts are exact
 - `select-union-all` — `BENCH_AGG` two `SELECT`s over disjoint key halves joined
   with `UNION ALL`, asserting the full row count
 - `select-cursor-page` — keyset pagination (`WHERE id > last ORDER BY id LIMIT 20`)
@@ -92,9 +100,15 @@ There is one untimed warmup round followed by three measured rounds.
 - `select-limit-offset` — `BENCH_PAGE` deep `LIMIT 10 OFFSET n` pages over the
   same `BENCH_SCAN` rows, with the offset cycling so both clients issue
   identical SQL
+- `order-index-desc` — the same `BENCH_PAGE` cycled offsets walked backwards
+  (`ORDER BY id DESC LIMIT 10 OFFSET n`); the first and last id of every page are
+  asserted
 - `multi-table-join` — `BENCH_JOIN` joins of two physical tables
   (`bench_items JOIN bench_side ON item_id = id`) returning 20 rows, over the
   same `BENCH_ROWS` seed
+- `left-join` — the same two-table shape with a sparse side table (odd item ids
+  only), so the even ids must come back NULL-padded; row order, weights and the
+  exact NULL count are asserted
 - `show-session` — `BENCH_SHOW` `SHOW VARIABLES LIKE 'version'` round trips,
   covering the session-command path that returns a synthesized result set
 - `select-null-blob` — one scan over `BENCH_SCAN` rows with a `NULL` note every
@@ -120,6 +134,9 @@ There is one untimed warmup round followed by three measured rounds.
   and `VALUES(label)` must win
 - `insert-select` — one `INSERT ... SELECT` copying the `BENCH_ROWS` seed into a
   fresh table, then a `COUNT(*)` assertion; the unit is rows
+- `alter-add-column` — `BENCH_ALTER` `ALTER TABLE ... ADD COLUMN cN INT DEFAULT
+  d` statements, each followed by a read-back of the seeded row so the default
+  must land on rows that already existed
 - `tx-roundtrip` — `BENCH_TX` empty `BEGIN`/`COMMIT` plus `BEGIN`/`ROLLBACK`
   pairs, measuring only transaction round trips
 - `window-row-number` — `BENCH_WINDOW` `ROW_NUMBER() OVER (ORDER BY id)`
@@ -132,7 +149,7 @@ pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark
 Defaults: `BENCH_ROWS=200`, `BENCH_POINT=500`, `BENCH_SCAN=1000`,
 `BENCH_ROUNDS=3`, `BENCH_TX=10`, `BENCH_TX_ROWS=10`, `BENCH_MUTATE=100`,
 `BENCH_ERROR=100`, `BENCH_PAGE=20`, `BENCH_JOIN=100`, `BENCH_SHOW=200`,
-`BENCH_WINDOW=20`.
+`BENCH_WINDOW=20`, `BENCH_ALTER=10`.
 Override them through the environment. `BENCH_ONLY=name1,name2` narrows a run to
 the named workloads. The report is in
 [`reports/benchmark.md`](./reports/benchmark.md).

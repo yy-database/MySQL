@@ -16,7 +16,8 @@
 // Env: BENCH_ROWS (200), BENCH_POINT (500), BENCH_SCAN (1000), BENCH_ROUNDS (3),
 //      BENCH_TX (10), BENCH_TX_ROWS (10), BENCH_MUTATE (100), BENCH_ERROR (100),
 //      BENCH_PAGE (20), BENCH_JOIN (100), BENCH_SHOW (200), BENCH_BATCH_ROWS (20),
-//      BENCH_AGG (100), BENCH_CONNECT (20), BENCH_ONLY (comma-separated names)
+//      BENCH_AGG (100), BENCH_CONNECT (20), BENCH_ALTER (10),
+//      BENCH_ONLY (comma-separated names)
 
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -45,6 +46,8 @@ const CURSOR_PAGE_SIZE = 20;
 const RANGE_ROWS = 20;
 const WINDOW_OPS = Number(process.env.BENCH_WINDOW ?? 20);
 const SAVEPOINT_OPS = Number(process.env.BENCH_SAVEPOINT ?? 20);
+const ALTER_OPS = Number(process.env.BENCH_ALTER ?? 10);
+const GROUP_SLOTS = 8;
 // Fixed predicate shapes so every client issues identical SQL.
 const LIKE_PREFIX_ROWS = (() => {
   let matched = 0;
@@ -55,6 +58,29 @@ const IN_LIST_VALUES = Array.from({ length: 17 }, (_, index) => index * 11 + 3).
 const IN_LIST_IDS = IN_LIST_VALUES.join(", ");
 const IN_LIST_ROWS = IN_LIST_VALUES.length;
 const SUBQUERY_BOUND = Math.floor(ROWS * 0.6);
+// Left-join seed: side rows only exist for odd item ids, so the join must pad
+// exactly the even ones with NULL.
+const SIDE_HIT_ROWS = Math.ceil(ROWS / 2);
+const SIDE_NULL_ROWS = ROWS - SIDE_HIT_ROWS;
+// `HAVING` seed: `grp = id % 8`, `val = id`. The threshold is the median group
+// sum, so roughly half the groups survive the predicate for any `BENCH_ROWS`.
+const GROUP_COUNTS = new Array(GROUP_SLOTS).fill(0);
+const GROUP_SUMS = new Array(GROUP_SLOTS).fill(0);
+for (let id = 1; id <= ROWS; id += 1) {
+  const slot = id % GROUP_SLOTS;
+  GROUP_COUNTS[slot] += 1;
+  GROUP_SUMS[slot] += id;
+}
+const HAVING_SUM_MIN = (() => {
+  const sums = GROUP_SUMS.filter((sum) => sum > 0).sort((total, other) => total - other);
+  return sums.length === 0 ? 0 : sums[Math.floor(sums.length / 2)];
+})();
+const HAVING_GROUPS = GROUP_SUMS.map((sum, slot) => ({ slot, sum, count: GROUP_COUNTS[slot] })).filter(
+  (group) => group.sum > HAVING_SUM_MIN,
+);
+// `CASE` thresholds cycle 1..4 over `score = id / 4`, i.e. the `hi` band is
+// `id > 4 * threshold`.
+const CASE_THRESHOLD = (index) => (index % 4) + 1;
 // Narrow the run to a subset of workloads, e.g. `BENCH_ONLY=select-point-uk,index-range`.
 const ONLY = (process.env.BENCH_ONLY ?? "")
   .split(",")
@@ -72,6 +98,9 @@ const CREATE_TABLE_UK =
 const CREATE_TABLE_LARGE = "CREATE TABLE bench_large (id INT PRIMARY KEY, note VARCHAR(40) NULL, payload TEXT)";
 const CREATE_TABLE_AUTO = "CREATE TABLE bench_auto (id INT PRIMARY KEY AUTO_INCREMENT, label VARCHAR(40), score DOUBLE)";
 const CREATE_TABLE_SIDE = "CREATE TABLE bench_side (id INT PRIMARY KEY, item_id INT, weight DOUBLE)";
+const CREATE_TABLE_SPARSE_SIDE =
+  "CREATE TABLE bench_side_sparse (id INT PRIMARY KEY, item_id INT, weight DOUBLE)";
+const CREATE_TABLE_GROUPS = "CREATE TABLE bench_grp (id INT PRIMARY KEY, grp INT, val INT)";
 
 async function seed(client, rows) {
   await client.query(CREATE_TABLE);
@@ -117,6 +146,35 @@ async function seedSide(client, rows) {
       values.push(`(${id}, ${id}, ${id / 4})`);
     }
     await client.query(`INSERT INTO bench_side (id, item_id, weight) VALUES ${values.join(", ")}`);
+  }
+}
+
+// Only odd item ids get a side row, so `LEFT JOIN` has a fixed NULL count.
+async function seedSparseSide(client, rows) {
+  await client.query(CREATE_TABLE_SPARSE_SIDE);
+  const batch = 100;
+  for (let start = 1; start <= rows; start += batch) {
+    const values = [];
+    for (let id = start; id < Math.min(start + batch, rows + 1); id += 2) {
+      values.push(`(${id}, ${id}, ${id / 4})`);
+    }
+    if (values.length > 0) {
+      await client.query(`INSERT INTO bench_side_sparse (id, item_id, weight) VALUES ${values.join(", ")}`);
+    }
+  }
+}
+
+// `grp = id % 8` and `val = id`, so `HAVING SUM(val) > median(group sums)` is
+// selective without depending on how rows happen to be ordered.
+async function seedGroups(client, rows) {
+  await client.query(CREATE_TABLE_GROUPS);
+  const batch = 100;
+  for (let start = 1; start <= rows; start += batch) {
+    const values = [];
+    for (let id = start; id < Math.min(start + batch, rows + 1); id += 1) {
+      values.push(`(${id}, ${id % GROUP_SLOTS}, ${id})`);
+    }
+    await client.query(`INSERT INTO bench_grp (id, grp, val) VALUES ${values.join(", ")}`);
   }
 }
 
@@ -396,6 +454,75 @@ const ALL_WORKLOADS = [
     },
   },
   {
+    name: "select-having",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seedGroups(client, ROWS);
+    },
+    async run(client) {
+      // `HAVING SUM(val)` keeps the same 8-slot grouping as `select-group-by`
+      // but filters after aggregation; the threshold is fixed in SQL, so both
+      // clients issue identical statements.
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query(
+          `SELECT grp, COUNT(*) AS n FROM bench_grp GROUP BY grp HAVING SUM(val) > ${HAVING_SUM_MIN} ORDER BY grp`,
+        );
+        if (result.rows.length !== HAVING_GROUPS.length) {
+          throw new Error(`having groups=${result.rows.length}, expected=${HAVING_GROUPS.length}`);
+        }
+        for (let row = 0; row < result.rows.length; row += 1) {
+          const group = Number(cellAt(result, result.rows[row], 0));
+          const count = Number(cellAt(result, result.rows[row], 1));
+          if (group !== HAVING_GROUPS[row].slot) {
+            throw new Error(`having grp=${group}, expected=${HAVING_GROUPS[row].slot}`);
+          }
+          if (count !== HAVING_GROUPS[row].count) {
+            throw new Error(`having grp=${group} n=${count}, expected=${HAVING_GROUPS[row].count}`);
+          }
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-case",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // `CASE` in the select list over the same seed; the threshold cycles 1..4
+      // so the `hi` band size differs per statement while both clients still
+      // issue byte-identical SQL.
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const threshold = CASE_THRESHOLD(index);
+        const boundary = threshold * 4;
+        const expectedHigh = Math.max(0, ROWS - boundary);
+        const result = await client.query(
+          `SELECT id, CASE WHEN score > ${threshold} THEN 'hi' ELSE 'lo' END AS band FROM bench_items ORDER BY id`,
+        );
+        if (result.rows.length !== ROWS) {
+          throw new Error(`case rows=${result.rows.length}, expected=${ROWS}`);
+        }
+        let high = 0;
+        for (const row of result.rows) {
+          const id = Number(cellAt(result, row, 0));
+          const band = String(cellAt(result, row, 1));
+          if (band !== (id > boundary ? "hi" : "lo")) {
+            throw new Error(`case id=${id} band=${band} threshold=${threshold}`);
+          }
+          if (band === "hi") high += 1;
+        }
+        if (high !== expectedHigh) {
+          throw new Error(`case threshold=${threshold} high=${high}, expected=${expectedHigh}`);
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
     name: "select-distinct",
     unit: "statements",
     ops: AGG_OPS,
@@ -461,6 +588,36 @@ const ALL_WORKLOADS = [
         if (matched !== expected) throw new Error(`subquery-in matched=${matched}, expected=${expected}`);
       }
       return AGG_OPS;
+    },
+  },
+  {
+    name: "select-exists",
+    unit: "statements",
+    ops: AGG_OPS * 2,
+    async setup(client) {
+      await seed(client, ROWS);
+      await seedSparseSide(client, ROWS);
+    },
+    async run(client) {
+      // Correlated `EXISTS` against the sparse side table: exactly the odd ids
+      // hit, so both the positive and the negated form have fixed counts.
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const hit = await client.query(
+          "SELECT COUNT(*) AS n FROM bench_items i WHERE EXISTS (SELECT 1 FROM bench_side_sparse s WHERE s.item_id = i.id)",
+        );
+        const matched = Number(cellAt(hit, hit.rows[0], 0));
+        if (matched !== SIDE_HIT_ROWS) {
+          throw new Error(`exists matched=${matched}, expected=${SIDE_HIT_ROWS}`);
+        }
+        const miss = await client.query(
+          "SELECT COUNT(*) AS n FROM bench_items i WHERE NOT EXISTS (SELECT 1 FROM bench_side_sparse s WHERE s.item_id = i.id)",
+        );
+        const missing = Number(cellAt(miss, miss.rows[0], 0));
+        if (missing !== SIDE_NULL_ROWS) {
+          throw new Error(`not-exists matched=${missing}, expected=${SIDE_NULL_ROWS}`);
+        }
+      }
+      return AGG_OPS * 2;
     },
   },
   {
@@ -536,6 +693,37 @@ const ALL_WORKLOADS = [
     },
   },
   {
+    name: "order-index-desc",
+    unit: "statements",
+    ops: PAGE_OPS,
+    async setup(client) {
+      await seed(client, SCAN_ROWS);
+    },
+    async run(client) {
+      // Same 1,000-row seed and the same cycled offsets as `select-limit-offset`,
+      // but the index-backed column is walked backwards.
+      const span = SCAN_ROWS - 10;
+      for (let index = 0; index < PAGE_OPS; index += 1) {
+        const offset = (index * 37) % (span + 1);
+        const result = await client.query(
+          `SELECT id, label FROM bench_items ORDER BY id DESC LIMIT 10 OFFSET ${offset}`,
+        );
+        if (result.rows.length !== 10) {
+          throw new Error(`order-index-desc offset=${offset} rows=${result.rows.length}`);
+        }
+        const first = Number(cellAt(result, result.rows[0], 0));
+        if (first !== SCAN_ROWS - offset) {
+          throw new Error(`order-index-desc offset=${offset} first=${first}, expected=${SCAN_ROWS - offset}`);
+        }
+        const last = Number(cellAt(result, result.rows[result.rows.length - 1], 0));
+        if (last !== SCAN_ROWS - offset - 9) {
+          throw new Error(`order-index-desc offset=${offset} last=${last}, expected=${SCAN_ROWS - offset - 9}`);
+        }
+      }
+      return PAGE_OPS;
+    },
+  },
+  {
     name: "multi-table-join",
     unit: "statements",
     ops: JOIN_OPS,
@@ -552,6 +740,45 @@ const ALL_WORKLOADS = [
         );
         if (result.rows.length !== 20) {
           throw new Error(`multi-table-join rows=${result.rows.length}, expected=20`);
+        }
+      }
+      return JOIN_OPS;
+    },
+  },
+  {
+    name: "left-join",
+    unit: "statements",
+    ops: JOIN_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+      await seedSparseSide(client, ROWS);
+    },
+    async run(client) {
+      // Same two-table shape as `multi-table-join`, but the side table is
+      // sparse: every even item id must come back padded with NULL.
+      for (let index = 0; index < JOIN_OPS; index += 1) {
+        const result = await client.query(
+          "SELECT i.id, s.weight FROM bench_items i LEFT JOIN bench_side_sparse s ON s.item_id = i.id ORDER BY i.id",
+        );
+        if (result.rows.length !== ROWS) {
+          throw new Error(`left-join rows=${result.rows.length}, expected=${ROWS}`);
+        }
+        let nulls = 0;
+        let previous = 0;
+        for (const row of result.rows) {
+          const id = Number(cellAt(result, row, 0));
+          if (id !== previous + 1) throw new Error(`left-join id=${id}, expected=${previous + 1}`);
+          previous = id;
+          const weight = cellAt(result, row, 1);
+          if (weight === null || weight === undefined) {
+            nulls += 1;
+            if (id % 2 !== 0) throw new Error(`left-join unexpected NULL id=${id}`);
+          } else if (Number(weight) !== id / 4) {
+            throw new Error(`left-join id=${id} weight=${weight}, expected=${id / 4}`);
+          }
+        }
+        if (nulls !== SIDE_NULL_ROWS) {
+          throw new Error(`left-join nulls=${nulls}, expected=${SIDE_NULL_ROWS}`);
         }
       }
       return JOIN_OPS;
@@ -737,6 +964,33 @@ const ALL_WORKLOADS = [
     },
   },
   {
+    name: "alter-add-column",
+    unit: "statements",
+    ops: ALTER_OPS * 2,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // Each iteration appends one column with a fixed DEFAULT and reads it
+      // back for the row that already existed, so the DDL must rewrite the
+      // stored rows rather than only the catalog.
+      for (let index = 0; index < ALTER_OPS; index += 1) {
+        const column = `c${index}`;
+        const fallback = index % 7;
+        await client.query(`ALTER TABLE bench_items ADD COLUMN ${column} INT DEFAULT ${fallback}`);
+        const result = await client.query(`SELECT id, ${column} FROM bench_items WHERE id = 1`);
+        if (result.rows.length !== 1) {
+          throw new Error(`alter-add-column ${column} rows=${result.rows.length}`);
+        }
+        const value = Number(cellAt(result, result.rows[0], 1));
+        if (value !== fallback) {
+          throw new Error(`alter-add-column ${column} value=${value}, expected=${fallback}`);
+        }
+      }
+      return ALTER_OPS * 2;
+    },
+  },
+  {
     name: "tx-roundtrip",
     unit: "transactions",
     ops: TX_COUNT * 2,
@@ -871,7 +1125,7 @@ async function main() {
   console.log("mysql vs-js-libraries benchmark");
   console.log(`Loopback 127.0.0.1, one text-protocol connection per client, fresh server + seed per measurement`);
   console.log(
-    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}, BENCH_MUTATE=${MUTATE_OPS}, BENCH_ERROR=${ERROR_OPS}, BENCH_PAGE=${PAGE_OPS}, BENCH_JOIN=${JOIN_OPS}, BENCH_SHOW=${SHOW_OPS}, BENCH_BATCH_ROWS=${BATCH_ROWS}, BENCH_AGG=${AGG_OPS}, BENCH_CONNECT=${CONNECT_OPS}, BENCH_WINDOW=${WINDOW_OPS}, BENCH_SAVEPOINT=${SAVEPOINT_OPS}`,
+    `Defaults: BENCH_ROWS=${ROWS}, BENCH_POINT=${POINT_OPS}, BENCH_SCAN=${SCAN_ROWS}, BENCH_ROUNDS=${ROUNDS}, BENCH_TX=${TX_COUNT}x${TX_ROWS}, BENCH_MUTATE=${MUTATE_OPS}, BENCH_ERROR=${ERROR_OPS}, BENCH_PAGE=${PAGE_OPS}, BENCH_JOIN=${JOIN_OPS}, BENCH_SHOW=${SHOW_OPS}, BENCH_BATCH_ROWS=${BATCH_ROWS}, BENCH_AGG=${AGG_OPS}, BENCH_CONNECT=${CONNECT_OPS}, BENCH_WINDOW=${WINDOW_OPS}, BENCH_SAVEPOINT=${SAVEPOINT_OPS}, BENCH_ALTER=${ALTER_OPS}`,
   );
   console.log("Warmup: 1 untimed round");
   if (ONLY.length > 0) console.log(`BENCH_ONLY: ${WORKLOADS.map((workload) => workload.name).join(", ")}`);
