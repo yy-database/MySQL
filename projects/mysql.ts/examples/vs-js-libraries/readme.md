@@ -146,6 +146,19 @@ There is one untimed warmup round followed by three measured rounds.
   projections limited to 20 rows over the `BENCH_ROWS` seed
 - `window-rank` — `BENCH_WINDOW` `RANK()` / `DENSE_RANK()` projections over the
   unique `score` column, asserting `rank = dense_rank = id` on every row
+- `window-moving-sum` — `BENCH_WINDOW` `SUM(val) OVER (PARTITION BY grp ORDER BY
+  id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)` projections; every row's moving
+  sum is derived offline from `grp = id % 8` and `val = id`
+- `window-lag-lead` — `BENCH_WINDOW` `LAG`/`LEAD` projections over the eight-slot
+  seed, asserting `id - 1` / `id + 1` on every row and `NULL` at both ends
+- `select-string-functions` — `BENCH_AGG` scans projecting `CONCAT`, `UPPER`,
+  `SUBSTRING`, `CHAR_LENGTH` and `REPLACE`, with every cell asserted
+- `select-set-operators` — `BENCH_AGG` `INTERSECT` / `EXCEPT` pairs; `UNION ALL`
+  covers the duplicate-preserving path, these cover the deduplicating set paths
+- `select-cast` — `BENCH_AGG` `CAST(id AS CHAR)` scans over the primary key,
+  asserting the column order and every rendered value
+- `aggregate-distinct` — `BENCH_AGG` `COUNT(DISTINCT grp)` over the eight-slot
+  seed, asserting the deduplicated count
 
 ```shell
 pnpm --dir projects/mysql.ts/examples/vs-js-libraries benchmark

@@ -163,6 +163,8 @@ pin `9180088a` 的 release 构建；历史数字来自同脚本在 pin `00c9556`
 | 13 | 等值连接嵌套循环 | `join` 1571.296ms/语句（3623x） | `join` 1.932ms/语句（5.03x） | `9180088a` 的哈希连接与基表谓词前置剪枝；报告 `join` 行 | 上游 `database.rs` | 已收口（剩余为扫描成本） |
 | 14 | `IN` 列表逐值比较与栈溢出 | `WHERE id IN (...)` 在 400 项左右耗尽线程栈，subquery 23.426ms/语句 | 900 项列表正常返回，`subquery` 1.486ms/语句（2.12x） | `9180088a` 把等值 `OR` 链折叠回 `InValues`，整数列表归一化后二分查找；报告 `subquery` 行 | 上游 `database.rs` | 已收口 |
 | 15 | 扫描逐行复制与无谓解码 | 1000 行扫描 5-8ms | 扫描类 workload 1-2ms，`COUNT(*)` 不再解码行 | `9180088a` 的单分片结果接管、免解码聚合、按字段线性匹配 | 上游 `database.rs` | 已收口 |
+| 16 | 窗口函数列类型退化为字符串 | `LAG(val)` / `LEAD(val)` 的列类型是 `VAR_STRING`（253），`mysql2` 把整数取成 `"10"` | 真库按输入列上报整数类型，驱动返回 JS `number` | 新增用例 `cases/sql-functions.json` 的 `LAG` / `LEAD` 探测；当前 pin `70aee1eb` 的 release 构建 | 上游 `database.rs`（窗口投影的字段类型推导） | 上游缺失，未排期 |
+| 17 | `DEFAULT CURRENT_TIMESTAMP` 不生效 | `CREATE TABLE ... (at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)` 后只插 `id`，`at` 落成 `NULL`，同表的字面量默认值 `n INT DEFAULT 7` 正常 | 缺失时间列按当前时间填充，`mysql2` 返回 JS `Date` | 同用例的默认值探测；当前 pin `70aee1eb` | 上游 `database.rs`（`plan_insert` 的默认值求值） | 上游缺失，未排期 |
 
 剩余差距集中在三处：二级索引点查与范围（8）、排序/分组下推（9）、以及单条写入路径
 （`insert-single` 1.68x，差距来自每语句地板与逐行落盘）。这三处都需要上游新增索引结构

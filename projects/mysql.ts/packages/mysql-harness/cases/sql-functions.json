@@ -1,0 +1,54 @@
+{
+    "name": "sql-functions",
+    "description": "Window frames, LAG/LEAD, string functions, CAST, COUNT(DISTINCT) and deduplicating set operators return MySQL-shaped rows.",
+    "steps": [
+        {
+            "sql": "CREATE TABLE harness_functions (id INT NOT NULL PRIMARY KEY, grp INT NOT NULL, val INT NOT NULL, label VARCHAR(32) NOT NULL)",
+            "ok": true
+        },
+        {
+            "sql": "INSERT INTO harness_functions VALUES (1, 1, 10, 'alpha'), (2, 1, 20, 'beta'), (3, 2, 30, 'gamma'), (4, 2, 40, 'delta')",
+            "affectedRows": 4
+        },
+        {
+            "sql": "SELECT id, LAG(val) OVER (ORDER BY id) AS p, LEAD(val) OVER (ORDER BY id) AS n FROM harness_functions ORDER BY id",
+            "columns": ["id", "p", "n"],
+            "rowCount": 4
+        },
+        {
+            "sql": "SELECT id, SUM(val) OVER (PARTITION BY grp ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS s FROM harness_functions ORDER BY id",
+            "columns": ["id", "s"],
+            "rowCount": 4
+        },
+        {
+            "sql": "SELECT id, CONCAT(label, '-', id) AS joined, UPPER(label) AS upper_label, SUBSTRING(label, 2, 2) AS slice, CHAR_LENGTH(label) AS characters, REPLACE(label, 'a', 'z') AS replaced FROM harness_functions ORDER BY id",
+            "columns": ["id", "joined", "upper_label", "slice", "characters", "replaced"],
+            "rows": [
+                [1, "alpha-1", "ALPHA", "lp", 5, "zlphz"],
+                [2, "beta-2", "BETA", "et", 4, "betz"],
+                [3, "gamma-3", "GAMMA", "am", 5, "gzmmz"],
+                [4, "delta-4", "DELTA", "el", 5, "deltz"]
+            ]
+        },
+        {
+            "sql": "SELECT id, CAST(id AS CHAR) AS rendered FROM harness_functions ORDER BY id",
+            "columns": ["id", "rendered"],
+            "rows": [[1, "1"], [2, "2"], [3, "3"], [4, "4"]]
+        },
+        {
+            "sql": "SELECT COUNT(DISTINCT grp) AS groups FROM harness_functions",
+            "columns": ["groups"],
+            "rows": [[2]]
+        },
+        {
+            "sql": "SELECT id FROM harness_functions WHERE grp = 1 INTERSECT SELECT id FROM harness_functions WHERE id >= 2",
+            "columns": ["id"],
+            "rows": [[2]]
+        },
+        {
+            "sql": "SELECT id FROM harness_functions EXCEPT SELECT id FROM harness_functions WHERE grp = 2",
+            "columns": ["id"],
+            "rowCount": 2
+        }
+    ]
+}

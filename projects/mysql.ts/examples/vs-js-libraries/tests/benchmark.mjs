@@ -1072,6 +1072,171 @@ const ALL_WORKLOADS = [
     },
   },
   {
+    name: "window-moving-sum",
+    unit: "statements",
+    ops: WINDOW_OPS,
+    async setup(client) {
+      await seedGroups(client, ROWS);
+    },
+    async run(client) {
+      // 每个分组内按 id 升序滚 1 行窗口；`grp = id % 8` 且 `val = id`，所以同组上一条
+      // 恒为 `id - 8`，首行没有前驱，逐行和都可离线算出。
+      for (let index = 0; index < WINDOW_OPS; index += 1) {
+        const result = await client.query(
+          "SELECT id, SUM(val) OVER (PARTITION BY grp ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW) AS s FROM bench_grp ORDER BY id",
+        );
+        if (result.rows.length !== ROWS) throw new Error(`window-moving-sum rows=${result.rows.length}`);
+        for (let row = 0; row < result.rows.length; row += 1) {
+          const id = Number(cellAt(result, result.rows[row], 0));
+          const sum = Number(cellAt(result, result.rows[row], 1));
+          const expected = id + (id > GROUP_SLOTS ? id - GROUP_SLOTS : 0);
+          if (id !== row + 1 || sum !== expected) {
+            throw new Error(`window-moving-sum id=${id} sum=${sum} expected=${expected}`);
+          }
+        }
+      }
+      return WINDOW_OPS;
+    },
+  },
+  {
+    name: "window-lag-lead",
+    unit: "statements",
+    ops: WINDOW_OPS,
+    async setup(client) {
+      await seedGroups(client, ROWS);
+    },
+    async run(client) {
+      // `val = id` 让前驱/后继恒为 `id - 1` / `id + 1`；两端必须是 NULL，
+      // 客户端把 NULL 折叠成别的值或整列错位都会在计时前失败。
+      for (let index = 0; index < WINDOW_OPS; index += 1) {
+        const result = await client.query(
+          "SELECT id, LAG(val) OVER (ORDER BY id) AS p, LEAD(val) OVER (ORDER BY id) AS n FROM bench_grp ORDER BY id",
+        );
+        if (result.rows.length !== ROWS) throw new Error(`window-lag-lead rows=${result.rows.length}`);
+        for (let row = 0; row < result.rows.length; row += 1) {
+          const id = Number(cellAt(result, result.rows[row], 0));
+          const previous = cellAt(result, result.rows[row], 1);
+          const next = cellAt(result, result.rows[row], 2);
+          const expectedPrevious = id === 1 ? null : id - 1;
+          const expectedNext = id === ROWS ? null : id + 1;
+          if ((previous === null ? null : Number(previous)) !== expectedPrevious) {
+            throw new Error(`window-lag-lead id=${id} previous=${previous}`);
+          }
+          if ((next === null ? null : Number(next)) !== expectedNext) {
+            throw new Error(`window-lag-lead id=${id} next=${next}`);
+          }
+        }
+      }
+      return WINDOW_OPS;
+    },
+  },
+  {
+    name: "select-string-functions",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // `label = 'row-<id>'`，五个标量函数的逐行结果都可离线推导。
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query(
+          "SELECT id, CONCAT(label, '-', id) AS a, UPPER(label) AS b, SUBSTRING(label, 2, 2) AS c, CHAR_LENGTH(label) AS d, REPLACE(label, 'o', '0') AS e FROM bench_items ORDER BY id",
+        );
+        if (result.rows.length !== ROWS) throw new Error(`select-string-functions rows=${result.rows.length}`);
+        for (let row = 0; row < result.rows.length; row += 1) {
+          const id = Number(cellAt(result, result.rows[row], 0));
+          const cells = [1, 2, 3, 4, 5].map((column) => cellAt(result, result.rows[row], column));
+          const label = `row-${id}`;
+          const expected = [label + "-" + id, label.toUpperCase(), "ow", label.length, label.replace("o", "0")];
+          for (let column = 0; column < expected.length; column += 1) {
+            const actual = column === 3 ? Number(cells[column]) : String(cells[column]);
+            if (actual !== expected[column]) {
+              throw new Error(`select-string-functions id=${id} column=${column} got=${actual} expected=${expected[column]}`);
+            }
+          }
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "select-set-operators",
+    unit: "statements",
+    ops: AGG_OPS * 2,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // `INTERSECT` / `EXCEPT` 各固定命中条数；与 `UNION ALL` 行分开，覆盖去重集合运算。
+      const half = Math.floor(ROWS / 2);
+      const overlap = Math.min(10, half);
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const intersect = await client.query(
+          `SELECT id FROM bench_items WHERE id <= ${half} INTERSECT SELECT id FROM bench_items WHERE id > ${half - overlap}`,
+        );
+        if (intersect.rows.length !== overlap) {
+          throw new Error(`select-set-operators intersect rows=${intersect.rows.length}, expected=${overlap}`);
+        }
+        // 集合运算不承诺行序，按集合比对，起点固定来自后段窗口。
+        const expectedIds = new Set();
+        for (let id = half - overlap + 1; id <= half; id += 1) expectedIds.add(id);
+        for (const row of intersect.rows) expectedIds.delete(Number(cellAt(intersect, row, 0)));
+        if (expectedIds.size !== 0) {
+          throw new Error(`select-set-operators intersect missing=${[...expectedIds].join(",")}`);
+        }
+        const except = await client.query(
+          `SELECT id FROM bench_items EXCEPT SELECT id FROM bench_items WHERE id > ${half}`,
+        );
+        if (except.rows.length !== half) {
+          throw new Error(`select-set-operators except rows=${except.rows.length}, expected=${half}`);
+        }
+      }
+      return AGG_OPS * 2;
+    },
+  },
+  {
+    name: "select-cast",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seed(client, ROWS);
+    },
+    async run(client) {
+      // 整型主键转字符串是确定的，断言列序与逐行值，避免只测「语句能跑通」。
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query("SELECT id, CAST(id AS CHAR) AS c FROM bench_items ORDER BY id");
+        if (result.rows.length !== ROWS) throw new Error(`select-cast rows=${result.rows.length}`);
+        for (let row = 0; row < result.rows.length; row += 1) {
+          const id = Number(cellAt(result, result.rows[row], 0));
+          const text = String(cellAt(result, result.rows[row], 1));
+          if (text !== String(id)) throw new Error(`select-cast id=${id} text=${text}`);
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
+    name: "aggregate-distinct",
+    unit: "statements",
+    ops: AGG_OPS,
+    async setup(client) {
+      await seedGroups(client, ROWS);
+    },
+    async run(client) {
+      // `grp = id % 8`，去重计数固定为 8；与 `select-distinct` 的行输出路径互补。
+      for (let index = 0; index < AGG_OPS; index += 1) {
+        const result = await client.query("SELECT COUNT(DISTINCT grp) AS n FROM bench_grp");
+        if (result.rows.length !== 1) throw new Error(`aggregate-distinct rows=${result.rows.length}`);
+        const distinct = Number(cellAt(result, result.rows[0], 0));
+        if (distinct !== GROUP_SLOTS) {
+          throw new Error(`aggregate-distinct n=${distinct}, expected=${GROUP_SLOTS}`);
+        }
+      }
+      return AGG_OPS;
+    },
+  },
+  {
     name: "rollback-bulk",
     unit: "rows",
     ops: TX_COUNT * TX_ROWS,
