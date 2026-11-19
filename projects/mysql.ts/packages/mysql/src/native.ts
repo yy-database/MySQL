@@ -46,6 +46,51 @@ export interface MysqlServiceHandle {
     stop(): void;
 }
 
+/** One column of a client result set, as declared by the remote server. */
+export interface MysqlClientColumnHandle {
+    readonly name: string;
+    /** `MYSQL_TYPE_*` code from the column definition. */
+    readonly typeCode: number;
+    readonly unsigned: boolean;
+    /** Whether the column carries raw octets rather than text. */
+    readonly binary: boolean;
+}
+
+/** One restored cell: `null`, exact integer, float, text or raw octets. */
+export type MysqlClientCellValue = bigint | number | string | Uint8Array | null;
+
+/** Outcome of one client statement as the native binding restores it. */
+export interface MysqlClientResultHandle {
+    readonly columns: readonly MysqlClientColumnHandle[];
+    readonly rows: readonly (readonly MysqlClientCellValue[])[];
+    readonly affectedRows: bigint;
+    readonly lastInsertId: bigint;
+}
+
+/** Parameter the native prepared path binds: text, raw octets or SQL `NULL`. */
+export type MysqlClientParam = string | Uint8Array | null;
+
+/** One live remote session owning the upstream wire client connection. */
+export interface MysqlClientSessionHandle {
+    /** Runs one text-protocol statement (`COM_QUERY`). */
+    query(sql: string): Promise<MysqlClientResultHandle>;
+    /** Runs one prepared statement binding every `?` through the binary protocol. */
+    queryWithParams(sql: string, params: readonly MysqlClientParam[]): Promise<MysqlClientResultHandle>;
+    /** Drops the TCP connection. Repeating close is a no-op. */
+    close(): void;
+}
+
+/** Handshake settings the native client applies to the upstream config. */
+export interface MysqlClientConnectOptions {
+    readonly host: string;
+    readonly port: number;
+    readonly user: string;
+    readonly password?: string;
+    readonly database?: string;
+    /** Connect and per-read timeout in milliseconds; the upstream default applies when absent. */
+    readonly timeoutMs?: number;
+}
+
 /** Primitives exported by the `mysql-napi` binding. */
 export interface MysqlNative {
     /** Largest payload one classic packet may carry. */
@@ -56,6 +101,8 @@ export interface MysqlNative {
     encodePacket(sequence: number, payload: Buffer): Buffer;
     /** Decodes the first complete packet, or `null` when the input is incomplete. */
     decodePacket(input: Buffer): DecodedPacket | null;
+    /** Opens one remote session: handshake and authentication run upstream. */
+    mysqlClientConnect(options: MysqlClientConnectOptions): Promise<MysqlClientSessionHandle>;
     /** Publishes single-node shard routing into a `.yyds` catalog. */
     mysqlPublishRouting(catalogPath: string, epoch: number, shardIds: string[]): void;
     /** Acquires the exclusive lease for one data directory. */

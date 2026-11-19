@@ -1,8 +1,8 @@
 // Constructor option shapes and validation. Construction only stores and
 // validates configuration; nothing here touches the native binding. URL
 // parsing is configuration shaping, not protocol work: the parsed fields are
-// handed to the native client primitive once it exists, and the wire
-// handshake itself never happens in TypeScript.
+// handed to the native client handle and the wire handshake itself never
+// happens in TypeScript.
 
 import { mysqlCapabilityGapError, mysqlConfigurationError } from './errors.ts';
 import type { MySQLIsolationLevel, MySQLValue } from './session.ts';
@@ -68,7 +68,6 @@ export interface ResolvedMySQLClientOptions {
     readonly endpoint: TcpEndpoint;
     readonly database?: string;
     readonly auth?: PasswordAuth;
-    readonly charset?: string;
     readonly connectTimeoutMs?: number;
 }
 
@@ -149,6 +148,11 @@ export function resolveMySQLClientOptions(options: MySQLClientOptions): Resolved
         throw mysqlConfigurationError('address_conflict', 'MySQLClient accepts url or endpoint, not both');
     }
     validateSettings(options);
+    // The native handshake fixes utf8mb4 end to end; accepting a charset here
+    // and ignoring it would be a silent downgrade, so it fails as a gap.
+    if (options.charset !== undefined) {
+        throw mysqlCapabilityGapError('client charset negotiation (the native handshake fixes utf8mb4)', 'configuration');
+    }
 
     if (options.url !== undefined) {
         const parsed = parseMySQLUrl(options.url);
@@ -162,7 +166,6 @@ export function resolveMySQLClientOptions(options: MySQLClientOptions): Resolved
             endpoint: parsed.endpoint,
             database: options.database ?? parsed.database,
             auth: options.auth ?? parsed.auth,
-            charset: options.charset,
             connectTimeoutMs: options.connectTimeoutMs,
         };
     }
@@ -175,7 +178,6 @@ export function resolveMySQLClientOptions(options: MySQLClientOptions): Resolved
         endpoint,
         database: options.database,
         auth: options.auth,
-        charset: options.charset,
         connectTimeoutMs: options.connectTimeoutMs,
     };
 }
