@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 name = "mysql_napi"
 
 [dependencies]
-database = { workspace = true, features = ["types", "query", "execution", "storage", "cluster", "server", "harness"] }
+database = { workspace = true, features = ["types", "query", "execution", "storage", "cluster", "client", "server", "harness"] }
 database-protocol-mysql = { workspace = true }
 napi = { workspace = true }
 napi-derive = { workspace = true }

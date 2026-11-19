@@ -27,7 +27,8 @@ database-protocol-mysql = { git = "https://github.com/oovm/boost.rs.git", rev = 
 # once, from one source.
 database = { git = "https://github.com/oovm/boost.rs.git", rev = "70aee1ebc60e0104a88f214ee46af37477b402a7", package = "database", default-features = false }
 
-napi = { version = "3.14.2", default-features = false, features = ["napi4"] }
+# `napi7` unlocks the BigInt conversions the client value restoration needs.
+napi = { version = "3.14.2", default-features = false, features = ["napi7"] }
 napi-derive = "3.6.12"
 napi-build = "2.6"
 pyo3 = { version = "0.30.1", features = ["extension-module"] }

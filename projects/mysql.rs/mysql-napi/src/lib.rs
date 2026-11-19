@@ -1,10 +1,13 @@
-//! Node bindings: thin wrappers over `database-protocol-mysql` framing and the
-//! upstream `database.server::yyds::mysql` gateway handles.
+//! Node bindings: thin wrappers over `database-protocol-mysql` framing, the
+//! upstream `database.server::yyds::mysql` gateway handles and the upstream
+//! `database.client::mysql` wire client.
 //!
 //! No bin, no global state and no CLI: the TypeScript host owns the command
-//! line. The server handles in [`server`] compose the upstream gateway; no
-//! protocol bytes live here.
+//! line. The server handles in [`server`] compose the upstream gateway and the
+//! client handles in [`client`] compose the upstream wire client; no protocol
+//! bytes live here.
 
+mod client;
 mod server;
 
 use database::harness::{
