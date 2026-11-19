@@ -2,11 +2,14 @@
 //
 // The lifecycle part is real: `open()` must bring the `.yyds` catalog, the
 // exclusive lease, the `.yykv` shard and the persisted schema up through the
-// native handles, and `listen()` must accept a real `mysql2` session that runs
-// DDL, DML and SELECT through the upstream gateway. The execution part asserts
-// the honest failure shape: while the native binding exports no in-process
-// session or client handshake handle, the surface must fail through the error
-// envelope with `native_capability_missing` — never a TypeScript fallback.
+// native handles, `listen()` must accept a real `mysql2` session that runs DDL,
+// DML and SELECT through the upstream gateway, and `MySQLClient.connect()` must
+// complete a real handshake against that gateway with text and prepared
+// statement round trips through the native client handle. The remaining gaps
+// assert the honest failure shape: wherever the native binding exports no
+// capability yet (in-process execution, session borrowing, transactions,
+// per-request controls), the surface must fail through the error envelope with
+// `native_capability_missing` — never a TypeScript fallback.
 
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -109,6 +112,11 @@ thrower(
     configuration('invalid_endpoint'),
     'MySQLClient rejects an out-of-range endpoint port',
 );
+thrower(
+    () => new MySQLClient({ endpoint: { host: '127.0.0.1', port: 3306 }, charset: 'latin1' }),
+    { ...GAP, phase: 'configuration' },
+    'MySQLClient refuses charset negotiation instead of silently ignoring it',
+);
 
 const urlClient = new MySQLClient({ url: 'mysql://alice:s%40cret@127.0.0.1:3307/app' });
 check(urlClient.state === 'new', 'MySQLClient with a valid url constructs in state new');
@@ -182,6 +190,80 @@ try {
     await survivor.end();
     check(true, 'the surviving listener still serves the open engine');
 
+    // --- remote client over the real gateway ------------------------------------
+    const client = new MySQLClient({ endpoint: second.endpoint, auth: { username: 'yydb', password: '' } });
+    await rejection(
+        () => client.query('select 1'),
+        { code: 'client_not_connected', phase: 'execute', execution: 'not-sent', retry: 'never' },
+        'query() before a successful connect fails as not connected',
+    );
+    await client.connect();
+    check(client.state === 'ready', 'connect() completes the real handshake against the gateway');
+    const created = await client.execute('CREATE TABLE client_smoke (id BIGINT PRIMARY KEY, name VARCHAR(64))');
+    check(
+        created.affectedRows === 0n && created.lastInsertId === null && created.warnings.length === 0,
+        'DDL reports the OK packet shape',
+    );
+    const inserted = await client.execute("INSERT INTO client_smoke VALUES (7, 'seven')");
+    check(inserted.affectedRows === 1n, 'execute() reports affected rows from the text protocol');
+    const selected = await client.query('SELECT id, name FROM client_smoke WHERE id = 7');
+    check(
+        selected.columns.length === 2 && selected.columns[0].name === 'id' && selected.columns[0].typeCode === 8 && !selected.columns[0].binary,
+        'query() exposes the declared column metadata',
+    );
+    check(
+        selected.rows.length === 1 && selected.rows[0].id === 7n && selected.rows[0].name === 'seven',
+        'query() restores typed values through the native binding',
+    );
+    const arrayed = await client.query('SELECT name FROM client_smoke WHERE id = 7', undefined, { arrayRows: true });
+    check(Array.isArray(arrayed.rows[0]) && arrayed.rows[0][0] === 'seven', 'arrayRows returns positional rows');
+    const prepared = await client.query('SELECT id, name FROM client_smoke WHERE name = ?', ['seven']);
+    check(prepared.rows.length === 1 && prepared.rows[0].id === 7n, 'query() with parameters runs the prepared binary protocol');
+    const preparedWrite = await client.execute('INSERT INTO client_smoke VALUES (?, ?)', [8, 'eight']);
+    check(preparedWrite.affectedRows === 1n, 'execute() binds parameters through the prepared protocol');
+    await client.execute('INSERT INTO client_smoke VALUES (?, ?)', [9, null]);
+    const nulls = await client.query('SELECT id, name FROM client_smoke WHERE id = 9');
+    check(
+        nulls.rows.length === 1 && nulls.rows[0].name === null && nulls.rows[0].id === 9n,
+        'NULL round-trips through the prepared path and restores as null',
+    );
+    await rejection(
+        () => client.withSession(async () => {}),
+        { ...GAP, phase: 'execute' },
+        'withSession() stays a capability gap until the native handle exports session borrowing',
+    );
+    await rejection(
+        () => client.transaction(async () => {}),
+        { ...GAP, phase: 'execute' },
+        'transaction() stays a capability gap until the native handle exports begin/commit/rollback',
+    );
+    await rejection(
+        () => client.query('select 1', undefined, { timeoutMs: 5 }),
+        { ...GAP, phase: 'configuration' },
+        'a per-request timeout is refused rather than silently ignored',
+    );
+    await rejection(
+        () => client.execute('select 1', undefined, { signal: new AbortController().signal }),
+        { ...GAP, phase: 'configuration' },
+        'a per-request abort signal is refused rather than silently ignored',
+    );
+    await client.close();
+    check(client.state === 'closed', 'close() drops the native session');
+    await client.close();
+    check(true, 'repeating client close() succeeds');
+    await rejection(
+        () => client.connect(),
+        { code: 'invalid_state', phase: 'connect', execution: 'not-sent', retry: 'never' },
+        'connect() cannot revive a closed client',
+    );
+    const deadPort = new MySQLClient({ endpoint: { host: '127.0.0.1', port: 1 } });
+    await rejection(
+        () => deadPort.connect(),
+        { code: 'native_connect_failed', phase: 'connect', execution: 'not-sent', retry: 'application-decision' },
+        'connect() against a closed port fails through the envelope',
+    );
+    check(deadPort.state === 'failed', 'a failed handshake leaves the client in state failed');
+
     await rejection(
         () => mysqlInstance.listen({ endpoint: { host: '0.0.0.0', port: 0 } }),
         configuration('endpoint_host_unsupported'),
@@ -244,27 +326,23 @@ await rejection(
     'business calls on a closed instance fail explicitly',
 );
 
-// --- remote client surface ----------------------------------------------------
+// --- remote client lifecycle without a server ---------------------------------
 
-const client = new MySQLClient({ endpoint: { host: '127.0.0.1', port: 3306 } });
-await rejection(() => client.connect(), { ...GAP, phase: 'connect' }, 'connect() fails through the handshake capability gap');
-check(client.state === 'new', 'a gap rejection leaves the client in state new: nothing was sent');
+const idleClient = new MySQLClient({ endpoint: { host: '127.0.0.1', port: 3306 } });
 await rejection(
-    () => client.query('select 1'),
+    () => idleClient.query('select 1'),
     { code: 'client_not_connected', phase: 'execute', execution: 'not-sent', retry: 'never' },
-    'query() before a successful connect fails as not connected',
+    'query() before any connect fails as not connected',
 );
 await rejection(
-    () => client.transaction(async () => {}),
+    () => idleClient.transaction(async () => {}),
     { code: 'client_not_connected', phase: 'execute', execution: 'not-sent', retry: 'never' },
-    'transaction() before a successful connect fails as not connected',
+    'transaction() before any connect fails as not connected',
 );
-await client.close();
-check(client.state === 'closed', 'close() on a never-connected client succeeds');
-await client.close();
-check(true, 'repeating client close() succeeds');
+await idleClient.close();
+check(idleClient.state === 'closed', 'close() on a never-connected client succeeds');
 await rejection(
-    () => client.connect(),
+    () => idleClient.connect(),
     { code: 'invalid_state', phase: 'connect', execution: 'not-sent', retry: 'never' },
     'connect() cannot revive a closed client',
 );
